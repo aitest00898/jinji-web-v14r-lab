@@ -40,8 +40,10 @@
     sheet: null,
     financeTab: "overview",
     previousFocus: null,
+    previousFocusMeta: null,
     scrollY: 0,
     quickRecordDraft: "",
+    resumeAfterFarmSelection: null,
   };
 
   const app = document.getElementById("app");
@@ -56,6 +58,16 @@
 
   function money(value) {
     return value === null || value === undefined ? "—" : Number(value).toLocaleString("zh-TW");
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[char]);
   }
 
   function farmById(id) {
@@ -416,7 +428,7 @@
   function renderFinanceOverview() {
     const totals = financeContext();
     const context = currentContext();
-    return `<section class="finance-header"><div class="finance-kpis"><div class="finance-kpi"><span>毛利</span><strong>${money(totals.gross)}</strong></div><div class="finance-kpi amber"><span>已配置</span><strong>${money(totals.allocated)}</strong></div><div class="finance-kpi red"><span>費用</span><strong>${money(totals.expense)}</strong></div><div class="finance-kpi green"><span>目前淨額</span><strong data-testid="finance-net">${money(totals.net)}</strong></div></div><div class="metric-note"><strong>${context.farm.id === "all" ? "全部雞場財務" : `${context.farm.name} 財務`}</strong><span>${context.farm.id === "all" ? "五個雞場合計。" : "雞舍／批次沿用所屬雞場財務。"}</span></div></section>${totals.chart ? `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>測試用歷史趨勢 · 最後一點為目前淨額 115,000</p></div><span class="status-chip warn">測試資料</span></div>${chartMarkup()}</section>` : `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>目前只有全部雞場的測試用歷史趨勢。</p></div><span class="status-chip warn">此場無獨立趨勢</span></div><div class="empty-tab"><strong>此雞場沒有獨立歷史序列</strong><p>避免把全部雞場趨勢誤看成 ${context.farm.name} 的獨立歷史。</p></div></section>`}`;
+    return `<section class="finance-header"><div class="finance-kpis"><button type="button" class="finance-kpi finance-kpi-button" data-action="open-finance-metric" data-finance-metric="gross"><span>毛利</span><strong>${money(totals.gross)}</strong><small>查看構成 ›</small></button><button type="button" class="finance-kpi finance-kpi-button amber" data-action="open-finance-metric" data-finance-metric="allocated"><span>已配置</span><strong>${money(totals.allocated)}</strong><small>查看分配 ›</small></button><button type="button" class="finance-kpi finance-kpi-button red" data-action="open-finance-metric" data-finance-metric="expense"><span>費用</span><strong>${money(totals.expense)}</strong><small>查看分類 ›</small></button><button type="button" class="finance-kpi finance-kpi-button green" data-action="open-finance-metric" data-finance-metric="net"><span>目前淨額</span><strong data-testid="finance-net">${money(totals.net)}</strong><small>查看計算 ›</small></button></div><div class="metric-note"><strong>${context.farm.id === "all" ? "全部雞場財務" : `${context.farm.name} 財務`}</strong><span>${context.farm.id === "all" ? "五個雞場合計。" : "雞舍／批次沿用所屬雞場財務。"}</span></div></section>${totals.chart ? `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>測試用歷史趨勢 · 最後一點為目前淨額 115,000</p></div><span class="status-chip warn">測試資料</span></div>${chartMarkup()}</section>` : `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>目前只有全部雞場的測試用歷史趨勢。</p></div><span class="status-chip warn">此場無獨立趨勢</span></div><div class="empty-tab"><strong>此雞場沒有獨立歷史序列</strong><p>避免把全部雞場趨勢誤看成 ${context.farm.name} 的獨立歷史。</p></div></section>`}`;
   }
 
   function financeTabBody() {
@@ -424,18 +436,18 @@
     if (state.financeTab === "overview") return renderFinanceOverview();
     if (state.financeTab === "farms") {
       const farms = state.context.farmId === "all" ? allProductionFarms() : scope.farms;
-      return `<section class="content-panel"><div class="panel-title"><div><h3>各場</h3><p>查看各場毛利、已配置、費用與淨額。</p></div><span class="status-chip good">${farms.length} 場</span></div><div class="list-stack">${farms.map((farm) => `<div class="list-row"><span><strong>${farm.name}</strong><span>毛利 ${money(farm.finance.gross)} · 已配置 ${money(farm.finance.allocated)} · 費用 ${money(farm.finance.expense)}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.net)}</span><span>淨額</span></span></div>`).join("")}</div></section>`;
+      return `<section class="content-panel"><div class="panel-title"><div><h3>各場</h3><p>查看各場毛利、已配置、費用與淨額。</p></div><span class="status-chip good">${farms.length} 場</span></div><div class="list-stack">${farms.map((farm) => `<button type="button" class="list-row" data-action="open-finance-farm" data-farm-id="${farm.id}"><span><strong>${farm.name}</strong><span>毛利 ${money(farm.finance.gross)} · 已配置 ${money(farm.finance.allocated)} · 費用 ${money(farm.finance.expense)}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.net)}</span><span>淨額 ›</span></span></button>`).join("")}</div></section>`;
     }
     if (state.financeTab === "equity") {
       const investors = investorSummary(scope.farms);
-      return `<section class="content-panel"><div class="panel-title"><div><h3>投資人／股權</h3><p>依目前財務範圍顯示投資人配置。</p></div><span class="status-chip good">${investors.length} 位</span></div><div class="list-stack">${investors.map((investor) => `<div class="list-row"><span><strong>${investor.name}</strong><span>${investor.farms.map((row) => `${row.farm} ${row.share}%`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(investor.amount)}</span><span>配置金額</span></span></div>`).join("")}</div></section>`;
+      return `<section class="content-panel"><div class="panel-title"><div><h3>投資人／股權</h3><p>依目前財務範圍顯示投資人配置。</p></div><span class="status-chip good">${investors.length} 位</span></div><div class="list-stack">${investors.map((investor) => `<button type="button" class="list-row" data-action="open-investor-detail" data-investor-name="${escapeHtml(investor.name)}"><span><strong>${investor.name}</strong><span>${investor.farms.map((row) => `${row.farm} ${row.share}%`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(investor.amount)}</span><span>配置金額 ›</span></span></button>`).join("")}</div></section>`;
     }
     if (state.financeTab === "expenses") {
-      return `<section class="content-panel"><div class="panel-title"><div><h3>費用</h3><p>測試用費用分類；各場分類總和與目前費用一致。</p></div><span class="status-chip warn">${money(scope.expense)}</span></div><div class="list-stack">${scope.farms.map((farm) => `<div class="list-row"><span><strong>${farm.name}</strong><span>${farm.finance.expenses.map(([name, value]) => `${name} ${money(value)}`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.expense)}</span><span>費用</span></span></div>`).join("")}</div></section>`;
+      return `<section class="content-panel"><div class="panel-title"><div><h3>費用</h3><p>測試用費用分類；各場分類總和與目前費用一致。</p></div><span class="status-chip warn">${money(scope.expense)}</span></div><div class="list-stack">${scope.farms.map((farm) => `<button type="button" class="list-row" data-action="open-expense-detail" data-farm-id="${farm.id}"><span><strong>${farm.name}</strong><span>${farm.finance.expenses.map(([name, value]) => `${name} ${money(value)}`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.expense)}</span><span>費用 ›</span></span></button>`).join("")}</div></section>`;
     }
     if (state.financeTab === "distribution") {
       const rows = scope.farms.flatMap((farm) => farm.finance.investors.map(([name, share, amount]) => ({ farm, name, share, amount })));
-      return `<section class="content-panel"><div class="panel-title"><div><h3>分配</h3><p>依各場股權比例列出本期測試配置。</p></div><span class="status-chip good">${money(scope.allocated)}</span></div><div class="list-stack">${rows.map((row) => `<div class="list-row"><span><strong>${row.name} · ${row.farm.name}</strong><span>股權 ${row.share}%</span></span><span class="row-end"><span class="row-value">${money(row.amount)}</span></span></div>`).join("")}</div></section>`;
+      return `<section class="content-panel"><div class="panel-title"><div><h3>分配</h3><p>依各場股權比例列出本期測試配置。</p></div><span class="status-chip good">${money(scope.allocated)}</span></div><div class="list-stack">${rows.map((row) => `<button type="button" class="list-row" data-action="open-distribution-detail" data-farm-id="${row.farm.id}" data-investor-name="${escapeHtml(row.name)}"><span><strong>${row.name} · ${row.farm.name}</strong><span>股權 ${row.share}%</span></span><span class="row-end"><span class="row-value">${money(row.amount)}</span><span>›</span></span></button>`).join("")}</div></section>`;
     }
     const allocationRate = scope.gross ? (scope.allocated / scope.gross) * 100 : 0;
     const expenseRate = scope.gross ? (scope.expense / scope.gross) * 100 : 0;
@@ -443,11 +455,11 @@
     const bestFarm = [...scope.farms].sort((a, b) => b.finance.net - a.finance.net)[0];
     const topInvestor = investorSummary(scope.farms)[0];
     return `<section class="content-panel"><div class="panel-title"><div><h3>統計分析</h3><p>全部由目前測試財務資料計算，不引入外部產業數據。</p></div><span class="status-chip good">計算值</span></div><div class="list-stack">
-      <div class="list-row"><span><strong>配置率</strong><span>已配置 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${allocationRate.toFixed(1)}%</span></span></div>
-      <div class="list-row"><span><strong>費用率</strong><span>費用 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${expenseRate.toFixed(2)}%</span></span></div>
-      <div class="list-row"><span><strong>淨額／毛利</strong><span>淨額 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${netMargin.toFixed(1)}%</span></span></div>
-      <div class="list-row"><span><strong>最高淨額場次</strong><span>${bestFarm?.name || "—"}</span></span><span class="row-end"><span class="row-value">${bestFarm ? money(bestFarm.finance.net) : "—"}</span></span></div>
-      <div class="list-row"><span><strong>最高配置投資人</strong><span>${topInvestor?.name || "—"}</span></span><span class="row-end"><span class="row-value">${topInvestor ? money(topInvestor.amount) : "—"}</span></span></div>
+      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="allocation"><span><strong>配置率</strong><span>已配置 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${allocationRate.toFixed(1)}%</span><span>›</span></span></button>
+      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="expense"><span><strong>費用率</strong><span>費用 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${expenseRate.toFixed(2)}%</span><span>›</span></span></button>
+      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="net"><span><strong>淨額／毛利</strong><span>淨額 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${netMargin.toFixed(1)}%</span><span>›</span></span></button>
+      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="best-farm"><span><strong>最高淨額場次</strong><span>${bestFarm?.name || "—"}</span></span><span class="row-end"><span class="row-value">${bestFarm ? money(bestFarm.finance.net) : "—"}</span><span>›</span></span></button>
+      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="top-investor"><span><strong>最高配置投資人</strong><span>${topInvestor?.name || "—"}</span></span><span class="row-end"><span class="row-value">${topInvestor ? money(topInvestor.amount) : "—"}</span><span>›</span></span></button>
     </div></section>`;
   }
 
@@ -549,31 +561,112 @@
   }
 
   function quickRecordSheet() {
-    if (state.context.farmId === "all") return sheetShell("快速記錄", "全部雞場為唯讀", `<div class="empty-tab"><strong>請先選一個雞場</strong><p>避免把紀錄寫到不明確的範圍。</p></div><button type="button" class="sheet-primary" data-action="open-context">選擇雞場</button>`, "quick-record");
-    return sheetShell("快速記錄", contextLabel(), `<label class="quick-record-label" for="quick-record-input">要記什麼？</label><textarea id="quick-record-input" class="quick-record-input" rows="4" placeholder="例如：死亡5，咳嗽，臭腳">${state.quickRecordDraft}</textarea><p class="quick-record-note">這是互動測試版，只做預覽，不會寫入資料。</p><button type="button" class="sheet-primary" data-action="preview-quick-record">預覽紀錄</button>`, "quick-record");
+    if (state.context.farmId === "all") return sheetShell("快速記錄", "全部雞場為唯讀", `<div class="empty-tab"><strong>請先選一個雞場</strong><p>選好後會自動回到快速記錄，不需要重新開啟。</p></div><button type="button" class="sheet-primary" data-action="open-context-for-quick-record">選擇雞場</button>`, "quick-record");
+    return sheetShell("快速記錄", contextLabel(), `<label class="quick-record-label" for="quick-record-input">要記什麼？</label><textarea id="quick-record-input" class="quick-record-input" rows="4" placeholder="例如：死亡5，咳嗽，臭腳">${escapeHtml(state.quickRecordDraft)}</textarea><p class="quick-record-note">這是互動測試版，只做預覽，不會寫入資料。</p><button type="button" class="sheet-primary" data-action="preview-quick-record">預覽紀錄</button>`, "quick-record");
   }
 
   function quickRecordPreviewSheet() {
-    return sheetShell("紀錄預覽", contextLabel(), `<div class="detail-hero"><small>尚未儲存</small><strong>${state.quickRecordDraft || "（沒有內容）"}</strong><span>正式版仍需確認後才會寫入，並保留變更紀錄。</span></div><div class="readonly-note">本測試版不會真正送出或修改任何資料。</div>`, "quick-record-preview");
+    return sheetShell("紀錄預覽", contextLabel(), `<div class="detail-hero"><small>尚未儲存</small><strong>${escapeHtml(state.quickRecordDraft || "（沒有內容）")}</strong><span>正式版仍需確認後才會寫入，並保留變更紀錄。</span></div><div class="readonly-note">本測試版不會真正送出或修改任何資料。</div>`, "quick-record-preview");
   }
 
   function insightsSheet() {
     const feedCount = scopedEvents("feed").length;
     const waterCount = scopedEvents("water").length;
-    return sheetShell("洞察", contextLabel(), `<div class="detail-list"><div class="detail-block"><h3>目前存欄</h3><p>${number(contextStock())} 隻 · ${scopedFlocks().length} 批進行中</p></div><div class="detail-block"><h3>今日死亡／淘汰</h3><p>${number(mortalityValue())} / ${number(cullValue())}</p></div><div class="detail-block"><h3>異常</h3><p>${scopedAbnormalities({ activeOnly: true }).length} 筆追蹤中</p></div><div class="detail-block"><h3>飼料／飲水紀錄</h3><p>${feedCount} / ${waterCount} 筆</p></div></div>`, "insights");
+    const activeAbnormal = scopedAbnormalities({ activeOnly: true }).length;
+    return sheetShell("洞察", contextLabel(), `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-insight-detail" data-insight-key="stock"><span><strong>存欄與批次</strong><span>${number(contextStock())} 隻 · ${scopedFlocks().length} 批進行中</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-sheet" data-sheet-kind="mortality"><span><strong>今日死亡</strong><span>${number(mortalityValue())} 隻</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-sheet" data-sheet-kind="cull"><span><strong>今日淘汰</strong><span>${number(cullValue())} 隻</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-sheet" data-sheet-kind="abnormal"><span><strong>異常追蹤</strong><span>${activeAbnormal} 筆追蹤中</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-insight-detail" data-insight-key="feed"><span><strong>飼料紀錄</strong><span>${feedCount} 筆</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-insight-detail" data-insight-key="water"><span><strong>飲水紀錄</strong><span>${waterCount} 筆</span></span><span class="sheet-item-end">›</span></button></div>`, "insights");
+  }
+
+  function insightDetailSheet(key) {
+    if (key === "stock") return sheetShell("存欄與批次", contextLabel(), `<div class="detail-hero"><small>目前存欄</small><strong>${number(contextStock())} 隻</strong><span>${scopedFlocks().length} 批進行中</span></div><div class="sheet-item-list">${scopedFlocks().map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${flock.id}"><span><strong>${flock.code}</strong><span>${flock.farm} · ${flock.house} · ${number(flock.stock)} 隻</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>沒有進行中批次</strong></div>`}</div>`, "insight-detail");
+    const type = key === "feed" ? "feed" : "water";
+    const rows = scopedEvents(type);
+    return sheetShell(key === "feed" ? "飼料紀錄" : "飲水紀錄", contextLabel(), `<div class="sheet-item-list">${rows.map((item) => `<button type="button" class="sheet-item" data-action="open-event" data-event-id="${item.id}"><span><strong>${eventLabel(item.type)} ${number(item.qty)} ${item.unit}</strong><span>${contextName(item)} · ${item.date} ${item.time}</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>目前沒有相關紀錄</strong></div>`}</div>`, "insight-detail");
   }
 
   function systemSheet() {
     const farms = allProductionFarms();
-    return sheetShell("系統", "測試版資訊", `<div class="detail-list"><div class="detail-block"><h3>雞場</h3><p>${farms.length} 場</p></div><div class="detail-block"><h3>雞舍</h3><p>${farms.flatMap((farm) => farm.houses).length} 舍</p></div><div class="detail-block"><h3>批次</h3><p>${allFlocks().length} 批</p></div><div class="readonly-note">這個測試版沒有連線到正式服務、LINE 或資料庫。</div></div>`, "system");
+    const houses = farms.flatMap((farm) => farm.houses);
+    return sheetShell("系統", "測試版資訊", `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="farms"><span><strong>雞場</strong><span>${farms.length} 場</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="houses"><span><strong>雞舍</strong><span>${houses.length} 舍</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="flocks"><span><strong>批次</strong><span>${allFlocks().length} 批</span></span><span class="sheet-item-end">›</span></button><div class="sheet-item static"><span><strong>正式服務</strong><span>這個公開測試版沒有連線 LINE、資料庫或正式後端</span></span></div></div>`, "system");
+  }
+
+  function systemDetailSheet(key) {
+    const farms = allProductionFarms();
+    if (key === "farms") return sheetShell("雞場清單", `${farms.length} 場`, `<div class="sheet-item-list">${farms.map((farm) => `<button type="button" class="sheet-item" data-action="open-farm-detail" data-farm-id="${farm.id}"><span><strong>${farm.name}</strong><span>存欄 ${number(farm.stock)} · ${farm.risk}</span></span><span class="sheet-item-end">›</span></button>`).join("")}</div>`, "system-detail");
+    if (key === "houses") return sheetShell("雞舍清單", `${farms.flatMap((farm) => farm.houses).length} 舍`, `<div class="sheet-item-list">${farms.flatMap((farm) => farm.houses.map((house) => `<button type="button" class="sheet-item" data-action="open-house-detail" data-farm-id="${farm.id}" data-house-id="${house.id}"><span><strong>${farm.name} · ${house.name}</strong><span>存欄 ${number(houseStock(house))} · ${house.flocks.length} 個批次</span></span><span class="sheet-item-end">›</span></button>`)).join("")}</div>`, "system-detail");
+    return sheetShell("批次清單", `${allFlocks().length} 批`, `<div class="sheet-item-list">${allFlocks().map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${flock.id}"><span><strong>${flock.code}</strong><span>${flock.farm} · ${flock.house} · ${flock.status}</span></span><span class="sheet-item-end">›</span></button>`).join("")}</div>`, "system-detail");
   }
 
   function auditSheet() {
-    return sheetShell("變更紀錄", "修改、取消與操作歷程", `<div class="empty-tab"><strong>目前沒有新增變更紀錄</strong><p>這個測試版不會真正寫入資料。正式版仍應以追加紀錄方式保留修改與取消歷程。</p></div>`, "audit");
+    return sheetShell("變更紀錄", "修改、取消與操作歷程", `<div class="empty-tab"><strong>目前沒有新增變更紀錄</strong><p>這個測試版不會真正寫入資料，因此不虛構變更紀錄。正式版仍應以追加紀錄方式保留修改與取消歷程。</p></div>`, "audit");
   }
 
   function settingsSheet() {
-    return sheetShell("設定", "操作與管理設定", `<div class="sheet-item-list"><div class="sheet-item static"><span><strong>雞場與雞舍管理</strong><span>正式版需管理者驗證</span></span></div><div class="sheet-item static"><span><strong>LINE 群組</strong><span>正式版管理群組與通知設定</span></span></div><div class="sheet-item static"><span><strong>顯示與操作</strong><span>測試版暫不修改設定</span></span></div></div>`, "settings");
+    return sheetShell("設定", "操作與管理設定", `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="master"><span><strong>雞場與雞舍管理</strong><span>正式版需管理者驗證</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="line"><span><strong>LINE 群組</strong><span>群組與通知設定</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="display"><span><strong>顯示與操作</strong><span>介面偏好與操作說明</span></span><span class="sheet-item-end">›</span></button></div>`, "settings");
+  }
+
+  function settingsDetailSheet(key) {
+    const details = {
+      master: ["雞場與雞舍管理", "正式版的新增、停用與指派需先通過管理者驗證；本測試版維持唯讀，不提供假寫入。"],
+      line: ["LINE 群組", "正式版可管理群組與通知；此測試版沒有連線 LINE，因此只保留資訊架構入口。"],
+      display: ["顯示與操作", "目前使用手機優先版面、方案 B 工作範圍與底部導覽；此測試版不保存個人偏好。"],
+    };
+    const [title, copy] = details[key] || details.display;
+    return sheetShell(title, "測試版設定說明", `<div class="detail-block"><h3>目前狀態</h3><p>${copy}</p></div><div class="readonly-note">沒有可安全模擬的正式資料時，不建立假的設定結果。</div>`, "settings-detail");
+  }
+
+  function financeFarmSheet(farmId) {
+    const farm = farmById(farmId);
+    return sheetShell(`${farm.name} · 財務`, "場級財務詳細", `<div class="detail-list"><div class="detail-block"><h3>毛利</h3><p>${money(farm.finance.gross)}</p></div><div class="detail-block"><h3>已配置</h3><p>${money(farm.finance.allocated)}</p></div><div class="detail-block"><h3>費用</h3><p>${money(farm.finance.expense)}</p></div><div class="detail-block"><h3>目前淨額</h3><p>${money(farm.finance.net)}</p></div><div class="detail-block"><h3>投資人／股權</h3><div class="sheet-item-list">${farm.finance.investors.map(([name, share, amount]) => `<button type="button" class="sheet-item" data-action="open-distribution-detail" data-farm-id="${farm.id}" data-investor-name="${escapeHtml(name)}"><span><strong>${name}</strong><span>股權 ${share}%</span></span><span class="sheet-item-end">${money(amount)} ›</span></button>`).join("")}</div></div><div class="detail-block"><h3>費用分類</h3><button type="button" class="sheet-primary" data-action="open-expense-detail" data-farm-id="${farm.id}">查看費用分類</button></div></div>`, "finance-farm");
+  }
+
+  function investorDetailSheet(name) {
+    const scope = financeScope();
+    const investor = investorSummary(scope.farms).find((row) => row.name === name);
+    if (!investor) return sheetShell("投資人詳細", "找不到資料", `<div class="empty-tab"><strong>目前範圍沒有這位投資人</strong></div>`, "investor-detail");
+    return sheetShell(investor.name, `配置金額 ${money(investor.amount)}`, `<div class="sheet-item-list">${investor.farms.map((row) => `<div class="sheet-item static"><span><strong>${row.farm}</strong><span>股權 ${row.share}%</span></span><span class="sheet-item-end">${money(row.amount)}</span></div>`).join("")}</div>`, "investor-detail");
+  }
+
+  function expenseDetailSheet(farmId) {
+    const farm = farmById(farmId);
+    return sheetShell(`${farm.name} · 費用`, `合計 ${money(farm.finance.expense)}`, `<div class="sheet-item-list">${farm.finance.expenses.map(([name, value]) => `<div class="sheet-item static"><span><strong>${name}</strong><span>測試用分類</span></span><span class="sheet-item-end">${money(value)}</span></div>`).join("")}</div>`, "expense-detail");
+  }
+
+  function distributionDetailSheet(farmId, investorName) {
+    const farm = farmById(farmId);
+    const row = farm.finance.investors.find(([name]) => name === investorName);
+    if (!row) return sheetShell("分配詳細", farm.name, `<div class="empty-tab"><strong>找不到這筆分配</strong></div>`, "distribution-detail");
+    const [name, share, amount] = row;
+    return sheetShell(`${name} · ${farm.name}`, "分配詳細", `<div class="detail-hero"><small>配置金額</small><strong>${money(amount)}</strong><span>股權 ${share}%</span></div><div class="detail-block"><h3>所屬雞場</h3><p>${farm.name}</p></div>`, "distribution-detail");
+  }
+
+  function financeMetricSheet(metric) {
+    const scope = financeScope();
+    const map = {
+      gross: ["毛利", scope.gross, "各場毛利加總"],
+      allocated: ["已配置", scope.allocated, "目前範圍內投資人配置金額加總"],
+      expense: ["費用", scope.expense, "各場費用加總"],
+      net: ["目前淨額", scope.net, `已配置 ${money(scope.allocated)} 扣除費用 ${money(scope.expense)}；沿用既有測試財務定義`],
+    };
+    const [title, value, copy] = map[metric] || map.net;
+    return sheetShell(title, contextLabel(), `<div class="detail-hero"><small>${title}</small><strong>${money(value)}</strong><span>${copy}</span></div><div class="sheet-item-list">${scope.farms.map((farm) => `<button type="button" class="sheet-item" data-action="open-finance-farm" data-farm-id="${farm.id}"><span><strong>${farm.name}</strong><span>${title} ${money(farm.finance[metric])}</span></span><span class="sheet-item-end">›</span></button>`).join("")}</div>`, "finance-metric");
+  }
+
+  function analysisDetailSheet(key) {
+    const scope = financeScope();
+    const allocationRate = scope.gross ? (scope.allocated / scope.gross) * 100 : 0;
+    const expenseRate = scope.gross ? (scope.expense / scope.gross) * 100 : 0;
+    const netMargin = scope.gross ? (scope.net / scope.gross) * 100 : 0;
+    const bestFarm = [...scope.farms].sort((a, b) => b.finance.net - a.finance.net)[0];
+    const topInvestor = investorSummary(scope.farms)[0];
+    const detail = {
+      allocation: ["配置率", `${allocationRate.toFixed(1)}%`, `${money(scope.allocated)} ÷ ${money(scope.gross)}`],
+      expense: ["費用率", `${expenseRate.toFixed(2)}%`, `${money(scope.expense)} ÷ ${money(scope.gross)}`],
+      net: ["淨額／毛利", `${netMargin.toFixed(1)}%`, `${money(scope.net)} ÷ ${money(scope.gross)}`],
+      "best-farm": ["最高淨額場次", bestFarm?.name || "—", bestFarm ? `目前淨額 ${money(bestFarm.finance.net)}` : "沒有資料"],
+      "top-investor": ["最高配置投資人", topInvestor?.name || "—", topInvestor ? `配置金額 ${money(topInvestor.amount)}` : "沒有資料"],
+    };
+    const [title, value, copy] = detail[key] || detail.net;
+    return sheetShell(title, "由目前測試財務資料直接計算", `<div class="detail-hero"><small>${title}</small><strong>${value}</strong><span>${copy}</span></div><div class="readonly-note">不引入外部產業平均、IRR、ROI 或未授權指標。</div>`, "analysis-detail");
   }
 
   function renderSheet() {
@@ -598,6 +691,15 @@
     if (state.sheet.kind === "system") return systemSheet();
     if (state.sheet.kind === "audit") return auditSheet();
     if (state.sheet.kind === "settings") return settingsSheet();
+    if (state.sheet.kind === "insight-detail") return insightDetailSheet(state.sheet.key);
+    if (state.sheet.kind === "system-detail") return systemDetailSheet(state.sheet.key);
+    if (state.sheet.kind === "settings-detail") return settingsDetailSheet(state.sheet.key);
+    if (state.sheet.kind === "finance-farm") return financeFarmSheet(state.sheet.farmId);
+    if (state.sheet.kind === "investor-detail") return investorDetailSheet(state.sheet.name);
+    if (state.sheet.kind === "expense-detail") return expenseDetailSheet(state.sheet.farmId);
+    if (state.sheet.kind === "distribution-detail") return distributionDetailSheet(state.sheet.farmId, state.sheet.name);
+    if (state.sheet.kind === "finance-metric") return financeMetricSheet(state.sheet.metric);
+    if (state.sheet.kind === "analysis-detail") return analysisDetailSheet(state.sheet.key);
     return "";
   }
 
@@ -610,6 +712,47 @@
     if (state.page === "finance") return renderFinance();
     if (state.page === "ai") return renderAi();
     return renderToday();
+  }
+
+  function captureFocusMeta(element) {
+    if (!element || element === document.body || element === document.documentElement) return null;
+    if (element.dataset?.testid) return { testid: element.dataset.testid };
+    if (element.dataset?.nav) return { nav: element.dataset.nav };
+    if (element.dataset?.action) {
+      const keys = ["sheetKind","farmId","houseId","flockId","eventId","pendingId","abnormalId","financeTab","financeMetric","analysisKey","insightKey","systemKey","settingsKey"];
+      const data = {};
+      keys.forEach((key) => { if (element.dataset[key]) data[key] = element.dataset[key]; });
+      return { action: element.dataset.action, data };
+    }
+    if (element.classList?.contains("fab")) return { className: "fab" };
+    return null;
+  }
+
+  function findFocusReturn(meta) {
+    if (!meta) return null;
+    if (meta.testid) return document.querySelector(`[data-testid="${meta.testid}"]`);
+    if (meta.nav) return document.querySelector(`[data-nav="${meta.nav}"]`);
+    if (meta.className) return document.querySelector(`.${meta.className}`);
+    if (meta.action) {
+      return [...document.querySelectorAll(`[data-action="${meta.action}"]`)].find((element) =>
+        Object.entries(meta.data || {}).every(([key, value]) => element.dataset[key] === value)
+      ) || null;
+    }
+    return null;
+  }
+
+  function trapSheetFocus(event) {
+    if (!state.sheet || event.key !== "Tab") return false;
+    const panel = document.querySelector(".sheet-panel");
+    if (!panel) return false;
+    const focusable = [...panel.querySelectorAll('button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')].filter((element) => !element.hidden && element.getClientRects().length);
+    if (!focusable.length) { event.preventDefault(); panel.focus(); return true; }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); return true; }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); return true; }
+    if (!panel.contains(document.activeElement)) { event.preventDefault(); first.focus(); return true; }
+    return false;
   }
 
   function lockBody() {
@@ -657,25 +800,33 @@
   }
 
   function openSheet(sheet) {
-    if (!state.sheet) state.previousFocus = document.activeElement;
+    if (!state.sheet) {
+      state.previousFocus = document.activeElement;
+      state.previousFocusMeta = captureFocusMeta(document.activeElement);
+    }
     state.sheet = sheet;
     render();
     window.requestAnimationFrame(() => document.querySelector(".sheet-close")?.focus());
   }
 
   function closeSheet() {
-    const focus = state.previousFocus;
+    const focusMeta = state.previousFocusMeta;
     const scrollY = state.scrollY;
     state.sheet = null;
     state.contextDraft = null;
+    state.resumeAfterFarmSelection = null;
+    state.previousFocus = null;
+    state.previousFocusMeta = null;
     render();
-    if (focus && focus !== document.body && focus !== document.documentElement && document.contains(focus) && typeof focus.focus === "function") window.requestAnimationFrame(() => {
-      focus.focus({ preventScroll: true });
+    window.requestAnimationFrame(() => {
+      const target = findFocusReturn(focusMeta);
+      if (target && typeof target.focus === "function") target.focus({ preventScroll: true });
       restoreScroll(scrollY);
     });
   }
 
-  function openContextPicker() {
+  function openContextPicker(resumeAfter = null) {
+    state.resumeAfterFarmSelection = resumeAfter;
     openSheet({ kind: "context" });
   }
 
@@ -703,10 +854,15 @@
     if (!actionElement) return;
     const action = actionElement.dataset.action;
     if (action === "open-context") return openContextPicker();
+    if (action === "open-context-for-quick-record") return openContextPicker("quick-record");
     if (action === "close-sheet") return closeSheet();
     if (action === "open-sheet") return openSheet({ kind: actionElement.dataset.sheetKind });
     if (action === "select-farm-direct") {
-      state.context = { farmId: actionElement.dataset.farmId, houseId: null, flockId: null };
+      const farmId = actionElement.dataset.farmId;
+      state.context = { farmId, houseId: null, flockId: null };
+      const resume = state.resumeAfterFarmSelection;
+      state.resumeAfterFarmSelection = null;
+      if (resume === "quick-record") return openSheet({ kind: "quick-record" });
       return closeSheet();
     }
     if (action === "select-house-direct") {
@@ -729,6 +885,15 @@
     if (action === "open-event") return openSheet({ kind: "event-item", id: actionElement.dataset.eventId });
     if (action === "open-farm-detail") return openSheet({ kind: "farm-detail", farmId: actionElement.dataset.farmId });
     if (action === "open-house-detail") return openSheet({ kind: "house-detail", farmId: actionElement.dataset.farmId, houseId: actionElement.dataset.houseId });
+    if (action === "open-finance-farm") return openSheet({ kind: "finance-farm", farmId: actionElement.dataset.farmId });
+    if (action === "open-investor-detail") return openSheet({ kind: "investor-detail", name: actionElement.dataset.investorName });
+    if (action === "open-expense-detail") return openSheet({ kind: "expense-detail", farmId: actionElement.dataset.farmId });
+    if (action === "open-distribution-detail") return openSheet({ kind: "distribution-detail", farmId: actionElement.dataset.farmId, name: actionElement.dataset.investorName });
+    if (action === "open-finance-metric") return openSheet({ kind: "finance-metric", metric: actionElement.dataset.financeMetric });
+    if (action === "open-analysis-detail") return openSheet({ kind: "analysis-detail", key: actionElement.dataset.analysisKey });
+    if (action === "open-insight-detail") return openSheet({ kind: "insight-detail", key: actionElement.dataset.insightKey });
+    if (action === "open-system-detail") return openSheet({ kind: "system-detail", key: actionElement.dataset.systemKey });
+    if (action === "open-settings-detail") return openSheet({ kind: "settings-detail", key: actionElement.dataset.settingsKey });
     if (action === "set-farm-scope") {
       state.context = { farmId: actionElement.dataset.farmId, houseId: null, flockId: null };
       state.page = "farms";
@@ -755,7 +920,8 @@
   let handleStartY = null;
   document.addEventListener("click", handleClick);
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && state.sheet) closeSheet();
+    if (event.key === "Escape" && state.sheet) { event.preventDefault(); closeSheet(); return; }
+    trapSheetFocus(event);
   });
   document.addEventListener("pointerdown", (event) => {
     if (event.target.closest(".sheet-handle")) handleStartY = event.clientY;

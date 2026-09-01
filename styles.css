@@ -664,3 +664,22 @@ button.summary-tile:hover { border-color: #b5c9bf; }
   .digest { padding: 17px 16px; }
   .digest h2 { font-size: 19px; }
 }
+
+
+/* Full-repair completion: safe input, complete drill-down affordances */
+.finance-kpi-button {
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.finance-kpi-button small {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.finance-kpi-button:active { transform: scale(.99); }
+.list-row[type="button"], button.list-row { width: 100%; color: var(--ink); text-align: left; }
+.sheet-item.static { user-select: text; }

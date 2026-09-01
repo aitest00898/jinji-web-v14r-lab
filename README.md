@@ -92,3 +92,19 @@ The B+ product-layer repair preserves the tested data engine while restoring the
 - end-user copy is Traditional Chinese and avoids engineering terms where possible
 
 This remains synthetic, isolated, and non-writing.
+
+
+## V14R full-repair acceptance contract
+
+The complete repair builds on B+ without changing the synthetic operating or finance baseline. It additionally requires:
+
+- Quick Record user input is HTML-escaped before `innerHTML` rendering
+- starting Quick Record from the all-farms read-only scope returns directly to Quick Record after farm selection
+- iPhone/browser product title is Traditional Chinese (`金雞工作台`)
+- finance KPIs, farms, investors, expenses, distributions and calculated analysis rows have meaningful detail drill-down
+- Insights can drill into stock/flocks, mortality, cull, abnormalities, feed and water records
+- System inventory can drill into farm, house and flock lists
+- Settings entries have explicit read-only detail instead of dead controls
+- Audit remains empty when there is no real write activity; the prototype must not invent audit history
+
+Build marker: `jinji-web-v14r-lab-full-repair-r1`.
