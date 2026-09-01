@@ -454,17 +454,46 @@
 
   function lockBody() {
     if (document.body.classList.contains("sheet-open")) return;
+    const root = document.documentElement;
+    const previousBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
     state.scrollY = window.scrollY;
     document.body.style.top = `-${state.scrollY}px`;
     document.body.classList.add("sheet-open");
+    void root.offsetHeight;
+    window.requestAnimationFrame(() => {
+      root.style.scrollBehavior = previousBehavior;
+    });
+  }
+
+  function restoreScroll(scrollY) {
+    const root = document.scrollingElement || document.documentElement;
+    const previousBehavior = document.documentElement.style.scrollBehavior;
+    document.documentElement.style.scrollBehavior = "auto";
+    void document.documentElement.offsetHeight;
+    root.scrollTop = scrollY;
+    root.scrollLeft = 0;
+    window.requestAnimationFrame(() => {
+      document.documentElement.style.scrollBehavior = previousBehavior;
+    });
   }
 
   function unlockBody() {
     if (!document.body.classList.contains("sheet-open")) return;
     const scrollY = state.scrollY;
+    const root = document.documentElement;
+    const previousBehavior = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
     document.body.classList.remove("sheet-open");
     document.body.style.top = "";
-    window.scrollTo(0, scrollY);
+    void root.offsetHeight;
+    const scrollingElement = document.scrollingElement || root;
+    scrollingElement.scrollTop = scrollY;
+    scrollingElement.scrollLeft = 0;
+    void root.offsetHeight;
+    window.requestAnimationFrame(() => {
+      root.style.scrollBehavior = previousBehavior;
+    });
   }
 
   function openSheet(sheet) {
@@ -476,10 +505,14 @@
 
   function closeSheet() {
     const focus = state.previousFocus;
+    const scrollY = state.scrollY;
     state.sheet = null;
     state.contextDraft = null;
     render();
-    if (focus && typeof focus.focus === "function") window.requestAnimationFrame(() => focus.focus());
+    if (focus && focus !== document.body && focus !== document.documentElement && document.contains(focus) && typeof focus.focus === "function") window.requestAnimationFrame(() => {
+      focus.focus({ preventScroll: true });
+      restoreScroll(scrollY);
+    });
   }
 
   function openContextPicker() {
