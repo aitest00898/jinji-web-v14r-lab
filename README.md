@@ -75,3 +75,20 @@ The browser spike keeps the V11/V13 synthetic review baseline intact:
 - finance: gross `204,000`; allocated `120,000`; expense `5,000`; net `115,000`
 
 Context filtering is expected to follow the selected farm / house / flock for Today, Farms, Records, Todo, AI context and drill-downs. Finance uses farm as its minimum scope, so a house/flock selection inherits its farm's finance data.
+
+
+## V14R-B+ UX contract
+
+The B+ product-layer repair preserves the tested data engine while restoring the previously selected mobile interaction model:
+
+- farm selection stays at the top level
+- house selection uses always-visible one-tap chips after a farm is selected
+- flock chips appear only when a house has batch choices
+- Bottom Sheets are used for detail inspection, not for forcing a 3-step context wizard
+- the global FAB opens Quick Record and AI actions rather than duplicating Todo
+- farm, house, flock and operating records provide meaningful detail drill-down
+- opening a mortality/cull detail never silently changes the global context; context changes require an explicit action
+- More restores Insights, Finance, AI assistant, System, Audit history and Settings
+- end-user copy is Traditional Chinese and avoids engineering terms where possible
+
+This remains synthetic, isolated, and non-writing.

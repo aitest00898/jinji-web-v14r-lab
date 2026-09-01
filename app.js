@@ -41,6 +41,7 @@
     financeTab: "overview",
     previousFocus: null,
     scrollY: 0,
+    quickRecordDraft: "",
   };
 
   const app = document.getElementById("app");
@@ -90,16 +91,19 @@
 
   function contextBar() {
     const context = currentContext();
-    const subline = context.farm.id === "all" ? "全域總覽 · 唯讀" : `${context.house?.name || "尚未選擇雞舍"} · ${context.flock?.code || "尚未選擇批次"}`;
-    return `<button class="context-identity" data-action="open-context" data-testid="context-identity" aria-label="目前範圍：${contextLabel(context)}。開啟範圍選擇器">
-      <span class="context-icon">${icon("pin")}</span>
-      <span class="context-copy"><small>目前範圍</small><strong>${contextShortLabel(context)}</strong><span>${subline}</span></span>
-      <span class="context-chevron" aria-hidden="true">›</span>
-    </button>`;
+    const farm = context.farm;
+    const houses = farm.id === "all" ? [] : farm.houses;
+    const flocks = context.house ? context.house.flocks : [];
+    const houseButtons = farm.id === "all" ? "" : `<div class="scope-row"><span class="scope-label">雞舍</span><div class="scope-chips" data-testid="house-chips"><button type="button" class="scope-choice ${!state.context.houseId ? "active" : ""}" data-action="select-house-direct" data-house-id="">全場</button>${houses.map((house) => `<button type="button" class="scope-choice ${state.context.houseId === house.id ? "active" : ""}" data-action="select-house-direct" data-house-id="${house.id}">${house.name}</button>`).join("")}</div></div>`;
+    const flockButtons = context.house && flocks.length ? `<div class="scope-row"><span class="scope-label">批次</span><div class="scope-chips" data-testid="flock-chips"><button type="button" class="scope-choice ${!state.context.flockId ? "active" : ""}" data-action="select-flock-direct" data-flock-id="">全部批次</button>${flocks.map((flock) => `<button type="button" class="scope-choice ${state.context.flockId === flock.id ? "active" : ""}" data-action="select-flock-direct" data-flock-id="${flock.id}">${flock.code}</button>`).join("")}</div></div>` : "";
+    return `<section class="context-hub" aria-label="目前工作範圍">
+      <div class="context-farm-row"><span class="scope-label">雞場</span><button class="farm-selector" type="button" data-action="open-context" data-testid="farm-selector" aria-label="目前雞場：${farm.name}。點擊切換雞場"><span class="context-icon">${icon("pin")}</span><span><strong>${farm.name}</strong><small>${farm.id === "all" ? "全域唯讀總覽" : (farm.id === "history" ? "歷史查詢" : farm.subtitle)}</small></span><span class="farm-selector-arrow">⌄</span></button></div>
+      ${houseButtons}${flockButtons}
+    </section>`;
   }
 
   function pageIntro(kicker, title, description = "") {
-    return `<div class="page-intro"><div><p class="kicker">${kicker}</p><h1>${title}</h1>${description ? `<p class="intro-description">${description}</p>` : ""}</div><span class="env-chip">SYNTHETIC</span></div>`;
+    return `<div class="page-intro"><div><h1>${title}</h1>${description ? `<p class="intro-description">${description}</p>` : ""}</div></div>`;
   }
 
   function allProductionFarms() {
@@ -208,6 +212,20 @@
     return [farm.name, house?.name, flock?.code].filter(Boolean).join(" / ");
   }
 
+  function pendingContextName(item) {
+    const farm = farmById(item.farmId);
+    if (!item.houseId) return `${farm.name} · 尚未確認雞舍`;
+    return contextName(item);
+  }
+
+  function farmStock(farm) {
+    return farm.houses.flatMap((house) => house.flocks).filter((flock) => flock.state === "active").reduce((sum, flock) => sum + (flock.stock || 0), 0);
+  }
+
+  function houseStock(house) {
+    return house.flocks.filter((flock) => flock.state === "active").reduce((sum, flock) => sum + (flock.stock || 0), 0);
+  }
+
   function financeScopeFromFarms(farms) {
     return {
       gross: farms.reduce((sum, farm) => sum + farm.finance.gross, 0),
@@ -268,7 +286,6 @@
   }
 
   function renderToday() {
-    const context = currentContext();
     const pending = scopedPending();
     const upcoming = upcomingFlocks();
     const activeAbnormal = scopedAbnormalities({ activeOnly: true });
@@ -276,21 +293,20 @@
     const mortality = mortalityValue();
     const cull = cullValue();
     const actions = [];
-    if (pending.length) actions.push(`<button type="button" class="action-card" data-action="open-sheet" data-sheet-kind="pending"><span class="action-icon">${icon("check")}</span><span class="action-copy"><strong>${pending.length} 筆需要人工確認</strong><span>逐筆檢視資料來源與目前範圍</span></span><span class="action-count">${pending.length}</span><span class="action-arrow">›</span></button>`);
-    if (upcoming.length) actions.push(`<button type="button" class="action-card good" data-action="open-sheet" data-sheet-kind="upcoming"><span class="action-icon">${icon("flock")}</span><span class="action-copy"><strong>${upcoming.length} 批 7 日內準備出雞</strong><span>${upcoming.map((flock) => flock.code).join("、")} · 查看批次詳細</span></span><span class="action-count">${upcoming.length}</span><span class="action-arrow">›</span></button>`);
+    if (pending.length) actions.push(`<button type="button" class="action-card" data-action="open-sheet" data-sheet-kind="pending"><span class="action-icon">${icon("check")}</span><span class="action-copy"><strong>${pending.length} 筆需要人工確認</strong><span>查看哪些資料還需要補齊或確認</span></span><span class="action-count">${pending.length}</span><span class="action-arrow">›</span></button>`);
+    if (upcoming.length) actions.push(`<button type="button" class="action-card good" data-action="open-sheet" data-sheet-kind="upcoming"><span class="action-icon">${icon("flock")}</span><span class="action-copy"><strong>${upcoming.length} 批 7 日內準備出雞</strong><span>${upcoming.map((flock) => flock.code).join("、")}</span></span><span class="action-count">${upcoming.length}</span><span class="action-arrow">›</span></button>`);
     if (activeAbnormal.length) actions.push(`<button type="button" class="action-card alert" data-action="open-sheet" data-sheet-kind="abnormal"><span class="action-icon">${icon("warning")}</span><span class="action-copy"><strong>${activeAbnormal.length} 筆異常需要留意</strong><span>${activeAbnormal.slice(0, 2).map((item) => `${contextName(item)} · ${item.title}`).join("；")}${resolvedAbnormal ? `；另 ${resolvedAbnormal} 筆已結案` : ""}</span></span><span class="action-count">${activeAbnormal.length}</span><span class="action-arrow">›</span></button>`);
-    return `<section class="page" data-page="today">
+    return `<section class="page today-page" data-page="today">
       ${contextBar()}
-      ${pageIntro("2026 / 09 / 01 · 今日焦點", "今天，先處理最重要的事")}
-      <section class="digest" aria-labelledby="digest-title"><div class="digest-head"><p class="kicker">SMART DIGEST · DETERMINISTIC</p><span class="digest-mark">${icon("digest")}</span></div><h2 id="digest-title">${digestCopy()}</h2><p>只呈現固定 prototype data；沒有外部請求，也不會替現場推算新的 KPI。</p></section>
-      <div class="section-heading"><div><h2>今天需處理</h2><p>只顯示目前範圍真的有細節可處理的項目。</p></div><span class="scope-chip">${actions.length} 項</span></div>
-      <section class="action-list" aria-label="今天需處理">${actions.length ? actions.slice(0, 3).join("") : `<div class="empty-tab"><strong>目前沒有急迫事項</strong><p>此範圍沒有待確認、追蹤中異常或 7 日內出雞批次。</p></div>`}</section>
-      <section class="hero-metric" aria-label="目前存欄"><div><p class="kicker">目前存欄 · ${contextShortLabel(context)}</p><strong data-testid="stock-value">${number(contextStock())}</strong><p>${stockDetail(context)}</p></div><div class="hero-side"><span class="hero-icon">${icon("flock")}</span><span class="metric-label">${contextCountLabel()}</span><button type="button" class="ghost-light" data-action="open-sheet" data-sheet-kind="flocks">查看批次</button></div></section>
+      <div class="today-date"><span>9 月 1 日</span><strong>今日</strong></div>
+      <section class="digest" aria-labelledby="digest-title"><div class="digest-head"><p class="kicker">今日摘要</p><span class="digest-mark">${icon("digest")}</span></div><h2 id="digest-title">${digestCopy()}</h2><p>摘要只依目前工作範圍中的測試資料整理，不會自行增加數字。</p></section>
+      <div class="section-heading"><div><h2>今天需處理</h2><p>先放真正需要處理的事情。</p></div><span class="scope-chip">${actions.length} 項</span></div>
+      <section class="action-list" aria-label="今天需處理">${actions.length ? actions.slice(0, 3).join("") : `<div class="empty-tab"><strong>目前沒有急迫事項</strong><p>這個範圍沒有待確認、追蹤中異常或 7 日內出雞批次。</p></div>`}</section>
+      <section class="hero-metric" aria-label="目前存欄"><div><p class="kicker">目前存欄 · ${contextShortLabel()}</p><strong data-testid="stock-value">${number(contextStock())}</strong><p>${stockDetail(currentContext())}</p></div><div class="hero-side"><span class="hero-icon">${icon("flock")}</span><span class="metric-label">${contextCountLabel()}</span><button type="button" class="ghost-light" data-action="open-sheet" data-sheet-kind="flocks">查看批次</button></div></section>
       <div class="quick-summary">
-        ${mortality > 0 ? `<button type="button" class="summary-tile alert" data-action="open-sheet" data-sheet-kind="mortality"><span class="tile-label">今日死亡 <span aria-hidden="true">›</span></span><strong data-testid="mortality-value">${number(mortality)}</strong><small>${scopedMortality().map((item) => `${item.farm} ${item.quantity}`).join(" · ")}</small></button>` : `<div class="summary-tile"><span class="tile-label">今日死亡</span><strong data-testid="mortality-value">0</strong><small>此範圍沒有死亡明細</small></div>`}
-        ${cull > 0 ? `<button type="button" class="summary-tile good" data-action="open-sheet" data-sheet-kind="cull"><span class="tile-label">今日淘汰 <span aria-hidden="true">›</span></span><strong>${number(cull)}</strong><small>點擊查看場／舍／批次</small></button>` : `<div class="summary-tile good"><span class="tile-label">今日淘汰</span><strong>0</strong><small>此範圍沒有淘汰明細</small></div>`}
+        ${mortality > 0 ? `<button type="button" class="summary-tile alert" data-action="open-sheet" data-sheet-kind="mortality"><span class="tile-label">今日死亡 <span aria-hidden="true">›</span></span><strong data-testid="mortality-value">${number(mortality)}</strong><small>${scopedMortality().map((item) => `${item.farm} ${item.quantity}`).join(" · ")}</small></button>` : `<div class="summary-tile"><span class="tile-label">今日死亡</span><strong data-testid="mortality-value">0</strong><small>這個範圍沒有死亡明細</small></div>`}
+        ${cull > 0 ? `<button type="button" class="summary-tile good" data-action="open-sheet" data-sheet-kind="cull"><span class="tile-label">今日淘汰 <span aria-hidden="true">›</span></span><strong>${number(cull)}</strong><small>查看場、舍與批次</small></button>` : `<div class="summary-tile good"><span class="tile-label">今日淘汰</span><strong>0</strong><small>這個範圍沒有淘汰明細</small></div>`}
       </div>
-      <div class="sync-note"><strong>Context sync：</strong>Today、Farm、Records、Todo、Finance、AI context 與 drill-down 都跟隨目前範圍。</div>
     </section>`;
   }
 
@@ -301,13 +317,12 @@
     const houses = state.context.farmId === "all" ? [] : context.farm.houses.filter((house) => !state.context.houseId || house.id === state.context.houseId);
     return `<section class="page" data-page="farms">
       ${contextBar()}
-      ${pageIntro("FARM WORKBENCH", "場務", "目前範圍同步到雞場、雞舍、批次與 drill-down。")}
-      <div class="filter-note"><span><strong>目前範圍</strong>　${contextLabel(context)}</span><span class="status-chip good">synthetic</span></div>
+      ${pageIntro("", "場務", "查看目前雞場、雞舍與批次狀況。")}
       <section class="hero-metric" aria-label="場務目前存欄"><div><p class="kicker">目前存欄</p><strong data-testid="farm-stock-value">${number(contextStock())}</strong><p>${stockDetail(context)}</p></div><div class="hero-side"><span class="hero-icon">${icon("farm")}</span><span class="metric-label">進行中批次 ${number(flocks.length)}</span></div></section>
-      <div class="section-heading"><div><h2>${state.context.farmId === "all" ? "全部雞場" : "目前場區"}</h2><p>雞場存欄與批次 membership 對齊 V11/V13 baseline。</p></div></div>
-      <section class="farm-grid">${farms.map((farm) => `<article class="farm-item"><div><h3>${farm.name}</h3><p>${farm.breed || farm.subtitle} · ${farm.risk || "全域"}</p></div><div class="farm-metric"><strong>${number(farm.stock)}</strong><span>存欄</span></div></article>`).join("")}</section>
-      ${state.context.farmId === "all" ? "" : `<section class="content-panel"><div class="panel-title"><div><h3>雞舍</h3><p>${context.farm.name} · ${houses.length} 個目前範圍雞舍</p></div></div><div class="list-stack">${houses.map((house) => `<div class="list-row"><span><strong>${house.name}</strong><span>${house.code} · ${house.flocks.length} 個 baseline 批次</span></span><span class="row-end"><span class="row-value">${number(house.flocks.filter((flock) => flock.state === "active").reduce((sum, flock) => sum + flock.stock, 0))}</span><span>存欄</span></span></div>`).join("")}</div></section>`}
-      <section class="content-panel"><div class="panel-title"><div><h3>進行中批次</h3><p>${flocks.length} 批；歷史已結案批次不會被算入 active count。</p></div><button type="button" class="text-link" data-action="open-sheet" data-sheet-kind="flocks">查看全部 →</button></div><div class="list-stack">${flocks.slice(0, 3).map((flock) => flockRow(flock)).join("") || `<div class="empty-tab"><strong>沒有進行中批次</strong><p>此範圍可能是歷史場或空舍。</p></div>`}</div></section>
+      <div class="section-heading"><div><h2>${state.context.farmId === "all" ? "雞場狀況" : "目前雞場"}</h2><p>點雞場可查看詳細資料。</p></div></div>
+      <section class="farm-grid">${farms.map((farm) => `<button type="button" class="farm-item" data-action="open-farm-detail" data-farm-id="${farm.id}"><div><h3>${farm.name}</h3><p>${farm.breed || farm.subtitle} · ${farm.risk || "全域"}</p></div><div class="farm-metric"><strong>${number(farm.stock)}</strong><span>存欄 ›</span></div></button>`).join("")}</section>
+      ${state.context.farmId === "all" ? "" : `<section class="content-panel"><div class="panel-title"><div><h3>雞舍</h3><p>${context.farm.name} · 點雞舍查看詳細</p></div></div><div class="list-stack">${houses.map((house) => `<button type="button" class="list-row" data-action="open-house-detail" data-farm-id="${context.farm.id}" data-house-id="${house.id}"><span><strong>${house.name}</strong><span>${house.flocks.length} 個批次</span></span><span class="row-end"><span class="row-value">${number(houseStock(house))}</span><span>存欄 ›</span></span></button>`).join("")}</div></section>`}
+      <section class="content-panel"><div class="panel-title"><div><h3>進行中批次</h3><p>${flocks.length} 批；已出雞的歷史批次不列入。</p></div><button type="button" class="text-link" data-action="open-sheet" data-sheet-kind="flocks">查看全部 →</button></div><div class="list-stack">${flocks.slice(0, 3).map((flock) => flockRow(flock)).join("") || `<div class="empty-tab"><strong>沒有進行中批次</strong><p>這個範圍可能是歷史場或空舍。</p></div>`}</div></section>
     </section>`;
   }
 
@@ -320,53 +335,50 @@
   }
 
   function renderRecords() {
-    const context = currentContext();
-    const eventRows = scopedEvents().map((event) => ({ sort: `${event.date} ${event.time}`, title: `${eventLabel(event.type)} ${number(event.qty)} ${event.unit}`, detail: `${contextName(event)} · ${event.date} ${event.time}`, tone: ["mortality","cull"].includes(event.type) ? "alert" : "good" }));
-    const abnormalRows = scopedAbnormalities().map((item) => ({ sort: `${item.date} ${item.time}`, title: `異常：${item.title}`, detail: `${contextName(item)} · ${item.category} · ${item.date} ${item.time}`, tone: item.status === "active" ? "warn" : "good", state: item.state }));
+    const eventRows = scopedEvents().map((event) => ({ kind: "event", id: event.id, sort: `${event.date} ${event.time}`, title: `${eventLabel(event.type)} ${number(event.qty)} ${event.unit}`, detail: `${contextName(event)} · ${event.date} ${event.time}`, tone: ["mortality","cull"].includes(event.type) ? "alert" : "good", state: "有效" }));
+    const abnormalRows = scopedAbnormalities().map((item) => ({ kind: "abnormal", id: item.id, sort: `${item.date} ${item.time}`, title: `異常：${item.title}`, detail: `${contextName(item)} · ${item.category} · ${item.date} ${item.time}`, tone: item.status === "active" ? "warn" : "good", state: item.state }));
     const rows = [...eventRows, ...abnormalRows].sort((a, b) => b.sort.localeCompare(a.sort));
     return `<section class="page" data-page="records">
       ${contextBar()}
-      ${pageIntro("RECORDS", "紀錄", "依目前範圍檢視 synthetic operating records。")}
-      <div class="filter-note"><span><strong>目前範圍</strong>　${contextLabel(context)}</span><span class="scope-chip">${rows.length} 筆</span></div>
-      <section class="content-panel"><div class="panel-title"><div><h3>紀錄時間軸</h3><p>死亡、淘汰、飼料、飲水、出雞與異常使用同一個 Context filter。</p></div><span class="status-chip warn">review only</span></div><div class="list-stack">${rows.length ? rows.map((record) => `<div class="list-row"><span><strong>${record.title}</strong><span>${record.detail}</span></span><span class="row-end"><span class="status-chip ${record.tone}">${record.state || "有效"}</span></span></div>`).join("") : `<div class="empty-tab"><strong>此範圍沒有紀錄</strong><p>Prototype 不會用推算值補齊。</p></div>`}</div></section>
-      <section class="content-grid"><div class="content-panel"><h3>需要人工確認</h3><p>${scopedPending().length} 筆目前範圍待確認項目。</p><button type="button" class="text-link" data-action="go-todo">前往待辦 →</button></div><div class="content-panel"><h3>資料邊界</h3><p>沒有連線、沒有寫入，也不會把 synthetic review data 描述成 Production data。</p></div></section>
+      ${pageIntro("", "紀錄", "查看目前工作範圍內的營運紀錄。")}
+      <div class="filter-note"><span><strong>目前範圍</strong>　${contextLabel()}</span><span class="scope-chip">${rows.length} 筆</span></div>
+      <section class="content-panel"><div class="panel-title"><div><h3>紀錄時間軸</h3><p>死亡、淘汰、飼料、飲水、出雞與異常都跟著目前範圍切換。</p></div></div><div class="list-stack">${rows.length ? rows.map((record) => `<button type="button" class="list-row" data-action="${record.kind === "event" ? "open-event" : "open-abnormal"}" ${record.kind === "event" ? `data-event-id="${record.id}"` : `data-abnormal-id="${record.id}"`}><span><strong>${record.title}</strong><span>${record.detail}</span></span><span class="row-end"><span class="status-chip ${record.tone}">${record.state}</span><span class="row-arrow">›</span></span></button>`).join("") : `<div class="empty-tab"><strong>這個範圍沒有紀錄</strong><p>測試版不會用推算值補齊。</p></div>`}</div></section>
+      <section class="content-grid"><div class="content-panel"><h3>需要人工確認</h3><p>${scopedPending().length} 筆待確認項目。</p><button type="button" class="text-link" data-action="go-todo">前往待辦 →</button></div><div class="content-panel"><h3>測試版說明</h3><p>目前不會寫入正式資料。</p></div></section>
     </section>`;
   }
 
   function renderTodo() {
-    const context = currentContext();
     const pending = scopedPending();
     const upcoming = upcomingFlocks();
     return `<section class="page" data-page="todo">
       ${contextBar()}
-      ${pageIntro("TODO", "待辦", "只放目前 Context 有明確下一步的 synthetic items。")}
-      <section class="action-list">${pending.length ? `<button type="button" class="action-card" data-action="open-sheet" data-sheet-kind="pending"><span class="action-icon">${icon("check")}</span><span class="action-copy"><strong>${pending.length} 筆需要人工確認</strong><span>目前範圍：${contextShortLabel(context)}</span></span><span class="action-count">${pending.length}</span><span class="action-arrow">›</span></button>` : ""}${upcoming.length ? `<button type="button" class="action-card good" data-action="open-sheet" data-sheet-kind="upcoming"><span class="action-icon">${icon("flock")}</span><span class="action-copy"><strong>${upcoming.length} 批 7 日內準備出雞</strong><span>${upcoming.map((flock) => flock.code).join("、")}</span></span><span class="action-count">${upcoming.length}</span><span class="action-arrow">›</span></button>` : ""}</section>
-      <section class="content-panel"><div class="panel-title"><div><h3>待人工確認清單</h3><p>每筆都保留 farm / house / flock context。</p></div><span class="status-chip warn">${pending.length} 筆</span></div><div class="list-stack">${pending.length ? pending.map((item) => `<button type="button" class="list-row" data-action="open-pending-item" data-pending-id="${item.id}"><span><strong>${item.title}</strong><span>${contextName(item)} · ${item.detail}</span></span><span class="row-end"><span class="row-value">${item.kind}</span><span class="row-arrow">›</span></span></button>`).join("") : `<div class="empty-tab"><strong>此範圍沒有待確認項目</strong><p>切換 Context 可查看其他場次。</p></div>`}</div></section>
+      ${pageIntro("", "待辦", "只放目前工作範圍真正有下一步的事情。")}
+      <section class="action-list">${pending.length ? `<button type="button" class="action-card" data-action="open-sheet" data-sheet-kind="pending"><span class="action-icon">${icon("check")}</span><span class="action-copy"><strong>${pending.length} 筆需要人工確認</strong><span>${contextShortLabel()}</span></span><span class="action-count">${pending.length}</span><span class="action-arrow">›</span></button>` : ""}${upcoming.length ? `<button type="button" class="action-card good" data-action="open-sheet" data-sheet-kind="upcoming"><span class="action-icon">${icon("flock")}</span><span class="action-copy"><strong>${upcoming.length} 批 7 日內準備出雞</strong><span>${upcoming.map((flock) => flock.code).join("、")}</span></span><span class="action-count">${upcoming.length}</span><span class="action-arrow">›</span></button>` : ""}</section>
+      <section class="content-panel"><div class="panel-title"><div><h3>待人工確認清單</h3><p>場級資料若還不知道雞舍，會明確標示。</p></div><span class="status-chip warn">${pending.length} 筆</span></div><div class="list-stack">${pending.length ? pending.map((item) => `<button type="button" class="list-row" data-action="open-pending-item" data-pending-id="${item.id}"><span><strong>${item.title}</strong><span>${pendingContextName(item)} · ${item.detail}</span></span><span class="row-end"><span class="row-value">${item.kind}</span><span class="row-arrow">›</span></span></button>`).join("") : `<div class="empty-tab"><strong>這個範圍沒有待確認項目</strong><p>可切換雞場或雞舍查看其他資料。</p></div>`}</div></section>
     </section>`;
   }
 
   function renderMore() {
-    const context = currentContext();
     return `<section class="page" data-page="more">
       ${contextBar()}
-      ${pageIntro("WORKBENCH", "更多", "Finance 與 AI context 仍然跟隨目前範圍。")}
+      ${pageIntro("", "更多", "低頻功能集中在這裡，日常畫面保持乾淨。")}
       <div class="more-list">
-        <button type="button" class="more-item" data-action="go-finance"><span class="more-item-icon">${icon("finance")}</span><span><strong>財務</strong><span>總覽、各場、投資人／股權、費用、分配、統計分析</span></span><span>›</span></button>
-        <button type="button" class="more-item" data-action="go-ai"><span class="more-item-icon">${icon("ai")}</span><span><strong>AI context</strong><span>只顯示 deterministic context 摘要，不會發出 AI request。</span></span><span>›</span></button>
-        <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="flocks"><span class="more-item-icon">${icon("flock")}</span><span><strong>批次 drill-down</strong><span>查看目前範圍可檢視的進行中批次。</span></span><span>›</span></button>
+        <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="insights"><span class="more-item-icon">${icon("chart")}</span><span><strong>洞察</strong><span>死亡、存欄、飼料、飲水與異常摘要</span></span><span>›</span></button>
+        <button type="button" class="more-item" data-action="go-finance"><span class="more-item-icon">${icon("finance")}</span><span><strong>財務</strong><span>總覽、各場、股權、費用、分配與統計</span></span><span>›</span></button>
+        <button type="button" class="more-item" data-action="go-ai"><span class="more-item-icon">${icon("ai")}</span><span><strong>AI 助理</strong><span>帶入目前工作範圍；此測試版維持唯讀</span></span><span>›</span></button>
+        <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="system"><span class="more-item-icon">${icon("lock")}</span><span><strong>系統</strong><span>查看雞場、雞舍、批次與服務邊界</span></span><span>›</span></button>
+        <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="audit"><span class="more-item-icon">${icon("records")}</span><span><strong>變更紀錄</strong><span>修改、取消與操作歷程的入口</span></span><span>›</span></button>
+        <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="settings"><span class="more-item-icon">${icon("more")}</span><span><strong>設定</strong><span>操作與管理設定</span></span><span>›</span></button>
       </div>
-      <div class="sync-note"><strong>隔離狀態：</strong>本頁與整個 lab 都是 synthetic review prototype，沒有 Production backend connection。</div>
     </section>`;
   }
 
   function renderAi() {
-    const context = currentContext();
     return `<section class="page" data-page="ai">
       ${contextBar()}
-      ${pageIntro("AI CONTEXT", "AI context", "只展示 deterministic context binding，不執行模型呼叫。")}
-      <section class="digest"><div class="digest-head"><p class="kicker">DETERMINISTIC CONTEXT</p><span class="digest-mark">${icon("ai")}</span></div><h2>${contextLabel(context)}</h2><p>存欄 ${number(contextStock())}；今日死亡 ${number(mortalityValue())}；待確認 ${scopedPending().length}；追蹤中異常 ${scopedAbnormalities({ activeOnly: true }).length}。AI 維持唯讀。</p></section>
-      <section class="content-grid"><div class="content-panel"><h3>目前範圍</h3><p>${contextLabel(context)}</p></div><div class="content-panel"><h3>資料模式</h3><p>synthetic review only · no external requests</p></div></section>
-      <button type="button" class="sheet-primary" data-action="open-context">切換目前範圍</button>
+      ${pageIntro("", "AI 助理", "AI 只讀取目前工作範圍，不直接修改資料。")}
+      <section class="digest"><div class="digest-head"><p class="kicker">目前範圍摘要</p><span class="digest-mark">${icon("ai")}</span></div><h2>${contextLabel()}</h2><p>存欄 ${number(contextStock())}；今日死亡 ${number(mortalityValue())}；待確認 ${scopedPending().length}；追蹤中異常 ${scopedAbnormalities({ activeOnly: true }).length}。</p></section>
+      <section class="content-grid"><div class="content-panel"><h3>目前範圍</h3><p>${contextLabel()}</p></div><div class="content-panel"><h3>測試版</h3><p>這個測試版不會真的呼叫 AI，也不會寫入資料。</p></div></section>
     </section>`;
   }
 
@@ -394,7 +406,7 @@
     const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
     const area = `${points[0].x},${height - bottom} ${polyline} ${points[points.length - 1].x},${height - bottom}`;
     const yTicks = [70000, 95000, 120000];
-    return `<div class="chart-wrap"><svg class="net-chart" data-testid="finance-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="synthetic review only 歷史淨值變化折線圖，最後資料點為 115,000">
+    return `<div class="chart-wrap"><svg class="net-chart" data-testid="finance-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="測試資料 歷史淨值變化折線圖，最後資料點為 115,000">
       ${yTicks.map((tick) => { const y = top + ((max - tick) / (max - min)) * plotHeight; return `<line class="chart-grid" x1="${left}" x2="${width - right}" y1="${y}" y2="${y}"/><text class="chart-axis" x="4" y="${y + 4}">${money(tick)}</text>`; }).join("")}
       <polygon class="chart-area" points="${area}"/><polyline class="chart-line" points="${polyline}"/>
       ${points.map((point, index) => `<circle class="chart-point ${index === points.length - 1 ? "current" : ""}" cx="${point.x}" cy="${point.y}" r="${index === points.length - 1 ? 6 : 4}"/><text class="chart-axis" text-anchor="middle" x="${point.x}" y="${height - 13}">${point.label}</text>${index === points.length - 1 ? `<text class="chart-value" text-anchor="end" x="${point.x - 10}" y="${point.y - 12}">${money(point.value)}</text>` : ""}`).join("")}
@@ -404,7 +416,7 @@
   function renderFinanceOverview() {
     const totals = financeContext();
     const context = currentContext();
-    return `<section class="finance-header"><div class="finance-kpis"><div class="finance-kpi"><span>毛利</span><strong>${money(totals.gross)}</strong></div><div class="finance-kpi amber"><span>已配置</span><strong>${money(totals.allocated)}</strong></div><div class="finance-kpi red"><span>費用</span><strong>${money(totals.expense)}</strong></div><div class="finance-kpi green"><span>目前淨額</span><strong data-testid="finance-net">${money(totals.net)}</strong></div></div><div class="metric-note"><strong>${context.farm.id === "all" ? "全部雞場財務 baseline" : `${context.farm.name} 財務 baseline`}</strong><span>${context.farm.id === "all" ? "總覽 KPI 為五個雞場合計。" : "雞舍／批次 Context 在財務上沿用所屬雞場 Scope。"}</span></div></section>${totals.chart ? `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>固定 review-only history · 最後一點對齊目前淨額 115,000</p></div><span class="status-chip warn">synthetic review only</span></div>${chartMarkup()}</section>` : `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>目前只有全部雞場的 synthetic review-only history。</p></div><span class="status-chip warn">scope limited</span></div><div class="empty-tab"><strong>此雞場沒有獨立歷史序列</strong><p>避免把全部雞場的 synthetic history 誤讀成 ${context.farm.name} 的正式歷史。</p></div></section>`}`;
+    return `<section class="finance-header"><div class="finance-kpis"><div class="finance-kpi"><span>毛利</span><strong>${money(totals.gross)}</strong></div><div class="finance-kpi amber"><span>已配置</span><strong>${money(totals.allocated)}</strong></div><div class="finance-kpi red"><span>費用</span><strong>${money(totals.expense)}</strong></div><div class="finance-kpi green"><span>目前淨額</span><strong data-testid="finance-net">${money(totals.net)}</strong></div></div><div class="metric-note"><strong>${context.farm.id === "all" ? "全部雞場財務" : `${context.farm.name} 財務`}</strong><span>${context.farm.id === "all" ? "五個雞場合計。" : "雞舍／批次沿用所屬雞場財務。"}</span></div></section>${totals.chart ? `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>測試用歷史趨勢 · 最後一點為目前淨額 115,000</p></div><span class="status-chip warn">測試資料</span></div>${chartMarkup()}</section>` : `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>目前只有全部雞場的測試用歷史趨勢。</p></div><span class="status-chip warn">此場無獨立趨勢</span></div><div class="empty-tab"><strong>此雞場沒有獨立歷史序列</strong><p>避免把全部雞場趨勢誤看成 ${context.farm.name} 的獨立歷史。</p></div></section>`}`;
   }
 
   function financeTabBody() {
@@ -412,25 +424,25 @@
     if (state.financeTab === "overview") return renderFinanceOverview();
     if (state.financeTab === "farms") {
       const farms = state.context.farmId === "all" ? allProductionFarms() : scope.farms;
-      return `<section class="content-panel"><div class="panel-title"><div><h3>各場</h3><p>毛利、已配置、費用與淨額均對齊 V11 baseline。</p></div><span class="status-chip good">${farms.length} 場</span></div><div class="list-stack">${farms.map((farm) => `<div class="list-row"><span><strong>${farm.name}</strong><span>毛利 ${money(farm.finance.gross)} · 已配置 ${money(farm.finance.allocated)} · 費用 ${money(farm.finance.expense)}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.net)}</span><span>淨額</span></span></div>`).join("")}</div></section>`;
+      return `<section class="content-panel"><div class="panel-title"><div><h3>各場</h3><p>查看各場毛利、已配置、費用與淨額。</p></div><span class="status-chip good">${farms.length} 場</span></div><div class="list-stack">${farms.map((farm) => `<div class="list-row"><span><strong>${farm.name}</strong><span>毛利 ${money(farm.finance.gross)} · 已配置 ${money(farm.finance.allocated)} · 費用 ${money(farm.finance.expense)}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.net)}</span><span>淨額</span></span></div>`).join("")}</div></section>`;
     }
     if (state.financeTab === "equity") {
       const investors = investorSummary(scope.farms);
-      return `<section class="content-panel"><div class="panel-title"><div><h3>投資人／股權</h3><p>依目前財務 Scope 顯示投資人配置。</p></div><span class="status-chip good">${investors.length} 位</span></div><div class="list-stack">${investors.map((investor) => `<div class="list-row"><span><strong>${investor.name}</strong><span>${investor.farms.map((row) => `${row.farm} ${row.share}%`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(investor.amount)}</span><span>配置金額</span></span></div>`).join("")}</div></section>`;
+      return `<section class="content-panel"><div class="panel-title"><div><h3>投資人／股權</h3><p>依目前財務範圍顯示投資人配置。</p></div><span class="status-chip good">${investors.length} 位</span></div><div class="list-stack">${investors.map((investor) => `<div class="list-row"><span><strong>${investor.name}</strong><span>${investor.farms.map((row) => `${row.farm} ${row.share}%`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(investor.amount)}</span><span>配置金額</span></span></div>`).join("")}</div></section>`;
     }
     if (state.financeTab === "expenses") {
-      return `<section class="content-panel"><div class="panel-title"><div><h3>費用</h3><p>分類為 UX 審核用 synthetic breakdown；各場分類總和嚴格等於 V11 baseline。</p></div><span class="status-chip warn">${money(scope.expense)}</span></div><div class="list-stack">${scope.farms.map((farm) => `<div class="list-row"><span><strong>${farm.name}</strong><span>${farm.finance.expenses.map(([name, value]) => `${name} ${money(value)}`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.expense)}</span><span>費用</span></span></div>`).join("")}</div></section>`;
+      return `<section class="content-panel"><div class="panel-title"><div><h3>費用</h3><p>測試用費用分類；各場分類總和與目前費用一致。</p></div><span class="status-chip warn">${money(scope.expense)}</span></div><div class="list-stack">${scope.farms.map((farm) => `<div class="list-row"><span><strong>${farm.name}</strong><span>${farm.finance.expenses.map(([name, value]) => `${name} ${money(value)}`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.expense)}</span><span>費用</span></span></div>`).join("")}</div></section>`;
     }
     if (state.financeTab === "distribution") {
       const rows = scope.farms.flatMap((farm) => farm.finance.investors.map(([name, share, amount]) => ({ farm, name, share, amount })));
-      return `<section class="content-panel"><div class="panel-title"><div><h3>分配</h3><p>依各場股權比例列出本期 synthetic 配置。</p></div><span class="status-chip good">${money(scope.allocated)}</span></div><div class="list-stack">${rows.map((row) => `<div class="list-row"><span><strong>${row.name} · ${row.farm.name}</strong><span>股權 ${row.share}%</span></span><span class="row-end"><span class="row-value">${money(row.amount)}</span></span></div>`).join("")}</div></section>`;
+      return `<section class="content-panel"><div class="panel-title"><div><h3>分配</h3><p>依各場股權比例列出本期測試配置。</p></div><span class="status-chip good">${money(scope.allocated)}</span></div><div class="list-stack">${rows.map((row) => `<div class="list-row"><span><strong>${row.name} · ${row.farm.name}</strong><span>股權 ${row.share}%</span></span><span class="row-end"><span class="row-value">${money(row.amount)}</span></span></div>`).join("")}</div></section>`;
     }
     const allocationRate = scope.gross ? (scope.allocated / scope.gross) * 100 : 0;
     const expenseRate = scope.gross ? (scope.expense / scope.gross) * 100 : 0;
     const netMargin = scope.gross ? (scope.net / scope.gross) * 100 : 0;
     const bestFarm = [...scope.farms].sort((a, b) => b.finance.net - a.finance.net)[0];
     const topInvestor = investorSummary(scope.farms)[0];
-    return `<section class="content-panel"><div class="panel-title"><div><h3>統計分析</h3><p>全部由目前 synthetic finance baseline 計算，不引入外部產業數據。</p></div><span class="status-chip good">derived</span></div><div class="list-stack">
+    return `<section class="content-panel"><div class="panel-title"><div><h3>統計分析</h3><p>全部由目前測試財務資料計算，不引入外部產業數據。</p></div><span class="status-chip good">計算值</span></div><div class="list-stack">
       <div class="list-row"><span><strong>配置率</strong><span>已配置 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${allocationRate.toFixed(1)}%</span></span></div>
       <div class="list-row"><span><strong>費用率</strong><span>費用 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${expenseRate.toFixed(2)}%</span></span></div>
       <div class="list-row"><span><strong>淨額／毛利</strong><span>淨額 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${netMargin.toFixed(1)}%</span></span></div>
@@ -443,10 +455,10 @@
     const tabs = [["overview", "總覽"], ["farms", "各場"], ["equity", "投資人／股權"], ["expenses", "費用"], ["distribution", "分配"], ["analysis", "統計分析"]];
     return `<section class="page" data-page="finance">
       ${contextBar()}
-      ${pageIntro("FINANCE", "財務", "六個財務分頁均由同一組 synthetic baseline 驅動。")}
+      ${pageIntro("", "財務", "總覽、各場、股權、費用、分配與統計都使用同一組測試資料。")}
       <div class="finance-tabs" role="tablist" aria-label="財務分頁">${tabs.map(([key, label]) => `<button type="button" role="tab" aria-selected="${state.financeTab === key}" class="finance-tab ${state.financeTab === key ? "active" : ""}" data-action="finance-tab" data-finance-tab="${key}">${label}</button>`).join("")}</div>
       ${financeTabBody()}
-      <div class="sync-note"><strong>Finance context：</strong>${contextLabel()}。財務最小 Scope 為雞場；house / flock Context 沿用所屬雞場財務資料。</div>
+      <div class="sync-note"><strong>財務範圍：</strong>${contextLabel()}。財務最小範圍為雞場；選到雞舍或批次時沿用所屬雞場財務資料。</div>
     </section>`;
   }
 
@@ -455,28 +467,18 @@
   }
 
   function contextSheet() {
-    const draft = state.contextDraft || state.context;
-    const farm = farmById(draft.farmId);
-    if (state.contextStep === "farm") {
-      const farmOptions = DATA.farms.map((option) => `<button type="button" class="option-row ${draft.farmId === option.id ? "selected" : ""}" data-action="select-farm" data-farm-id="${option.id}"><span><strong>${option.name}</strong><span>${option.subtitle}${option.id === "all" ? " · 全域總覽、唯讀" : ` · 存欄 ${number(option.stock)}`}</span></span><span class="option-check">${draft.farmId === option.id ? icon("check") : icon("arrow")}</span></button>`).join("");
-      return sheetShell("切換目前範圍", "依序選擇雞場 → 雞舍 → 批次；也可以停在雞場或雞舍層級。", `<div class="sheet-step"><strong>1 / 3　雞場</strong><span>目前：${farm.name}</span></div><div class="option-list">${farmOptions}</div><div class="readonly-note">全部雞場為全域唯讀；單一雞場可在下一步直接「套用整個雞場」。</div>`, "context");
-    }
-    if (state.contextStep === "house") {
-      const houses = farm.houses || [];
-      return sheetShell("選擇雞舍", `${farm.name} · 可套用整個雞場，或再縮小到雞舍。`, `<div class="sheet-step"><button type="button" class="step-back" data-action="context-step" data-step="farm">${icon("back")} 回到雞場</button><strong>2 / 3　雞舍</strong></div><div class="option-list"><button type="button" class="option-row" data-action="apply-farm-scope"><span><strong>套用整個雞場</strong><span>${farm.name} · 存欄 ${number(farm.stock)}</span></span><span class="option-check">${icon("check")}</span></button>${houses.map((house) => `<button type="button" class="option-row ${draft.houseId === house.id ? "selected" : ""}" data-action="select-house" data-house-id="${house.id}"><span><strong>${house.name}</strong><span>${house.code} · ${house.flocks.length} 個 baseline 批次</span></span><span class="option-check">${draft.houseId === house.id ? icon("check") : icon("arrow")}</span></button>`).join("")}</div>`, "context");
-    }
-    const house = houseById(farm, draft.houseId);
-    return sheetShell("選擇批次", `${farm.name} / ${house?.name || "雞舍"} · 可套用整個雞舍，或選單一批次。`, `<div class="sheet-step"><button type="button" class="step-back" data-action="context-step" data-step="house">${icon("back")} 回到雞舍</button><strong>3 / 3　批次</strong></div><div class="option-list"><button type="button" class="option-row" data-action="apply-house-scope"><span><strong>套用全部批次</strong><span>${house?.name || "雞舍"} · 目前存欄 ${number((house?.flocks || []).filter((flock) => flock.state === "active").reduce((sum, flock) => sum + flock.stock, 0))}</span></span><span class="option-check">${icon("check")}</span></button>${(house?.flocks || []).map((flock) => `<button type="button" class="option-row ${draft.flockId === flock.id ? "selected" : ""}" data-action="select-flock" data-flock-id="${flock.id}"><span><strong>${flock.code}</strong><span>${flock.status} · 目前存欄 ${number(flock.stock)}</span></span><span class="option-check">${draft.flockId === flock.id ? icon("check") : icon("arrow")}</span></button>`).join("")}</div>`, "context");
+    const farmOptions = DATA.farms.map((option) => `<button type="button" class="option-row ${state.context.farmId === option.id ? "selected" : ""}" data-action="select-farm-direct" data-farm-id="${option.id}"><span><strong>${option.name}</strong><span>${option.id === "all" ? "全域唯讀總覽" : `${option.id === "history" ? "歷史查詢" : option.subtitle} · 存欄 ${number(option.stock)}`}</span></span><span class="option-check">${state.context.farmId === option.id ? icon("check") : icon("arrow")}</span></button>`).join("");
+    return sheetShell("選擇雞場", "選好雞場後，雞舍與批次可直接在頁面上用按鈕切換。", `<div class="option-list">${farmOptions}</div>`, "context");
   }
 
   function pendingSheet() {
     const rows = scopedPending();
-    return sheetShell(`${rows.length} 筆需要人工確認`, `${contextLabel()} · 每一筆保留原始 scope。`, `<div class="sheet-item-list">${rows.length ? rows.map((item) => `<button type="button" class="sheet-item" data-action="open-pending-item" data-pending-id="${item.id}"><span><strong>${item.title}</strong><span>${contextName(item)} · ${item.kind}</span></span><span class="sheet-item-end">›</span></button>`).join("") : `<div class="empty-tab"><strong>此範圍沒有待確認資料</strong><p>切換 Context 可查看其他場次。</p></div>`}</div><div class="readonly-note">此清單只做互動展示，不會寫回任何資料。</div>`, "pending");
+    return sheetShell(`${rows.length} 筆需要人工確認`, contextLabel(), `<div class="sheet-item-list">${rows.length ? rows.map((item) => `<button type="button" class="sheet-item" data-action="open-pending-item" data-pending-id="${item.id}"><span><strong>${item.title}</strong><span>${pendingContextName(item)} · ${item.kind}</span></span><span class="sheet-item-end">›</span></button>`).join("") : `<div class="empty-tab"><strong>這個範圍沒有待確認資料</strong></div>`}</div><div class="readonly-note">測試版只展示操作，不會寫入正式資料。</div>`, "pending");
   }
 
   function upcomingSheet() {
     const rows = upcomingFlocks();
-    return sheetShell(`${rows.length} 批 7 日內準備出雞`, contextLabel(), `<div class="sheet-item-list">${rows.length ? rows.map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${flock.id}"><span><strong>${flock.code}</strong><span>${flock.farm} / ${flock.house} · ${flock.status}</span></span><span class="sheet-item-end">›</span></button>`).join("") : `<div class="empty-tab"><strong>此範圍沒有 7 日內出雞批次</strong><p>目前 Context 沒有符合條件的 active flock。</p></div>`}</div>`, "upcoming");
+    return sheetShell(`${rows.length} 批 7 日內準備出雞`, contextLabel(), `<div class="sheet-item-list">${rows.length ? rows.map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${flock.id}"><span><strong>${flock.code}</strong><span>${flock.farm} / ${flock.house} · ${flock.status}</span></span><span class="sheet-item-end">›</span></button>`).join("") : `<div class="empty-tab"><strong>此範圍沒有 7 日內出雞批次</strong><p>目前工作範圍沒有符合條件的進行中批次。</p></div>`}</div>`, "upcoming");
   }
 
   function abnormalSheet() {
@@ -488,7 +490,7 @@
 
   function mortalitySheet() {
     const rows = scopedMortality();
-    return sheetShell(`今日死亡 ${number(mortalityValue())}`, `${contextLabel()} · 依 farm / house / flock 顯示`, `<div class="sheet-item-list">${rows.length ? rows.map((item) => `<button type="button" class="sheet-item" data-action="jump-context" data-farm-id="${item.farmId}" data-house-id="${item.houseId}" data-flock-id="${item.flockId}"><span><strong>${item.farm} / ${item.house}</strong><span>${item.flock} · ${item.time}</span></span><span class="sheet-item-end">${number(item.quantity)}</span></button>`).join("") : `<div class="empty-tab"><strong>此範圍沒有死亡明細</strong><p>prototype 不會用推算值補齊。</p></div>`}</div>${state.context.farmId === "all" ? `<div class="readonly-note">全部雞場 baseline：稽核紅羽一場 / 紅羽一舍 = 5；稽核烏骨三場 / 烏骨一舍 = 1。</div>` : ""}`, "mortality");
+    return sheetShell(`今日死亡 ${number(mortalityValue())}`, contextLabel(), `<div class="sheet-item-list">${rows.length ? rows.map((item) => `<button type="button" class="sheet-item" data-action="open-event" data-event-id="${item.id}"><span><strong>${item.farm} / ${item.house}</strong><span>${item.flock} · ${item.time}</span></span><span class="sheet-item-end">${number(item.quantity)} ›</span></button>`).join("") : `<div class="empty-tab"><strong>這個範圍沒有死亡明細</strong></div>`}</div>`, "mortality");
   }
 
   function cullSheet() {
@@ -497,28 +499,81 @@
       const farm = farmById(item.farmId);
       const house = houseById(farm, item.houseId);
       const flock = house ? flockById(house, item.flockId) : null;
-      return `<button type="button" class="sheet-item" data-action="jump-context" data-farm-id="${item.farmId}" data-house-id="${item.houseId || ""}" data-flock-id="${item.flockId || ""}"><span><strong>${farm.name} / ${house?.name || "場級"}</strong><span>${flock?.code || "全批次"} · ${item.time}</span></span><span class="sheet-item-end">${number(item.qty)}</span></button>`;
-    }).join("") : `<div class="empty-tab"><strong>此範圍沒有淘汰明細</strong></div>`}</div>`, "cull");
+      return `<button type="button" class="sheet-item" data-action="open-event" data-event-id="${item.id}"><span><strong>${farm.name} / ${house?.name || "場級"}</strong><span>${flock?.code || "全批次"} · ${item.time}</span></span><span class="sheet-item-end">${number(item.qty)} ›</span></button>`;
+    }).join("") : `<div class="empty-tab"><strong>這個範圍沒有淘汰明細</strong></div>`}</div>`, "cull");
   }
 
   function flocksSheet() {
     const rows = scopedFlocks();
-    return sheetShell(`進行中批次 ${rows.length}`, `${contextLabel()} · 只列 active flock`, `<div class="sheet-item-list">${rows.length ? rows.map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${flock.id}"><span><strong>${flock.code}</strong><span>${flock.farm} / ${flock.house} · 存欄 ${number(flock.stock)} · ${flock.status}</span></span><span class="sheet-item-end">›</span></button>`).join("") : `<div class="empty-tab"><strong>此範圍沒有進行中批次</strong><p>歷史已出雞批次不會被算入 active。</p></div>`}</div>`, "flocks");
+    return sheetShell(`進行中批次 ${rows.length}`, `${contextLabel()} · 只列進行中批次`, `<div class="sheet-item-list">${rows.length ? rows.map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${flock.id}"><span><strong>${flock.code}</strong><span>${flock.farm} / ${flock.house} · 存欄 ${number(flock.stock)} · ${flock.status}</span></span><span class="sheet-item-end">›</span></button>`).join("") : `<div class="empty-tab"><strong>此範圍沒有進行中批次</strong><p>歷史已出雞批次不列入進行中批次。</p></div>`}</div>`, "flocks");
   }
 
   function flockSheet(flockId) {
     const flock = allFlocks().find((item) => item.id === flockId) || allFlocks()[0];
-    return sheetShell("Flock detail", `${flock.farm} / ${flock.house}`, `<div class="sheet-detail"><div class="detail-hero"><small>FLOCK · ${flock.state === "active" ? "ACTIVE" : "CLOSED"}</small><strong>${flock.code}</strong><span>${flock.status}</span></div><div class="detail-block"><h3>目前存欄</h3><p>${number(flock.stock)} 隻</p></div><div class="detail-block"><h3>初始入雞</h3><p>${number(flock.initial)} 隻 · 入雛 ${flock.chickIn}</p></div><div class="detail-block"><h3>預計／實際出雞</h3><p>${flock.ship}</p></div><button type="button" class="sheet-primary" data-action="jump-context" data-farm-id="${flock.farmId}" data-house-id="${flock.houseId}" data-flock-id="${flock.id}">套用這個 context</button></div>`, "flock");
+    return sheetShell("批次詳細", `${flock.farm} / ${flock.house}`, `<div class="sheet-detail"><div class="detail-hero"><small>${flock.state === "active" ? "進行中" : "已出雞"}</small><strong>${flock.code}</strong><span>${flock.status}</span></div><div class="detail-block"><h3>目前存欄</h3><p>${number(flock.stock)} 隻</p></div><div class="detail-block"><h3>初始入雞</h3><p>${number(flock.initial)} 隻 · 入雛 ${flock.chickIn}</p></div><div class="detail-block"><h3>預計／實際出雞</h3><p>${flock.ship}</p></div><button type="button" class="sheet-primary" data-action="jump-context" data-farm-id="${flock.farmId}" data-house-id="${flock.houseId}" data-flock-id="${flock.id}">切換到這個批次</button></div>`, "flock");
   }
 
   function pendingItemSheet(id) {
     const item = DATA.pending.find((candidate) => candidate.id === id) || DATA.pending[0];
-    return sheetShell(item.title, "固定 review item detail。", `<div class="detail-hero"><small>${item.kind}</small><strong>${item.title}</strong><span>${contextName(item)}</span></div><div class="detail-block"><h3>說明</h3><p>${item.detail}</p></div><div class="detail-block"><h3>處理邊界</h3><p>此公開 prototype 不會修改正式資料；正式 Web 仍須遵守 validation、confirmation 與 append-only Audit。</p></div><button type="button" class="sheet-primary" data-action="go-records">前往紀錄</button>`, "pending-item");
+    return sheetShell(item.title, item.kind, `<div class="detail-hero"><small>${item.kind}</small><strong>${item.title}</strong><span>${pendingContextName(item)}</span></div><div class="detail-block"><h3>說明</h3><p>${item.detail}</p></div><div class="detail-block"><h3>測試版說明</h3><p>這裡只展示處理流程，不會修改正式資料。</p></div><button type="button" class="sheet-primary" data-action="go-records">前往紀錄</button>`, "pending-item");
   }
 
   function abnormalItemSheet(id) {
     const item = DATA.abnormalities.find((candidate) => candidate.id === id) || DATA.abnormalities[0];
-    return sheetShell(item.title, `${item.category} · ${item.state}`, `<div class="detail-hero"><small>ABNORMAL · ${item.status.toUpperCase()}</small><strong>${item.title}</strong><span>${contextName(item)}</span></div><div class="detail-block"><h3>紀錄</h3><p>${item.date} ${item.time} · 溫度快照 ${item.temp}°C</p></div><div class="detail-block"><h3>處理邊界</h3><p>此畫面只做 drill-down 互動展示，不替現場建立健康評分或產業比較。</p></div><button type="button" class="sheet-primary" data-action="go-records">查看紀錄</button>`, "abnormal-item");
+    return sheetShell(item.title, `${item.category} · ${item.state}`, `<div class="detail-hero"><small>${item.state}</small><strong>${item.title}</strong><span>${contextName(item)}</span></div><div class="detail-block"><h3>紀錄</h3><p>${item.date} ${item.time} · 溫度快照 ${item.temp}°C</p></div><div class="detail-block"><h3>說明</h3><p>這個畫面只展示既有異常資料，不會自行產生健康評分或產業比較。</p></div><button type="button" class="sheet-primary" data-action="go-records">查看紀錄</button>`, "abnormal-item");
+  }
+
+  function eventItemSheet(id) {
+    const item = DATA.events.find((event) => event.id === id) || DATA.events[0];
+    const farm = farmById(item.farmId);
+    const house = item.houseId ? houseById(farm, item.houseId) : null;
+    const flock = house && item.flockId ? flockById(house, item.flockId) : null;
+    return sheetShell(`${eventLabel(item.type)} ${number(item.qty)} ${item.unit}`, `${item.date} ${item.time}`, `<div class="detail-hero"><small>${eventLabel(item.type)}紀錄</small><strong>${number(item.qty)} ${item.unit}</strong><span>${contextName(item)}</span></div><div class="detail-block"><h3>位置</h3><p>${farm.name}${house ? ` · ${house.name}` : " · 場級紀錄"}${flock ? ` · ${flock.code}` : ""}</p></div>${flock ? `<button type="button" class="sheet-primary" data-action="jump-context" data-farm-id="${farm.id}" data-house-id="${house.id}" data-flock-id="${flock.id}">切換到這個批次</button>` : ""}`, "event-item");
+  }
+
+  function farmDetailSheet(farmId) {
+    const farm = farmById(farmId);
+    const active = farm.houses.flatMap((house) => house.flocks).filter((flock) => flock.state === "active");
+    return sheetShell(farm.name, `${farm.breed || farm.subtitle} · ${farm.risk || ""}`, `<div class="detail-hero"><small>雞場</small><strong>${number(farmStock(farm))} 隻</strong><span>${active.length} 批進行中</span></div><div class="detail-block"><h3>雞舍</h3><div class="sheet-item-list">${farm.houses.map((house) => `<button type="button" class="sheet-item" data-action="open-house-detail" data-farm-id="${farm.id}" data-house-id="${house.id}"><span><strong>${house.name}</strong><span>存欄 ${number(houseStock(house))} · ${house.flocks.length} 個批次</span></span><span class="sheet-item-end">›</span></button>`).join("")}</div></div><button type="button" class="sheet-primary" data-action="set-farm-scope" data-farm-id="${farm.id}">切換到這個雞場</button>`, "farm-detail");
+  }
+
+  function houseDetailSheet(farmId, houseId) {
+    const farm = farmById(farmId);
+    const house = houseById(farm, houseId);
+    return sheetShell(house?.name || "雞舍詳細", farm.name, `<div class="detail-hero"><small>雞舍</small><strong>${number(house ? houseStock(house) : 0)} 隻</strong><span>${house?.flocks.length || 0} 個批次</span></div><div class="detail-block"><h3>批次</h3><div class="sheet-item-list">${(house?.flocks || []).map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${flock.id}"><span><strong>${flock.code}</strong><span>${flock.status} · 存欄 ${number(flock.stock)}</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>目前沒有批次</strong></div>`}</div></div><button type="button" class="sheet-primary" data-action="set-house-scope" data-farm-id="${farm.id}" data-house-id="${house?.id || ""}">切換到這個雞舍</button>`, "house-detail");
+  }
+
+  function quickActionsSheet() {
+    const isGlobal = state.context.farmId === "all";
+    return sheetShell("快速行動", contextLabel(), `<div class="option-list"><button type="button" class="option-row" data-action="open-quick-record"><span><strong>＋ 快速記錄</strong><span>${isGlobal ? "全部雞場為唯讀，點入後可先選雞場" : "用目前雞場、雞舍與批次準備一筆紀錄"}</span></span><span class="option-check">${icon("arrow")}</span></button><button type="button" class="option-row" data-action="go-ai"><span><strong>✦ 問 AI</strong><span>帶入目前工作範圍；AI 維持唯讀</span></span><span class="option-check">${icon("arrow")}</span></button></div>`, "quick-actions");
+  }
+
+  function quickRecordSheet() {
+    if (state.context.farmId === "all") return sheetShell("快速記錄", "全部雞場為唯讀", `<div class="empty-tab"><strong>請先選一個雞場</strong><p>避免把紀錄寫到不明確的範圍。</p></div><button type="button" class="sheet-primary" data-action="open-context">選擇雞場</button>`, "quick-record");
+    return sheetShell("快速記錄", contextLabel(), `<label class="quick-record-label" for="quick-record-input">要記什麼？</label><textarea id="quick-record-input" class="quick-record-input" rows="4" placeholder="例如：死亡5，咳嗽，臭腳">${state.quickRecordDraft}</textarea><p class="quick-record-note">這是互動測試版，只做預覽，不會寫入資料。</p><button type="button" class="sheet-primary" data-action="preview-quick-record">預覽紀錄</button>`, "quick-record");
+  }
+
+  function quickRecordPreviewSheet() {
+    return sheetShell("紀錄預覽", contextLabel(), `<div class="detail-hero"><small>尚未儲存</small><strong>${state.quickRecordDraft || "（沒有內容）"}</strong><span>正式版仍需確認後才會寫入，並保留變更紀錄。</span></div><div class="readonly-note">本測試版不會真正送出或修改任何資料。</div>`, "quick-record-preview");
+  }
+
+  function insightsSheet() {
+    const feedCount = scopedEvents("feed").length;
+    const waterCount = scopedEvents("water").length;
+    return sheetShell("洞察", contextLabel(), `<div class="detail-list"><div class="detail-block"><h3>目前存欄</h3><p>${number(contextStock())} 隻 · ${scopedFlocks().length} 批進行中</p></div><div class="detail-block"><h3>今日死亡／淘汰</h3><p>${number(mortalityValue())} / ${number(cullValue())}</p></div><div class="detail-block"><h3>異常</h3><p>${scopedAbnormalities({ activeOnly: true }).length} 筆追蹤中</p></div><div class="detail-block"><h3>飼料／飲水紀錄</h3><p>${feedCount} / ${waterCount} 筆</p></div></div>`, "insights");
+  }
+
+  function systemSheet() {
+    const farms = allProductionFarms();
+    return sheetShell("系統", "測試版資訊", `<div class="detail-list"><div class="detail-block"><h3>雞場</h3><p>${farms.length} 場</p></div><div class="detail-block"><h3>雞舍</h3><p>${farms.flatMap((farm) => farm.houses).length} 舍</p></div><div class="detail-block"><h3>批次</h3><p>${allFlocks().length} 批</p></div><div class="readonly-note">這個測試版沒有連線到正式服務、LINE 或資料庫。</div></div>`, "system");
+  }
+
+  function auditSheet() {
+    return sheetShell("變更紀錄", "修改、取消與操作歷程", `<div class="empty-tab"><strong>目前沒有新增變更紀錄</strong><p>這個測試版不會真正寫入資料。正式版仍應以追加紀錄方式保留修改與取消歷程。</p></div>`, "audit");
+  }
+
+  function settingsSheet() {
+    return sheetShell("設定", "操作與管理設定", `<div class="sheet-item-list"><div class="sheet-item static"><span><strong>雞場與雞舍管理</strong><span>正式版需管理者驗證</span></span></div><div class="sheet-item static"><span><strong>LINE 群組</strong><span>正式版管理群組與通知設定</span></span></div><div class="sheet-item static"><span><strong>顯示與操作</strong><span>測試版暫不修改設定</span></span></div></div>`, "settings");
   }
 
   function renderSheet() {
@@ -533,6 +588,16 @@
     if (state.sheet.kind === "cull") return cullSheet();
     if (state.sheet.kind === "flocks") return flocksSheet();
     if (state.sheet.kind === "flock") return flockSheet(state.sheet.id);
+    if (state.sheet.kind === "event-item") return eventItemSheet(state.sheet.id);
+    if (state.sheet.kind === "farm-detail") return farmDetailSheet(state.sheet.farmId);
+    if (state.sheet.kind === "house-detail") return houseDetailSheet(state.sheet.farmId, state.sheet.houseId);
+    if (state.sheet.kind === "quick-actions") return quickActionsSheet();
+    if (state.sheet.kind === "quick-record") return quickRecordSheet();
+    if (state.sheet.kind === "quick-record-preview") return quickRecordPreviewSheet();
+    if (state.sheet.kind === "insights") return insightsSheet();
+    if (state.sheet.kind === "system") return systemSheet();
+    if (state.sheet.kind === "audit") return auditSheet();
+    if (state.sheet.kind === "settings") return settingsSheet();
     return "";
   }
 
@@ -611,19 +676,17 @@
   }
 
   function openContextPicker() {
-    state.contextDraft = { ...state.context };
-    state.contextStep = "farm";
     openSheet({ kind: "context" });
   }
 
   function applyDraftContext() {
-    state.context = { ...state.contextDraft };
+    if (state.contextDraft) state.context = { ...state.contextDraft };
     state.contextDraft = null;
     closeSheet();
   }
 
   function render() {
-    app.innerHTML = `<div class="app-shell"><header class="topbar"><div class="brand-lockup"><span class="brand-symbol">🐔</span><span class="brand-copy"><strong>金雞 Web V14R Lab</strong><span>UX / INTERACTION PROTOTYPE</span></span></div><span class="topbar-status">synthetic only</span></header><main class="page-shell">${pageMarkup()}</main><button type="button" class="fab" data-action="open-sheet" data-sheet-kind="pending" aria-label="開啟快速待辦">${icon("plus")}<span>快速待辦</span></button>${navMarkup()}${renderSheet()}</div>`;
+    app.innerHTML = `<div class="app-shell"><header class="topbar"><div class="brand-lockup"><span class="brand-symbol">🐔</span><span class="brand-copy"><strong>金雞工作台</strong><span>營運管理</span></span></div><span class="topbar-status">測試版</span></header><main class="page-shell">${pageMarkup()}</main><button type="button" class="fab" data-action="open-sheet" data-sheet-kind="quick-actions" aria-label="開啟快速行動">${icon("plus")}<span>快速行動</span></button>${navMarkup()}${renderSheet()}</div>`;
     if (state.sheet) lockBody(); else unlockBody();
   }
 
@@ -642,51 +705,52 @@
     if (action === "open-context") return openContextPicker();
     if (action === "close-sheet") return closeSheet();
     if (action === "open-sheet") return openSheet({ kind: actionElement.dataset.sheetKind });
-    if (action === "select-farm") {
-      const farmId = actionElement.dataset.farmId;
-      state.contextDraft = { farmId, houseId: null, flockId: null };
-      if (farmId === "all") return applyDraftContext();
-      state.contextStep = "house";
+    if (action === "select-farm-direct") {
+      state.context = { farmId: actionElement.dataset.farmId, houseId: null, flockId: null };
+      return closeSheet();
+    }
+    if (action === "select-house-direct") {
+      state.context = { farmId: state.context.farmId, houseId: actionElement.dataset.houseId || null, flockId: null };
       return render();
     }
-    if (action === "select-house") {
-      state.contextDraft.houseId = actionElement.dataset.houseId;
-      state.contextDraft.flockId = null;
-      state.contextStep = "flock";
-      return render();
-    }
-    if (action === "apply-farm-scope") {
-      state.contextDraft.houseId = null;
-      state.contextDraft.flockId = null;
-      return applyDraftContext();
-    }
-    if (action === "apply-house-scope") {
-      state.contextDraft.flockId = null;
-      return applyDraftContext();
-    }
-    if (action === "select-flock") {
-      state.contextDraft.flockId = actionElement.dataset.flockId;
-      return applyDraftContext();
-    }
-    if (action === "context-step") {
-      state.contextStep = actionElement.dataset.step;
+    if (action === "select-flock-direct") {
+      state.context = { farmId: state.context.farmId, houseId: state.context.houseId, flockId: actionElement.dataset.flockId || null };
       return render();
     }
     if (action === "go-farms") { state.page = "farms"; return render(); }
     if (action === "go-todo") { state.page = "todo"; return render(); }
     if (action === "go-records") { state.page = "records"; state.sheet = null; return render(); }
-    if (action === "go-finance") { state.page = "finance"; state.financeTab = "overview"; return render(); }
-    if (action === "go-ai") { state.page = "ai"; return render(); }
+    if (action === "go-finance") { state.page = "finance"; state.financeTab = "overview"; state.sheet = null; return render(); }
+    if (action === "go-ai") { state.page = "ai"; state.sheet = null; return render(); }
     if (action === "finance-tab") { state.financeTab = actionElement.dataset.financeTab; return render(); }
     if (action === "open-flock") return openSheet({ kind: "flock", id: actionElement.dataset.flockId });
     if (action === "open-pending-item") return openSheet({ kind: "pending-item", id: actionElement.dataset.pendingId });
     if (action === "open-abnormal") return openSheet({ kind: "abnormal-item", id: actionElement.dataset.abnormalId });
+    if (action === "open-event") return openSheet({ kind: "event-item", id: actionElement.dataset.eventId });
+    if (action === "open-farm-detail") return openSheet({ kind: "farm-detail", farmId: actionElement.dataset.farmId });
+    if (action === "open-house-detail") return openSheet({ kind: "house-detail", farmId: actionElement.dataset.farmId, houseId: actionElement.dataset.houseId });
+    if (action === "set-farm-scope") {
+      state.context = { farmId: actionElement.dataset.farmId, houseId: null, flockId: null };
+      state.page = "farms";
+      return closeSheet();
+    }
+    if (action === "set-house-scope") {
+      state.context = { farmId: actionElement.dataset.farmId, houseId: actionElement.dataset.houseId, flockId: null };
+      state.page = "farms";
+      return closeSheet();
+    }
+    if (action === "open-quick-record") return openSheet({ kind: "quick-record" });
+    if (action === "preview-quick-record") {
+      state.quickRecordDraft = document.getElementById("quick-record-input")?.value.trim() || "";
+      return openSheet({ kind: "quick-record-preview" });
+    }
     if (action === "jump-context") {
       state.context = { farmId: actionElement.dataset.farmId, houseId: actionElement.dataset.houseId || null, flockId: actionElement.dataset.flockId || null };
       state.page = "today";
       return closeSheet();
     }
   }
+
 
   let handleStartY = null;
   document.addEventListener("click", handleClick);
