@@ -379,8 +379,8 @@ button.summary-tile:hover { border-color: #b5c9bf; }
 .chart-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .chart-title h3 { margin-bottom: 4px; }
 .chart-title p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
-.chart-wrap { margin: 14px -3px 0; overflow: hidden; }
-.net-chart { display: block; width: 100%; min-width: 520px; height: auto; }
+.chart-wrap { margin: 14px -3px 0; overflow: visible; }
+.net-chart { display: block; width: 100%; min-width: 0; max-width: 100%; height: auto; }
 .chart-grid { stroke: #e4e8e3; stroke-width: 1; }
 .chart-axis { fill: #8a9690; font-size: 11px; }
 .chart-line { fill: none; stroke: var(--green); stroke-linecap: round; stroke-linejoin: round; stroke-width: 4; }
@@ -570,6 +570,10 @@ button.summary-tile:hover { border-color: #b5c9bf; }
   .sheet-head { padding-right: 16px; padding-left: 16px; }
   .sheet-body { padding-right: 16px; padding-left: 16px; }
   .sheet-head h2 { font-size: 19px; }
+  .chart-axis { font-size: 18px; }
+  .chart-value { font-size: 20px; }
+  .chart-line { stroke-width: 6; }
+  .chart-point { stroke-width: 5; }
 }
 
 @media (max-width: 374px) {

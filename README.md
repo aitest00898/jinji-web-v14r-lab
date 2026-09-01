@@ -56,3 +56,22 @@ The intended isolated repository is `aitest00898/jinji-web-v14r-lab`.
 The expected public Pages URL is `https://aitest00898.github.io/jinji-web-v14r-lab/`.
 
 Pages should publish the `main` branch root. This lab is not connected to any Production Worker, D1, LINE, Queue, Cron, AI service, secret, or existing Production Pages site.
+
+## Data-parity contract
+
+The browser spike keeps the V11/V13 synthetic review baseline intact:
+
+- farms: `5`
+- houses: `9`
+- total flocks: `7`
+- active flocks: `6`
+- closed historical flock: `AUDIT-HISTORY-OLD`
+- farm stock: red `12,132`; black `5,420`; silkie `5,940`; new `7,920`; history `0`
+- all-farm stock: `31,412`
+- all-farm today mortality: `6` (`red 5 + silkie 1`)
+- all-farm today cull: `1`
+- pending review items: `4`, with their original review meanings preserved
+- abnormal records: `4` (`3` active follow-up + `1` resolved historical record)
+- finance: gross `204,000`; allocated `120,000`; expense `5,000`; net `115,000`
+
+Context filtering is expected to follow the selected farm / house / flock for Today, Farms, Records, Todo, AI context and drill-downs. Finance uses farm as its minimum scope, so a house/flock selection inherits its farm's finance data.
