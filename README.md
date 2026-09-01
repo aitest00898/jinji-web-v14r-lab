@@ -26,10 +26,10 @@ Prototype data is synthetic and does not represent real farm financial or operat
 
 The fixed review baseline in this spike is:
 
-- all-farm current stock: `31,412`
-- all-farm today mortality: `6`
+- all-scope current raised count (`目前在養`): `31,412`
+- all-scope today mortality: `6`
 - mortality detail: 稽核紅羽一場 / 紅羽一舍 = `5`; 稽核烏骨三場 / 烏骨一舍 = `1`
-- all-farm today cull: `1`
+- all-scope today cull: `1`
 - active flocks: `6`
 - gross: `204,000`
 - allocated: `120,000`
@@ -37,7 +37,7 @@ The fixed review baseline in this spike is:
 - current net: `115,000`
 - farm net: `31,800`, `40,500`, `26,700`, `-600`, `16,600`
 
-The net-value line chart is labelled **synthetic review only**. Its final point is the current all-farm prototype net baseline (`115,000`); it must not be read as Production history.
+The net-value line chart is labelled **synthetic review only**. Its final point is the current all-scope prototype net baseline (`115,000`); it must not be read as Production history.
 
 ## Local preview
 
@@ -66,10 +66,10 @@ The browser spike keeps the V11/V13 synthetic review baseline intact:
 - total flocks: `7`
 - active flocks: `6`
 - closed historical flock: `AUDIT-HISTORY-OLD`
-- farm stock: red `12,132`; black `5,420`; silkie `5,940`; new `7,920`; history `0`
-- all-farm stock: `31,412`
-- all-farm today mortality: `6` (`red 5 + silkie 1`)
-- all-farm today cull: `1`
+- farm raised count (`在養隻數`): red `12,132`; black `5,420`; silkie `5,940`; new `7,920`; history `0`
+- all-scope raised count (`目前在養`): `31,412`
+- all-scope today mortality: `6` (`red 5 + silkie 1`)
+- all-scope today cull: `1`
 - pending review items: `4`, with their original review meanings preserved
 - abnormal records: `4` (`3` active follow-up + `1` resolved historical record)
 - finance: gross `204,000`; allocated `120,000`; expense `5,000`; net `115,000`
@@ -99,11 +99,11 @@ This remains synthetic, isolated, and non-writing.
 The complete repair builds on B+ without changing the synthetic operating or finance baseline. It additionally requires:
 
 - Quick Record user input is HTML-escaped before `innerHTML` rendering
-- starting Quick Record from the all-farms read-only scope returns directly to Quick Record after farm selection
+- starting Quick Record from the all-scope read-only scope returns directly to Quick Record after farm selection
 - iPhone/browser product title is Traditional Chinese (`金雞工作台`)
 - finance KPIs, farms, investors, expenses, distributions and calculated analysis rows have meaningful detail drill-down
-- Insights can drill into stock/flocks, mortality, cull, abnormalities, feed and water records
-- System inventory can drill into farm, house and flock lists
+- Insights can drill into current raised counts/flocks (`目前在養`), mortality, cull, abnormalities, feed and water records
+- System raised-count views (`在養隻數`) can drill into farm, house and flock lists
 - Settings entries have explicit read-only detail instead of dead controls
 - Audit remains empty when there is no real write activity; the prototype must not invent audit history
 
