@@ -13,7 +13,8 @@
     "test:e2e:pages": "node tests/e2e/pages-smoke.cjs --browser=chromium && node tests/e2e/pages-smoke.cjs --browser=webkit",
     "test:visual": "node tests/visual/visual.cjs",
     "test:security": "node tests/security/security.cjs",
-    "test:all": "npm run test:static && npm run test:unit && npm run test:integration && npm run test:e2e:chromium && npm run test:e2e:webkit && npm run test:visual && npm run test:security"
+    "test:workflow": "node scripts/test-workflow.mjs",
+    "test:all": "npm run test:static && npm run test:unit && npm run test:integration && npm run test:workflow && npm run test:e2e:chromium && npm run test:e2e:webkit && npm run test:visual && npm run test:security"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

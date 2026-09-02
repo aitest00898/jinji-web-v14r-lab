@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, "../..");
 const browserName = process.argv.includes("--browser=webkit") ? "webkit" : "chromium";
 const port = Number(process.env.JOURNEY_PORT || (browserName === "webkit" ? 4186 : 4185));
 const baseUrl = `http://127.0.0.1:${port}`;
-const expectedTitle = "金雞管理中心 V14R Plus r4 Desktop v2（測試版）";
+const expectedTitle = "金雞管理中心 V14R Plus r4 Desktop v7（測試版）";
 const expectedMarker = "jinji-v14r-plus-r4-desktop-v7-mobile-nav";
 
 function waitForServer(server) {
