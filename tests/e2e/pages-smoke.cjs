@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const { chromium, webkit } = require("@playwright/test");
 
 const pagesUrl = (process.env.PAGES_URL || "https://aitest00898.github.io/jinji-web-v14r-lab/").replace(/\/$/, "");
-const expectedTitle = "金雞管理中心 V14R Plus r4 Desktop v2（測試版）";
+const expectedTitle = "金雞管理中心 V14R Plus r4 Desktop v7（測試版）";
 const expectedMarker = "jinji-v14r-plus-r4-desktop-v7-mobile-nav";
 const expectedSha = process.env.EXPECTED_PAGES_SHA;
 const browserName = process.argv.includes("--browser=webkit") ? "webkit" : "chromium";

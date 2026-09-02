@@ -61,7 +61,7 @@ jobs:
           PAGES_SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
           PAGES_BUILD_SHA: ${{ github.event.workflow_run.head_sha }}
           BUILD_SHA: ${{ github.event.workflow_run.head_sha }}
-          BUILD_TIME: ${{ github.event.workflow_run.updated_at || github.run_started_at }}
+          BUILD_TIME: ${{ github.event.workflow_run.updated_at }}
           BUILD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           test -n "$CI_TESTED_SHA"

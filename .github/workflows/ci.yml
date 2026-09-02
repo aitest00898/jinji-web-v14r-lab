@@ -41,7 +41,6 @@ jobs:
       - name: Verify Pages build identity
         env:
           BUILD_SHA: ${{ github.sha }}
-          BUILD_TIME: ${{ github.run_started_at }}
           BUILD_BRANCH: ${{ github.ref_name }}
         run: |
           node scripts/build-pages.mjs

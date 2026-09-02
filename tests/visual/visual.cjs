@@ -16,7 +16,8 @@ const hasReference = fs.existsSync(referenceFile);
 const referencePort = Number(process.env.REFERENCE_PORT || 4183);
 const labUrl = `http://127.0.0.1:${labPort}`;
 const referenceUrl = `http://127.0.0.1:${referencePort}`;
-const expectedTitle = "金雞管理中心 V14R Plus r4 Desktop v2（測試版）";
+const expectedTitle = "金雞管理中心 V14R Plus r4 Desktop v7（測試版）";
+const expectedReferenceTitle = "金雞管理中心 V14R Plus r4 Desktop v2（測試版）";
 const expectedMarker = "jinji-v14r-plus-r4-desktop-v7-mobile-nav";
 const responsiveMatrix = [
   ["mobile-320", 320, 568], ["mobile-360", 360, 800], ["mobile-390", 390, 844], ["mobile-393", 393, 852], ["mobile-430", 430, 932],
@@ -36,10 +37,10 @@ function waitForServer(server, url, file = "index.html") {
   });
 }
 
-async function identity(page) {
+async function identity(page, title = expectedTitle) {
   // Required first assertion for every visual target: app identity.
   assert.equal(await page.evaluate("document.documentElement.dataset.appId"), "jinji-web-v14r-lab");
-  assert.equal(await page.title(), expectedTitle);
+  assert.equal(await page.title(), title);
   assert.equal(await page.locator("html").getAttribute("data-build-marker"), expectedMarker);
 }
 
@@ -95,7 +96,7 @@ async function main() {
     await freezeMotion(labPage);
     if (referencePage) {
       await referencePage.goto(`${referenceUrl}/${path.basename(referenceFile)}?visual=mobile`, { waitUntil: "networkidle" });
-      await identity(referencePage);
+      await identity(referencePage, expectedReferenceTitle);
       await freezeMotion(referencePage);
     }
     const mobile = await labPage.evaluate(() => ({ width: innerWidth, height: innerHeight, nav: document.querySelectorAll(".bottom-nav button").length, quick: Boolean(document.querySelector(".mobile-quick-slot")), overflow: document.documentElement.scrollWidth - innerWidth }));
@@ -111,7 +112,7 @@ async function main() {
     if (referencePage) {
       await referencePage.setViewportSize({ width: 1440, height: 900 });
       await referencePage.goto(`${referenceUrl}/${path.basename(referenceFile)}?visual=desktop`, { waitUntil: "networkidle" });
-      await identity(referencePage);
+      await identity(referencePage, expectedReferenceTitle);
       await freezeMotion(referencePage);
     }
     const desktop = await labPage.evaluate(() => ({ width: innerWidth, height: innerHeight, sidebar: Boolean(document.querySelector(".desktop-sidebar")), quick: Boolean(document.querySelector(".desktop-quick-button")), mobileQuick: Boolean(document.querySelector(".mobile-quick-slot")), overflow: document.documentElement.scrollWidth - innerWidth }));
