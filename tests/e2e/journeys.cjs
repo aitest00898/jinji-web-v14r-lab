@@ -127,6 +127,11 @@ async function runPrimaryJourney(page) {
   assert.match(chickInDetail, /母 3,400 隻/);
   assert.match(chickInDetail, /合計 7,000 隻/);
 
+  // Use a deliberately sparse Lab scope with water points on both adjacent
+  // as-of dates so this assertion is deterministic across runner time zones.
+  await page.locator('[data-testid="farm-selector"]').click();
+  await page.locator('[data-action="select-farm-direct"][data-farm-id="silkie"]').click();
+  await page.locator('[data-action="select-house-direct"][data-house-id="silkie-1"]').click();
   await page.locator('.bottom-nav [data-nav="more"]').click();
   await page.locator('[data-action="open-sheet"][data-sheet-kind="settings"]').click();
   await page.locator('[data-action="open-settings-detail"][data-settings-key="trend"]').click();
@@ -136,7 +141,7 @@ async function runPrimaryJourney(page) {
   await closeSheet(page);
   await page.locator('.bottom-nav [data-nav="records"]').click();
   await page.locator('[data-action="records-mode"][data-records-mode="chart"]').click();
-  await page.locator('[data-action="records-metric"][data-records-metric="feed"]').click();
+  await page.locator('[data-action="records-metric"][data-records-metric="water"]').click();
   assert.match(await page.locator(".trend-alert").last().innerText(), /資料不足，不判定/);
 
   await page.locator('.bottom-nav [data-nav="more"]').click();
