@@ -71,7 +71,7 @@ jobs:
           test "$PAGES_BUILD_SHA" = "$BUILD_SHA"
           test "$(git rev-parse HEAD)" = "$PAGES_SOURCE_SHA"
           node scripts/build-pages.mjs
-          node -e 'const fs=require("node:fs"); const html=fs.readFileSync("dist/index.html","utf8"); const info=JSON.parse(fs.readFileSync("dist/build-info.json","utf8")); if(!html.includes(`data-build-sha="${process.env.PAGES_BUILD_SHA}"`) || info.buildSha !== process.env.PAGES_BUILD_SHA || info.buildSha !== process.env.CI_TESTED_SHA || info.buildSha !== process.env.CURRENT_REMOTE_MAIN_SHA || info.buildSha !== process.env.PAGES_SOURCE_SHA) process.exit(1); console.log(JSON.stringify({ciTestedSha:process.env.CI_TESTED_SHA,currentRemoteMainSha:process.env.CURRENT_REMOTE_MAIN_SHA,pagesSourceSha:process.env.PAGES_SOURCE_SHA,pagesBuildSha:info.buildSha,buildMarker:info.buildMarker}));'
+          node -e "const fs=require('node:fs'); const html=fs.readFileSync('dist/index.html','utf8'); const info=JSON.parse(fs.readFileSync('dist/build-info.json','utf8')); if(!html.includes('data-build-sha=\"' + process.env.PAGES_BUILD_SHA + '\"') || info.buildSha !== process.env.PAGES_BUILD_SHA || info.buildSha !== process.env.CI_TESTED_SHA || info.buildSha !== process.env.CURRENT_REMOTE_MAIN_SHA || info.buildSha !== process.env.PAGES_SOURCE_SHA) process.exit(1); console.log(JSON.stringify({ciTestedSha:process.env.CI_TESTED_SHA,currentRemoteMainSha:process.env.CURRENT_REMOTE_MAIN_SHA,pagesSourceSha:process.env.PAGES_SOURCE_SHA,pagesBuildSha:info.buildSha,buildMarker:info.buildMarker}));"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

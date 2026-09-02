@@ -44,7 +44,7 @@ jobs:
           BUILD_BRANCH: ${{ github.ref_name }}
         run: |
           node scripts/build-pages.mjs
-          node -e 'const fs=require("node:fs"); const html=fs.readFileSync("dist/index.html","utf8"); const info=JSON.parse(fs.readFileSync("dist/build-info.json","utf8")); if(!html.includes(`data-build-sha="${process.env.BUILD_SHA}"`) || info.buildSha !== process.env.BUILD_SHA || info.buildMarker !== "jinji-v14r-plus-r4-desktop-v7-mobile-nav") process.exit(1); console.log(JSON.stringify({environment:info.environment, buildSha:info.buildSha, buildMarker:info.buildMarker, buildBranch:info.buildBranch}));'
+          node -e "const fs=require('node:fs'); const html=fs.readFileSync('dist/index.html','utf8'); const info=JSON.parse(fs.readFileSync('dist/build-info.json','utf8')); if(!html.includes('data-build-sha=\"' + process.env.BUILD_SHA + '\"') || info.buildSha !== process.env.BUILD_SHA || info.buildMarker !== 'jinji-v14r-plus-r4-desktop-v7-mobile-nav') process.exit(1); console.log(JSON.stringify({environment:info.environment, buildSha:info.buildSha, buildMarker:info.buildMarker, buildBranch:info.buildBranch}));"
 
       - name: Upload test evidence
         if: always()
