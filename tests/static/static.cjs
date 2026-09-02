@@ -11,6 +11,7 @@ assert.match(index, /data-app-id="jinji-web-v14r-lab"/);
 assert.match(index, /data-build-marker="jinji-v14r-plus-r4-desktop-v7-mobile-nav"/);
 assert.match(index, /<title>金雞管理中心 V14R Plus r4 Desktop v7（測試版）<\/title>/);
 assert.match(index, /<meta name="apple-mobile-web-app-title" content="金雞管理中心">/);
+assert.match(index, /<meta name="viewport" content="width=device-width, initial-scale=1\.0, minimum-scale=1\.0, maximum-scale=1\.0, user-scalable=no, viewport-fit=cover">/);
 assert.match(index, /<link rel="stylesheet" href="\.\/styles\.css">/);
 assert.equal((index.match(/<style(?:\s[^>]*)?>/g) || []).length, 0, "index keeps CSS external");
 assert.equal((index.match(/<script>(?![\s\S]*src=)[\s\S]*?<\/script>/g) || []).length, 0, "index keeps JavaScript external");

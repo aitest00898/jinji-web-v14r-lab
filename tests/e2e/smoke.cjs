@@ -54,9 +54,36 @@ async function main() {
     assert.equal(await page.locator(".bottom-nav button").count(), 6);
     assert.equal(await page.locator(".mobile-quick-slot").count(), 1);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-
+    assert.equal(await page.locator('meta[name="viewport"]').getAttribute("content"), "width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover");
+    const mobileViewportBeforeFocus = await page.evaluate(() => ({
+      innerWidth,
+      innerHeight,
+      scrollX,
+      scrollY,
+      visualViewport: visualViewport ? { width: visualViewport.width, height: visualViewport.height, scale: visualViewport.scale, offsetLeft: visualViewport.offsetLeft, offsetTop: visualViewport.offsetTop } : null,
+    }));
     await page.locator(".mobile-quick-button").click();
     await page.locator('[data-action="start-quick-record-farm"][data-farm-id="red"]').click();
+    const quickInput = page.locator("#quick-record-input");
+    assert.equal(await quickInput.evaluate((element) => getComputedStyle(element).fontSize), "16px");
+    await quickInput.focus();
+    await page.waitForTimeout(100);
+    const mobileViewportAfterFocus = await page.evaluate(() => ({
+      innerWidth,
+      innerHeight,
+      scrollX,
+      scrollY,
+      visualViewport: visualViewport ? { width: visualViewport.width, height: visualViewport.height, scale: visualViewport.scale, offsetLeft: visualViewport.offsetLeft, offsetTop: visualViewport.offsetTop } : null,
+    }));
+    assert.deepEqual(mobileViewportAfterFocus, mobileViewportBeforeFocus, "mobile focus must not zoom or shift the browsing viewport");
+    await page.locator('button.sheet-close[data-action="close-sheet"]').click();
+
+    await page.locator(".mobile-quick-button").click();
+    if (await page.locator('[data-action="start-quick-record-farm"][data-farm-id="red"]').count()) {
+      await page.locator('[data-action="start-quick-record-farm"][data-farm-id="red"]').click();
+    } else {
+      await page.locator('[data-action="open-quick-record"]').click();
+    }
     await page.locator("#quick-record-input").fill("死亡5");
     await page.locator('[data-action="preview-quick-record"]').click();
     const preview = await page.locator(".sheet-panel").innerText();

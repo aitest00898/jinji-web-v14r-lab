@@ -35,15 +35,23 @@
 
 html {
   min-width: 320px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background: var(--canvas);
-  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: auto;
 }
 
 body {
   min-width: 320px;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
   overflow-x: hidden;
   background: var(--canvas);
+  touch-action: manipulation;
 }
 
 body.sheet-open {
@@ -1775,3 +1783,30 @@ html, body { background: var(--canvas); }
 /* Lab runtime state is intentionally conditional; the V7 fixture view remains unchanged. */
 .lab-write-notice { margin: 0 0 12px; padding: 11px 13px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--green-soft); color: var(--green-dark); font-size: 14px; line-height: 1.45; }
 .lab-mode-status { display: block; margin-top: 2px; color: var(--amber); font-size: 10px; line-height: 1.2; }
+
+/* Mobile viewport lock: keep the browsing range stable and prevent iOS Safari
+   from enlarging the page when a form control receives focus. */
+@media (max-width: 1023px) {
+  html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  input, select, textarea {
+    min-width: 0;
+    font-size: 16px !important;
+  }
+
+  /* Keep taps from producing a scale/shrink animation on mobile controls. */
+  .farm-item:active,
+  .scope-choice:active,
+  .farm-selector:active,
+  .finance-kpi-button:active,
+  .plus-chart-tab:active,
+  .clean-list-panel .list-row:active {
+    transform: none !important;
+  }
+}
