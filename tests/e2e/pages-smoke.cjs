@@ -34,35 +34,37 @@ async function runViewport(browser, viewport, label) {
   const response = await page.goto(`${pagesUrl}/index.html?pages-smoke=${browserName}-${label}-${Date.now()}`, { waitUntil: "networkidle" });
   assert.equal(response?.status(), 200);
   const buildSha = await assertPageIdentity(page);
+  const navRoot = viewport.width >= 1024 ? ".desktop-nav" : ".bottom-nav";
+  const expectedNavCount = viewport.width >= 1024 ? 8 : 6;
   assert.equal(await page.locator('[data-page="today"]').count(), 1);
-  assert.equal(await page.locator('.bottom-nav [data-nav]').count(), 6);
+  assert.equal(await page.locator(`${navRoot} [data-nav]`).count(), expectedNavCount);
   assert.equal(await page.locator('[data-action="open-sheet"][data-sheet-kind="quick-actions"]').count(), 1);
   assert.equal(await page.locator('[data-action="open-sheet"][data-sheet-kind="quick-actions"]').isVisible(), true);
 
   for (const nav of ["today", "calendar", "farms", "records", "todo", "more"]) {
-    await page.locator(`.bottom-nav [data-nav="${nav}"]`).click();
+    await page.locator(`${navRoot} [data-nav="${nav}"]`).click();
     assert.equal(await page.locator(`[data-page="${nav}"]`).count(), 1);
   }
   await page.locator('[data-action="go-finance"]').click();
   assert.equal(await page.locator('[data-page="finance"]').count(), 1);
-  await page.locator('.bottom-nav [data-nav="more"]').click();
+  await page.locator(`${navRoot} [data-nav="more"]`).click();
   await page.locator('[data-action="go-ai"]').click();
   assert.equal(await page.locator('[data-page="ai"]').count(), 1);
 
-  await page.locator('.bottom-nav [data-nav="more"]').click();
+  await page.locator(`${navRoot} [data-nav="more"]`).click();
   await page.locator('[data-action="open-sheet"][data-sheet-kind="quick-actions"]').click();
   assert.equal(await page.locator('[data-action="start-quick-record-farm"]').count(), 4);
   await page.locator('[data-action="start-quick-record-farm"][data-farm-id="red"]').click();
   assert.equal(await page.locator('[data-sheet-kind="quick-record"]').count(), 1);
   await page.locator('button.sheet-close[data-action="close-sheet"]').click();
 
-  await page.locator('.bottom-nav [data-nav="more"]').click();
+  await page.locator(`${navRoot} [data-nav="more"]`).click();
   await page.locator('[data-action="open-sheet"][data-sheet-kind="settings"]').click();
   await page.locator('[data-action="open-settings-detail"][data-settings-key="trend"]').click();
   assert.equal(await page.locator('[data-threshold-key="baselineDays"]').count(), 1);
   await page.locator('button.sheet-close[data-action="close-sheet"]').click();
 
-  await page.locator('.bottom-nav [data-nav="more"]').click();
+  await page.locator(`${navRoot} [data-nav="more"]`).click();
   await page.locator('[data-action="open-sheet"][data-sheet-kind="developer-fallback"]').click();
   assert.equal(await page.locator('[data-action="set-lab-mode"][data-mode="AI_DOWN"]').count(), 1);
   await page.locator('button.sheet-close[data-action="close-sheet"]').click();
