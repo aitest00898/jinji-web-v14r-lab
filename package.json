@@ -1,0 +1,23 @@
+{
+  "name": "jinji-web-v14r-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "金雞管理中心 Pre-Production Lab prototype",
+  "scripts": {
+    "test:static": "node tests/static/static.cjs",
+    "test:unit": "node --test tests/unit/*.test.cjs",
+    "test:integration": "node --test tests/integration/*.test.cjs",
+    "test:e2e": "npm run test:e2e:chromium",
+    "test:e2e:chromium": "node tests/e2e/smoke.cjs --browser=chromium && node tests/e2e/journeys.cjs --browser=chromium",
+    "test:e2e:webkit": "node tests/e2e/smoke.cjs --browser=webkit && node tests/e2e/journeys.cjs --browser=webkit",
+    "test:e2e:pages": "node tests/e2e/pages-smoke.cjs --browser=chromium && node tests/e2e/pages-smoke.cjs --browser=webkit",
+    "test:visual": "node tests/visual/visual.cjs",
+    "test:security": "node tests/security/security.cjs",
+    "test:all": "npm run test:static && npm run test:unit && npm run test:integration && npm run test:e2e:chromium && npm run test:e2e:webkit && npm run test:visual && npm run test:security"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0"
+  }
+}

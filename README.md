@@ -1,110 +1,43 @@
 # Jinji Web V14R Lab
 
-Purpose:
-UX / interaction prototype for the Jinji farm management Web redesign.
+金雞管理中心 V7 的 Pre-Production Lab。這是與 Production 完全隔離的 Vanilla HTML/CSS/JavaScript 測試 repository；不連線 Production Worker、D1、Queue、Cron、LINE、Workers AI、Production Pages 或任何 secret。
 
-Not Production.
+## Lab 邊界
 
-Contains synthetic review data only.
-
-No Production backend connection.
-
-This repository is an isolated, vanilla HTML/CSS/JavaScript interaction spike. It has no API client, no server-side runtime, no database dependency, no account integration, and no external runtime requests.
-
-## Main things being evaluated
-
-- modern mobile UX
-- Context Identity + picker
-- Smart Digest
-- action-first Today dashboard
-- Bottom Sheet drill-down
-- Finance net-value visualization
-
-## Prototype data boundary
-
-Prototype data is synthetic and does not represent real farm financial or operating values.
-
-The fixed review baseline in this spike is:
-
-- all-scope current raised count (`目前在養`): `31,412`
-- all-scope today mortality: `6`
-- mortality detail: 稽核紅羽一場 / 紅羽一舍 = `5`; 稽核烏骨三場 / 烏骨一舍 = `1`
-- all-scope today cull: `1`
-- active flocks: `6`
-- gross: `204,000`
-- allocated: `120,000`
-- expense: `5,000`
-- current net: `115,000`
-- farm net: `31,800`, `40,500`, `26,700`, `-600`, `16,600`
-
-The net-value line chart is labelled **synthetic review only**. Its final point is the current all-scope prototype net baseline (`115,000`); it must not be read as Production history.
+- V7 reference 是 UI source of truth：`data-app-id="jinji-web-v14r-lab"`、`data-build-marker="jinji-v14r-plus-r4-desktop-v7-mobile-nav"`。
+- baseline fixture 保留 5 個雞場、9 個雞舍、7 個批次、6 個進行中批次、`AUDIT-HISTORY-OLD`，以及原有在養、事件、待人工確認、異常與財務數字。
+- `OperationalEvent` 是 Today、紀錄、月曆、圖表、趨勢與 Audit 的共同來源；V7 的 linked test events 皆可追溯到雞場／雞舍／批次。
+- Quick Record 是真正的 Lab Write，只寫本機 overlay／IndexedDB；fixture 不會被 destructive mutate，Developer → AI／Cloudflare 降級方案可 Reset fixture。
+- 可在 Developer 區切換 `ONLINE`、`AI_DOWN`、`BACKEND_TEMP_DOWN`、`BACKEND_LONG_DOWN`，觀察 AI unavailable、local outbox、冪等 mock sync 與 Pending Review conflict flow。
 
 ## Local preview
 
-No build step is required. From this directory, run:
-
 ```bash
-python3 -m http.server 4173
+python3 -m http.server 4177
 ```
 
-Then open `http://127.0.0.1:4173/` in a browser. The site is designed for iPhone Safari / Chrome and desktop Safari / Chrome at the `390x844`, `393x852`, and `430x932` viewport widths.
+開啟 `http://127.0.0.1:4177/index.html`。本機 root 的 build identity 會顯示 `LOCAL_UNBUILT`；GitHub Pages workflow 會以 Lab `main` SHA 建立正式 artifact。
 
-## GitHub Pages target
+## Test commands
 
-The intended isolated repository is `aitest00898/jinji-web-v14r-lab`.
+```bash
+npm ci
+npm run test:unit
+npm run test:integration
+npm run test:e2e:chromium
+npm run test:e2e:webkit
+npm run test:visual
+npm run test:security
+npm run test:all
+```
 
-The expected public Pages URL is `https://aitest00898.github.io/jinji-web-v14r-lab/`.
+`test:visual` 在 `/Users/joe/Downloads/jinji-management-center-v7.html` 存在時，會啟動獨立 reference server 並執行 390×844、1440×900 的 pixel diff；在 CI 沒有外部 reference 檔案時，會明確輸出 structural-only，不冒充 pixel comparison。
 
-Pages should publish the `main` branch root. This lab is not connected to any Production Worker, D1, LINE, Queue, Cron, AI service, secret, or existing Production Pages site.
+## Repository and Pages
 
-## Data-parity contract
+- Repository：`aitest00898/jinji-web-v14r-lab`
+- Feature branch：`feat/management-center-preprod-v7`
+- Public Lab Pages：<https://aitest00898.github.io/jinji-web-v14r-lab/>
+- Pages build 會產生 `build-info.json`，並將 Build SHA、marker、time、branch 顯示在 Developer Diagnostics。
 
-The browser spike keeps the V11/V13 synthetic review baseline intact:
-
-- farms: `5`
-- houses: `9`
-- total flocks: `7`
-- active flocks: `6`
-- closed historical flock: `AUDIT-HISTORY-OLD`
-- farm raised count (`在養隻數`): red `12,132`; black `5,420`; silkie `5,940`; new `7,920`; history `0`
-- all-scope raised count (`目前在養`): `31,412`
-- all-scope today mortality: `6` (`red 5 + silkie 1`)
-- all-scope today cull: `1`
-- pending review items: `4`, with their original review meanings preserved
-- abnormal records: `4` (`3` active follow-up + `1` resolved historical record)
-- finance: gross `204,000`; allocated `120,000`; expense `5,000`; net `115,000`
-
-Context filtering is expected to follow the selected farm / house / flock for Today, Farms, Records, Todo, AI context and drill-downs. Finance uses farm as its minimum scope, so a house/flock selection inherits its farm's finance data.
-
-
-## V14R-B+ UX contract
-
-The B+ product-layer repair preserves the tested data engine while restoring the previously selected mobile interaction model:
-
-- farm selection stays at the top level
-- house selection uses always-visible one-tap chips after a farm is selected
-- flock chips appear only when a house has batch choices
-- Bottom Sheets are used for detail inspection, not for forcing a 3-step context wizard
-- the global FAB opens Quick Record and AI actions rather than duplicating Todo
-- farm, house, flock and operating records provide meaningful detail drill-down
-- opening a mortality/cull detail never silently changes the global context; context changes require an explicit action
-- More restores Insights, Finance, AI assistant, System, Audit history and Settings
-- end-user copy is Traditional Chinese and avoids engineering terms where possible
-
-This remains synthetic, isolated, and non-writing.
-
-
-## V14R full-repair acceptance contract
-
-The complete repair builds on B+ without changing the synthetic operating or finance baseline. It additionally requires:
-
-- Quick Record user input is HTML-escaped before `innerHTML` rendering
-- starting Quick Record from the all-scope read-only scope returns directly to Quick Record after farm selection
-- iPhone/browser product title is Traditional Chinese (`金雞工作台`)
-- finance KPIs, farms, investors, expenses, distributions and calculated analysis rows have meaningful detail drill-down
-- Insights can drill into current raised counts/flocks (`目前在養`), mortality, cull, abnormalities, feed and water records
-- System raised-count views (`在養隻數`) can drill into farm, house and flock lists
-- Settings entries have explicit read-only detail instead of dead controls
-- Audit remains empty when there is no real write activity; the prototype must not invent audit history
-
-Build marker: `jinji-web-v14r-lab-full-repair-r1`.
+本 Lab 完成自動驗收後仍需真人以 iPhone／iPad／Desktop 驗收；它不代表 Production 已接受或已部署。

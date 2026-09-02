@@ -1,0 +1,86 @@
+name: Deploy Lab Pages
+
+on:
+  workflow_run:
+    workflows:
+      - Lab CI
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.repository == 'aitest00898/jinji-web-v14r-lab' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == 'aitest00898/jinji-web-v14r-lab'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Lab CI-tested source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify CI-tested SHA is still Lab main
+        env:
+          CI_TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          git fetch --no-tags origin main
+          CURRENT_REMOTE_MAIN_SHA="$(git rev-parse origin/main)"
+          test -n "$CURRENT_REMOTE_MAIN_SHA"
+          test "$CI_TESTED_SHA" = "$CURRENT_REMOTE_MAIN_SHA"
+          echo "CURRENT_REMOTE_MAIN_SHA=$CURRENT_REMOTE_MAIN_SHA" >> "$GITHUB_ENV"
+
+      - name: Build Pages artifact from CI-tested SHA
+        env:
+          CI_TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
+          PAGES_SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          PAGES_BUILD_SHA: ${{ github.event.workflow_run.head_sha }}
+          BUILD_SHA: ${{ github.event.workflow_run.head_sha }}
+          BUILD_TIME: ${{ github.event.workflow_run.updated_at || github.run_started_at }}
+          BUILD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          test -n "$CI_TESTED_SHA"
+          test "$CI_TESTED_SHA" = "$CURRENT_REMOTE_MAIN_SHA"
+          test "$CI_TESTED_SHA" = "$PAGES_SOURCE_SHA"
+          test "$PAGES_SOURCE_SHA" = "$PAGES_BUILD_SHA"
+          test "$PAGES_BUILD_SHA" = "$BUILD_SHA"
+          test "$(git rev-parse HEAD)" = "$PAGES_SOURCE_SHA"
+          node scripts/build-pages.mjs
+          node -e 'const fs=require("node:fs"); const html=fs.readFileSync("dist/index.html","utf8"); const info=JSON.parse(fs.readFileSync("dist/build-info.json","utf8")); if(!html.includes(`data-build-sha="${process.env.PAGES_BUILD_SHA}"`) || info.buildSha !== process.env.PAGES_BUILD_SHA || info.buildSha !== process.env.CI_TESTED_SHA || info.buildSha !== process.env.CURRENT_REMOTE_MAIN_SHA || info.buildSha !== process.env.PAGES_SOURCE_SHA) process.exit(1); console.log(JSON.stringify({ciTestedSha:process.env.CI_TESTED_SHA,currentRemoteMainSha:process.env.CURRENT_REMOTE_MAIN_SHA,pagesSourceSha:process.env.PAGES_SOURCE_SHA,pagesBuildSha:info.buildSha,buildMarker:info.buildMarker}));'
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
