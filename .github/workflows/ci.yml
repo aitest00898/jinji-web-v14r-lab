@@ -1,0 +1,56 @@
+name: Lab CI
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Lab
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install browser engines
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run all Lab acceptance tests
+        run: npm run test:all
+
+      - name: Verify Pages build identity
+        env:
+          BUILD_SHA: ${{ github.sha }}
+          BUILD_TIME: ${{ github.run_started_at }}
+          BUILD_BRANCH: ${{ github.ref_name }}
+        run: |
+          node scripts/build-pages.mjs
+          node -e 'const fs=require("node:fs"); const html=fs.readFileSync("dist/index.html","utf8"); const info=JSON.parse(fs.readFileSync("dist/build-info.json","utf8")); if(!html.includes(`data-build-sha="${process.env.BUILD_SHA}"`) || info.buildSha !== process.env.BUILD_SHA || info.buildMarker !== "jinji-v14r-plus-r4-desktop-v7-mobile-nav") process.exit(1); console.log(JSON.stringify({environment:info.environment, buildSha:info.buildSha, buildMarker:info.buildMarker, buildBranch:info.buildBranch}));'
+
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lab-ci-evidence-${{ github.run_id }}
+          path: test-results
+          if-no-files-found: warn
