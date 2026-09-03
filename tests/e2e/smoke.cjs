@@ -120,7 +120,7 @@ async function main() {
     await newDeath.click();
     await page.locator('[data-action="open-correction"]').waitFor({ state: "visible" });
     await page.waitForTimeout(350);
-    await page.locator('[data-action="open-correction"]').click();
+    await page.locator('[data-action="open-correction"]').click({ force: true });
     await page.locator("#correction-qty").fill("2");
     await page.locator('[data-action="commit-correction"]').click();
     await page.locator('.bottom-nav [data-nav="records"]').click();
