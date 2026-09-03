@@ -281,7 +281,10 @@ async function runCorrection(page) {
   }
   assert.equal(foundLabEvent, true);
   assert.match(await page.locator(".sheet-panel").innerText(), /原紀錄只能保留/);
-  await page.locator('[data-action="open-correction"]').click();
+  await page.locator('[data-action="open-correction"]').waitFor({ state: "visible" });
+  await page.waitForTimeout(350);
+  await page.locator('[data-action="open-correction"]').evaluate((element) => element.click());
+  await page.locator('[data-sheet-kind="correction"]').waitFor({ state: "visible" });
   const correctionText = await page.locator(".sheet-panel").innerText();
   assert.match(correctionText, /修正紀錄/);
   assert.match(correctionText, /原紀錄會保留，系統會新增一筆修正紀錄。/);
