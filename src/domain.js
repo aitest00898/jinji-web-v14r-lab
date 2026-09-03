@@ -25,6 +25,8 @@
     "ClickAnalytics",
     "DeveloperLog",
     "SyncOperation",
+    "CaretakerAssignment",
+    "FarmFinanceIdentity",
   ]);
 
   const EVENT_TYPES = Object.freeze([
@@ -48,6 +50,14 @@
     weigh: "kg",
     other: "筆",
   });
+
+  const MASTER_DATA_COLLECTIONS = Object.freeze([
+    "farms",
+    "houses",
+    "flocks",
+    "caretakerAssignments",
+    "financeIdentities",
+  ]);
 
   const TYPES = {};
   MODEL_NAMES.forEach((name) => {
@@ -336,6 +346,166 @@
     return { reversal, replacements, audit };
   }
 
+  function requiredMasterText(value, field) {
+    const text = String(value ?? "").trim();
+    if (!text) throw new Error(`MASTER_DATA_${field.toUpperCase()}_REQUIRED`);
+    return text;
+  }
+
+  function validMasterDate(value, field) {
+    const date = String(value ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error(`MASTER_DATA_${field.toUpperCase()}_DATE_INVALID`);
+    const parsed = new Date(`${date}T00:00:00Z`);
+    if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) throw new Error(`MASTER_DATA_${field.toUpperCase()}_DATE_INVALID`);
+    return date;
+  }
+
+  function nonnegativeInteger(value, field, { positive = false } = {}) {
+    const numberValue = Number(value);
+    if (!Number.isInteger(numberValue) || numberValue < 0 || (positive && numberValue <= 0)) {
+      throw new Error(`MASTER_DATA_${field.toUpperCase()}_INTEGER_INVALID`);
+    }
+    return numberValue;
+  }
+
+  function createFarm(input = {}, now = new Date()) {
+    const name = requiredMasterText(input.name, "farm_name");
+    const description = String(input.description ?? "").trim();
+    const type = String(input.type ?? "").trim();
+    return {
+      id: input.id || id("farm"),
+      name,
+      description,
+      type,
+      subtitle: input.subtitle || description || "Lab 新增雞場",
+      breed: input.breed || type || "待設定",
+      risk: input.risk || "新建待設定",
+      stock: 0,
+      active: input.active !== false,
+      caretakers: [],
+      houses: [],
+      source: input.source || "lab_master_data",
+      createdAt: input.createdAt || nowIso(now),
+    };
+  }
+
+  function createHouse(input = {}, now = new Date()) {
+    return {
+      id: input.id || id("house"),
+      farmId: requiredMasterText(input.farmId, "farm_id"),
+      name: requiredMasterText(input.name, "house_name"),
+      code: requiredMasterText(input.code, "house_code"),
+      flocks: [],
+      source: input.source || "lab_master_data",
+      createdAt: input.createdAt || nowIso(now),
+    };
+  }
+
+  function createFlock(input = {}, now = new Date()) {
+    const code = requiredMasterText(input.code, "flock_code");
+    const houseId = requiredMasterText(input.houseId, "house_id");
+    const chickIn = validMasterDate(input.chickIn ?? input.chickInDate, "chick_in");
+    const ship = validMasterDate(input.ship ?? input.plannedShipment, "planned_shipment");
+    if (ship < chickIn) throw new Error("MASTER_DATA_SHIPMENT_BEFORE_CHICK_IN");
+    const initial = nonnegativeInteger(input.initial ?? input.initialQuantity, "initial", { positive: true });
+    const stock = input.stock === undefined ? initial : nonnegativeInteger(input.stock, "stock");
+    if (stock > initial) throw new Error("MASTER_DATA_STOCK_EXCEEDS_INITIAL");
+    const hasMale = input.male !== undefined && input.male !== "";
+    const hasFemale = input.female !== undefined && input.female !== "";
+    if (hasMale !== hasFemale) throw new Error("MASTER_DATA_SEX_PAIR_REQUIRED");
+    const sex = hasMale
+      ? {
+          male: nonnegativeInteger(input.male, "male"),
+          female: nonnegativeInteger(input.female, "female"),
+        }
+      : null;
+    if (sex && sex.male + sex.female !== initial) throw new Error("MASTER_DATA_SEX_TOTAL_MISMATCH");
+    const state = input.state || (input.status === "已出雞" ? "closed" : "active");
+    return {
+      id: input.id || id("flock"),
+      houseId,
+      code,
+      chickIn,
+      initial,
+      ship,
+      plannedShipment: ship,
+      stock,
+      state,
+      status: input.status || (state === "closed" ? "已出雞" : "進行中"),
+      ...(sex || {}),
+      source: input.source || "lab_master_data",
+      createdAt: input.createdAt || nowIso(now),
+    };
+  }
+
+  function createCaretakerAssignment(input = {}, now = new Date()) {
+    const caretakerName = requiredMasterText(input.caretakerName ?? input.name, "caretaker_name");
+    return {
+      id: input.id || id("caretaker-assignment"),
+      farmId: requiredMasterText(input.farmId, "farm_id"),
+      caretakerId: input.caretakerId || id("caretaker"),
+      caretakerName,
+      source: input.source || "lab_master_data",
+      createdAt: input.createdAt || nowIso(now),
+    };
+  }
+
+  function createFarmFinanceIdentity(input = {}, now = new Date()) {
+    return {
+      id: input.id || id("finance-identity"),
+      operationalFarmId: requiredMasterText(input.operationalFarmId ?? input.farmId, "operational_farm_id"),
+      status: "unconfigured",
+      dataState: "no_finance_data",
+      source: input.source || "lab_master_data",
+      createdAt: input.createdAt || nowIso(now),
+    };
+  }
+
+  function validateMasterData(masterData = {}) {
+    const rows = {};
+    MASTER_DATA_COLLECTIONS.forEach((key) => {
+      rows[key] = Array.isArray(masterData[key]) ? masterData[key] : [];
+    });
+    const expect = (condition, message) => {
+      if (!condition) throw new Error(`MASTER_DATA_CONTRACT_INVALID:${message}`);
+    };
+    const uniqueIds = (key) => {
+      const seen = new Set();
+      rows[key].forEach((row) => {
+        expect(row && typeof row === "object", `${key} row`);
+        expect(String(row.id || ""), `${key} id`);
+        expect(!seen.has(row.id), `duplicate ${key} ${row.id}`);
+        seen.add(row.id);
+      });
+      return seen;
+    };
+    uniqueIds("farms");
+    uniqueIds("houses");
+    uniqueIds("flocks");
+    uniqueIds("caretakerAssignments");
+    uniqueIds("financeIdentities");
+    const farmIds = new Set(rows.farms.map((farm) => farm.id));
+    const houseIds = new Set(rows.houses.map((house) => house.id));
+    rows.houses.forEach((house) => expect(farmIds.has(house.farmId), `house farm ${house.id}`));
+    rows.flocks.forEach((flock) => expect(houseIds.has(flock.houseId), `flock house ${flock.id}`));
+    rows.caretakerAssignments.forEach((assignment) => expect(farmIds.has(assignment.farmId), `caretaker farm ${assignment.id}`));
+    const financeFarmIds = new Set();
+    rows.financeIdentities.forEach((identity) => {
+      expect(farmIds.has(identity.operationalFarmId), `finance identity farm ${identity.id}`);
+      expect(identity.status === "unconfigured", `finance identity status ${identity.id}`);
+      expect(!financeFarmIds.has(identity.operationalFarmId), `duplicate finance identity ${identity.operationalFarmId}`);
+      financeFarmIds.add(identity.operationalFarmId);
+    });
+    expect(rows.financeIdentities.length === rows.farms.length, "finance identity one-to-one");
+    return {
+      farms: rows.farms.length,
+      houses: rows.houses.length,
+      flocks: rows.flocks.length,
+      caretakerAssignments: rows.caretakerAssignments.length,
+      financeIdentities: rows.financeIdentities.length,
+    };
+  }
+
   function calendarDaysInMonth(year, month) {
     return new Date(year, month, 0).getDate();
   }
@@ -359,6 +529,7 @@
       timestamp: input.timestamp || nowIso(now),
       ...(input.oldEvent ? { oldEvent: clone(input.oldEvent) } : {}),
       ...(input.newEventIds ? { newEventIds: clone(input.newEventIds) } : {}),
+      ...(input.metadata ? { metadata: clone(input.metadata) } : {}),
     };
   }
 
@@ -380,6 +551,13 @@
     sumEvents,
     parseQuickRecord,
     createCorrectionLedger,
+    MASTER_DATA_COLLECTIONS,
+    createFarm,
+    createHouse,
+    createFlock,
+    createCaretakerAssignment,
+    createFarmFinanceIdentity,
+    validateMasterData,
     calendarDaysInMonth,
     calendarMonthCells,
     createAuditEntry,

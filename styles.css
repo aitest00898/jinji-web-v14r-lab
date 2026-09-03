@@ -1737,6 +1737,133 @@ html, body { background: var(--canvas); }
   }
 }
 
+/* V14R usability remediation: visible Lab master-data management, local
+   Records analysis scope, and finance identity/trace surfaces. */
+.master-data-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 17px 18px;
+  border: 1px solid #cfe4da;
+  border-radius: 18px;
+  background: #f4fbf7;
+}
+.master-data-entry h2 { margin: 0 0 5px; font-size: 19px; }
+.master-data-entry p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.master-data-entry .kicker { margin-bottom: 5px; color: var(--green); }
+.master-data-entry .sheet-secondary { min-width: 160px; }
+.master-auth-card { display: grid; gap: 14px; }
+.master-check {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.master-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--green); }
+.master-authenticated { display: grid; gap: 7px; }
+.master-authenticated > span:last-child { color: var(--muted); font-size: 12px; line-height: 1.45; }
+.master-error { padding: 10px 12px; border-left: 3px solid var(--red); color: #91352d; background: var(--red-soft); font-size: 12px; line-height: 1.45; }
+.master-section { display: grid; gap: 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+.master-section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.master-section-head h3 { margin: 0; font-size: 15px; }
+.master-section-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.master-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.master-field { display: grid; gap: 6px; min-width: 0; }
+.master-field-wide { grid-column: 1 / -1; }
+.master-field > span { color: var(--ink); font-size: 12px; font-weight: 800; }
+.master-field input, .master-field select {
+  width: 100%;
+  min-height: 46px;
+  min-width: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  color: var(--ink);
+  background: #fff;
+  font-size: 16px;
+}
+.master-field input:focus, .master-field select:focus { outline: 3px solid rgba(239,189,112,.4); border-color: #caa15f; }
+.master-context-note { padding: 10px 12px; border-radius: 11px; color: var(--green-dark); background: var(--green-soft); font-size: 12px; line-height: 1.45; }
+.master-master-summary { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.master-master-summary strong, .master-master-summary span { display: block; }
+.master-master-summary strong { font-size: 14px; }
+.master-master-summary span { color: var(--muted); font-size: 12px; line-height: 1.45; }
+.master-list { display: grid; gap: 1px; border-top: 1px solid var(--line); }
+.master-list-row { display: grid; gap: 3px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.master-list-row strong { font-size: 13px; line-height: 1.35; }
+.master-list-row span { color: var(--muted); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.master-inline-empty { padding: 12px; border: 1px dashed var(--line-strong); border-radius: 12px; color: var(--muted); background: #fff; font-size: 12px; line-height: 1.45; }
+.master-inline-empty strong { color: var(--ink); }
+.desktop-master-entry { grid-column: 1 / -1; }
+
+.records-cross-farm {
+  display: grid;
+  gap: 14px;
+  padding: 17px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff;
+}
+.records-cross-farm .panel-title { align-items: flex-start; }
+.records-cross-farm .panel-title h2 { font-size: 19px; }
+.records-cross-farm .panel-title p { margin: 5px 0 0; max-width: 720px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.records-farm-filter { display: grid; gap: 7px; }
+.records-cross-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.records-cross-kpi { display: grid; gap: 5px; min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: #fffdf8; }
+.records-cross-kpi span { color: var(--muted); font-size: 11px; font-weight: 800; }
+.records-cross-kpi strong { overflow-wrap: anywhere; font-size: 18px; line-height: 1.3; }
+.records-cross-kpi small { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.records-cross-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.records-cross-columns h3 { margin-bottom: 8px; font-size: 14px; }
+.records-farm-summary-list, .records-recent-event-list { display: grid; gap: 1px; border-top: 1px solid var(--line); }
+.records-farm-summary { display: grid; gap: 3px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.records-farm-summary strong { font-size: 13px; }
+.records-farm-summary span { color: var(--muted); font-size: 11px; }
+.records-recent-event { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 9px 0; border-bottom: 1px solid var(--line); color: var(--ink); background: transparent; text-align: left; }
+.records-recent-event strong, .records-recent-event small { display: block; }
+.records-recent-event strong { font-size: 12px; line-height: 1.4; }
+.records-recent-event small { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+.records-recent-event > span:last-child { color: var(--green); font-size: 19px; }
+.records-scope-note { color: var(--muted); font-size: 11px; }
+
+.finance-identity-card {
+  display: grid;
+  gap: 4px;
+  padding: 13px;
+  border: 1px solid #cfe4da;
+  border-radius: 13px;
+  color: var(--green-dark);
+  background: #f4fbf7;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.finance-identity-card strong { font-size: 13px; }
+.finance-identity-card span { overflow-wrap: anywhere; }
+.finance-trace { display: grid; gap: 9px; }
+.finance-trace > p { margin: 0; }
+.finance-trace-list { display: grid; gap: 1px; border-top: 1px solid var(--line); }
+.finance-trace-row { display: grid; gap: 4px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.finance-trace-row strong { font-size: 13px; line-height: 1.4; }
+.finance-trace-row span { color: var(--muted); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.finance-unconfigured-row { background: #fffdf8; }
+
+@media (max-width: 560px) {
+  .master-data-entry { grid-template-columns: 1fr; }
+  .master-data-entry .sheet-secondary { width: 100%; }
+  .master-form-grid, .records-cross-kpis, .records-cross-columns { grid-template-columns: 1fr; }
+  .master-field-wide { grid-column: auto; }
+  .records-cross-farm { padding: 14px; }
+  .records-cross-farm .panel-title { display: grid; }
+}
+
 @media (max-width: 359px) {
   .bottom-nav button { font-size: 9px; }
   .bottom-nav .nav-icon { width: 20px; height: 20px; }

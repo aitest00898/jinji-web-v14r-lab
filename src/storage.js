@@ -10,6 +10,18 @@
     mode: "jinji-v14r-lab-backend-mode-v1",
   });
   const MODES = Object.freeze(["ONLINE", "AI_DOWN", "BACKEND_TEMP_DOWN", "BACKEND_LONG_DOWN"]);
+  const MASTER_DATA_TYPES = Object.freeze({
+    farm: "farms",
+    Farm: "farms",
+    house: "houses",
+    House: "houses",
+    flock: "flocks",
+    Flock: "flocks",
+    caretakerAssignment: "caretakerAssignments",
+    CaretakerAssignment: "caretakerAssignments",
+    financeIdentity: "financeIdentities",
+    FarmFinanceIdentity: "financeIdentities",
+  });
 
   function clone(value) {
     return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
@@ -25,13 +37,32 @@
       outbox: [],
       syncedOperationIds: [],
       settings: {},
+      masterData: {
+        farms: [],
+        houses: [],
+        flocks: [],
+        caretakerAssignments: [],
+        financeIdentities: [],
+      },
       mode: "ONLINE",
     };
   }
 
   function validState(value) {
     if (!value || typeof value !== "object") return false;
-    return ["events", "pendingReviews", "abnormalities", "auditEntries", "outbox"].every((key) => Array.isArray(value[key]));
+    const objectRow = (row) => Boolean(row && typeof row === "object" && !Array.isArray(row));
+    const requiredArrays = ["events", "pendingReviews", "abnormalities", "auditEntries", "outbox"];
+    if (!requiredArrays.every((key) => Array.isArray(value[key]) && value[key].every(objectRow))) return false;
+    if (value.syncedOperationIds !== undefined && !Array.isArray(value.syncedOperationIds)) return false;
+    if (value.settings !== undefined && (!value.settings || typeof value.settings !== "object" || Array.isArray(value.settings))) return false;
+    if (value.masterData !== undefined) {
+      if (!value.masterData || typeof value.masterData !== "object" || Array.isArray(value.masterData)) return false;
+      if (!Object.keys(emptyState().masterData).every((key) => {
+        const rows = value.masterData[key];
+        return rows === undefined || (Array.isArray(rows) && rows.every(objectRow));
+      })) return false;
+    }
+    return true;
   }
 
   function readJson(key) {
@@ -61,6 +92,22 @@
       this.fixture = options.fixture || null;
       const stored = readJson(KEYS.overlay);
       this.state = validState(stored) ? { ...emptyState(), ...stored } : emptyState();
+      this.state.masterData = {
+        ...emptyState().masterData,
+        ...(this.state.masterData && typeof this.state.masterData === "object" ? this.state.masterData : {}),
+      };
+      Object.keys(emptyState().masterData).forEach((key) => {
+        if (!Array.isArray(this.state.masterData[key])) this.state.masterData[key] = [];
+      });
+      if (typeof root?.JinjiDomain?.validateMasterData === "function") {
+        try {
+          root.JinjiDomain.validateMasterData(this.state.masterData);
+        } catch (_) {
+          // A corrupt local overlay must never prevent the Lab shell from loading.
+          // Discard only the invalid master-data overlay; the checked-in fixture is untouched.
+          this.state.masterData = emptyState().masterData;
+        }
+      }
       const mode = readJson(KEYS.mode);
       if (typeof mode === "string" && MODES.includes(mode)) this.state.mode = mode;
       this.idbPromise = this.openIndexedDb();
@@ -136,6 +183,26 @@
       return this.persist();
     }
 
+    appendMasterData(entityType, entity, auditEntry = null) {
+      const collection = MASTER_DATA_TYPES[entityType];
+      if (!collection || !entity || !entity.id) throw new Error("LAB_MASTER_DATA_INVALID");
+      if (!this.state.masterData[collection].some((item) => item.id === entity.id)) this.state.masterData[collection].push(clone(entity));
+      if (auditEntry && !this.state.auditEntries.some((entry) => entry.id === auditEntry.id)) this.state.auditEntries.push(clone(auditEntry));
+      return this.persist();
+    }
+
+    appendMasterDataBatch(entities = [], auditEntries = []) {
+      entities.forEach(({ entityType, entity }) => {
+        const collection = MASTER_DATA_TYPES[entityType];
+        if (!collection || !entity || !entity.id) throw new Error("LAB_MASTER_DATA_INVALID");
+        if (!this.state.masterData[collection].some((item) => item.id === entity.id)) this.state.masterData[collection].push(clone(entity));
+      });
+      auditEntries.forEach((entry) => {
+        if (entry && !this.state.auditEntries.some((candidate) => candidate.id === entry.id)) this.state.auditEntries.push(clone(entry));
+      });
+      return this.persist();
+    }
+
     queueOperation(operation) {
       const key = operation.clientOperationId;
       if (!key) throw new Error("LAB_OPERATION_ID_REQUIRED");
@@ -179,12 +246,14 @@
     }
 
     resetFixture() {
+      const auditEntries = clone(this.state.auditEntries);
       this.state = emptyState();
-      try { root?.localStorage?.removeItem(KEYS.overlay); root?.localStorage?.removeItem(KEYS.mode); } catch (_) {}
-      this.idbPromise.then((db) => {
-        if (!db) return;
-        try { db.transaction("runtime", "readwrite").objectStore("runtime").clear(); } catch (_) {}
-      });
+      // Fixture reset clears only local runtime state. Audit history is append-only
+      // and must remain available for reconstruction after a developer reset.
+      this.state.auditEntries = auditEntries;
+      writeJson(KEYS.overlay, this.state);
+      writeJson(KEYS.mode, this.state.mode);
+      this.persistToIndexedDb();
       dispatch("jinji:lab-fixture-reset", this.snapshot());
       return this.snapshot();
     }
@@ -420,6 +489,7 @@
   return {
     KEYS,
     MODES,
+    MASTER_DATA_TYPES,
     LabRepository,
     FarmRepository,
     HouseRepository,

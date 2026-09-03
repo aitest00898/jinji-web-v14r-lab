@@ -4,7 +4,7 @@ const domain = require("../../src/domain.js");
 
 test("domain exposes all required model types", () => {
   assert.deepEqual(domain.MODEL_NAMES, [
-    "Organization", "Farm", "House", "Flock", "OperationalEvent", "PendingReview", "Abnormality", "CalendarEvent", "FinanceEntry", "Investor", "FarmInvestorEquity", "ProfitDistribution", "ProfitDistributionAllocation", "FinanceSourceReference", "AuditEntry", "TrendThreshold", "ClickAnalytics", "DeveloperLog", "SyncOperation",
+    "Organization", "Farm", "House", "Flock", "OperationalEvent", "PendingReview", "Abnormality", "CalendarEvent", "FinanceEntry", "Investor", "FarmInvestorEquity", "ProfitDistribution", "ProfitDistributionAllocation", "FinanceSourceReference", "AuditEntry", "TrendThreshold", "ClickAnalytics", "DeveloperLog", "SyncOperation", "CaretakerAssignment", "FarmFinanceIdentity",
   ]);
   for (const name of domain.MODEL_NAMES) assert.equal(typeof domain[name], "function");
 });
@@ -45,6 +45,31 @@ test("append-only replacement reconstructs final state without deleting original
   assert.equal(ledger.audit.oldEvent.id, "original");
   assert.deepEqual(ledger.audit.newEventIds, [reconstructed[0].id]);
   assert.equal(domain.sumEvents(all, { type: "mortality" }), 2);
+});
+
+test("master data constructors preserve hierarchy and never invent sex counts", () => {
+  const now = new Date("2026-09-03T00:00:00Z");
+  const farm = domain.createFarm({ id: "farm-runtime", name: "測試新增場", type: "紅羽" }, now);
+  const house = domain.createHouse({ id: "house-runtime", farmId: farm.id, name: "測試一舍", code: "T1" }, now);
+  const flockWithSex = domain.createFlock({ id: "flock-runtime-a", houseId: house.id, code: "T-001", initial: 100, male: 40, female: 60, chickIn: "2026-09-01", plannedShipment: "2026-09-20" }, now);
+  const flockWithoutSex = domain.createFlock({ id: "flock-runtime-b", houseId: house.id, code: "T-002", initial: 80, chickIn: "2026-09-02", plannedShipment: "2026-09-21" }, now);
+  const caretaker = domain.createCaretakerAssignment({ id: "assignment-runtime", farmId: farm.id, caretakerId: "caretaker-runtime", caretakerName: "測試照顧者" }, now);
+  const identity = domain.createFarmFinanceIdentity({ id: "finance-identity-runtime", operationalFarmId: farm.id }, now);
+
+  assert.deepEqual({ male: flockWithSex.male, female: flockWithSex.female }, { male: 40, female: 60 });
+  assert.equal(Object.prototype.hasOwnProperty.call(flockWithoutSex, "male"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(flockWithoutSex, "female"), false);
+  assert.equal(identity.status, "unconfigured");
+  assert.equal(identity.dataState, "no_finance_data");
+  assert.deepEqual(domain.validateMasterData({
+    farms: [farm],
+    houses: [house],
+    flocks: [flockWithSex, flockWithoutSex],
+    caretakerAssignments: [caretaker],
+    financeIdentities: [identity],
+  }), { farms: 1, houses: 1, flocks: 2, caretakerAssignments: 1, financeIdentities: 1 });
+  assert.throws(() => domain.createFlock({ houseId: house.id, code: "bad", initial: 100, male: 40, chickIn: "2026-09-01", plannedShipment: "2026-09-20" }), /MASTER_DATA_SEX_PAIR_REQUIRED/);
+  assert.throws(() => domain.createFlock({ houseId: house.id, code: "bad", initial: 100, male: 40, female: 40, chickIn: "2026-09-01", plannedShipment: "2026-09-20" }), /MASTER_DATA_SEX_TOTAL_MISMATCH/);
 });
 
 test("calendar month logic covers leap, short, long and cross-year dates", () => {
