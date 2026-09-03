@@ -72,6 +72,17 @@ test("master data constructors preserve hierarchy and never invent sex counts", 
   assert.throws(() => domain.createFlock({ houseId: house.id, code: "bad", initial: 100, male: 40, female: 40, chickIn: "2026-09-01", plannedShipment: "2026-09-20" }), /MASTER_DATA_SEX_TOTAL_MISMATCH/);
 });
 
+test("flock state contract supports only active and closed", () => {
+  const common = { houseId: "state-house", code: "STATE-001", initial: 100, chickIn: "2026-09-01", plannedShipment: "2026-09-20" };
+  const active = domain.createFlock({ ...common, state: "active" });
+  const closed = domain.createFlock({ ...common, code: "STATE-002", state: "closed" });
+  assert.equal(active.state, "active");
+  assert.equal(active.status, "進行中");
+  assert.equal(closed.state, "closed");
+  assert.equal(closed.status, "已出雞");
+  assert.throws(() => domain.createFlock({ ...common, state: "paused" }), /MASTER_DATA_FLOCK_STATE_INVALID/);
+});
+
 test("calendar month logic covers leap, short, long and cross-year dates", () => {
   assert.equal(domain.calendarDaysInMonth(2024, 2), 29);
   assert.equal(domain.calendarDaysInMonth(2025, 2), 28);

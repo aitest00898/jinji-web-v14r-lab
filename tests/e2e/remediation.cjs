@@ -59,6 +59,12 @@ async function closeSheet(page) {
   await page.locator('button.sheet-close[data-action="close-sheet"]').click();
 }
 
+async function confirmMasterOperation(page) {
+  await page.locator('[data-testid="master-final-confirmation"]').waitFor();
+  await page.locator('[data-testid="master-final-confirmation-confirm"]').click();
+  await page.locator('[data-testid="master-data-authorized"]').waitFor();
+}
+
 async function runMasterDataXss(browser, viewport = { width: 390, height: 844 }) {
   const page = await newPage(browser, viewport);
   const payload = '<svg onload="window.__xss=true"></svg>';
@@ -75,7 +81,7 @@ async function runMasterDataXss(browser, viewport = { width: 390, height: 844 })
       masterData: {
         farms: [{ id: "xss-farm", name: payload, description: payload, type: payload, subtitle: payload, breed: payload, risk: payload, stock: 0, active: true, caretakers: [], houses: [], source: "lab", createdAt: "2026-08-31T00:00:00.000Z" }],
         houses: [{ id: "xss-house", farmId: "xss-farm", name: payload, code: payload, flocks: [], source: "lab", createdAt: "2026-08-31T00:00:00.000Z" }],
-        flocks: [{ id: "xss-flock", houseId: "xss-house", code: payload, chickIn: "2026-08-01", initial: 1, ship: "2026-09-06", plannedShipment: "2026-09-06", stock: 1, state: "active", status: payload, source: "lab", createdAt: "2026-08-31T00:00:00.000Z" }],
+        flocks: [{ id: "xss-flock", houseId: "xss-house", code: payload, chickIn: "2026-08-01", initial: 1, ship: "2026-09-06", plannedShipment: "2026-09-06", stock: 1, state: "active", status: "進行中", source: "lab", createdAt: "2026-08-31T00:00:00.000Z" }],
         caretakerAssignments: [{ id: "xss-assignment", farmId: "xss-farm", caretakerId: "xss-caretaker", caretakerName: payload, source: "lab", createdAt: "2026-08-31T00:00:00.000Z" }],
         financeIdentities: [{ id: "xss-finance", operationalFarmId: "xss-farm", status: "unconfigured", dataState: "no_finance_data", source: "lab", createdAt: "2026-08-31T00:00:00.000Z" }],
       },
@@ -138,6 +144,7 @@ async function runMasterDataAndCrossFarm(page) {
   await page.locator("#master-farm-type").fill("紅羽");
   await page.locator("#master-farm-description").fill("Phase 3 synthetic master data");
   await page.locator('[data-testid="create-farm"]').click();
+  await confirmMasterOperation(page);
   const newFarmId = await page.locator('[data-testid="master-farm-select"]').inputValue();
   assert.match(newFarmId, /^lab-farm-/);
   await page.locator('[data-testid="master-farm-select"] option').filter({ hasText: "Phase 3 測試場" }).waitFor({ state: "attached" });
@@ -146,6 +153,7 @@ async function runMasterDataAndCrossFarm(page) {
   await page.locator('[data-testid="master-house-name"]').fill("Phase 3 一舍");
   await page.locator('[data-testid="master-house-code"]').fill("P3-H1");
   await page.locator('[data-testid="create-house"]').click();
+  await confirmMasterOperation(page);
   await page.waitForFunction(() => document.querySelectorAll('[data-testid="master-house-select"] option').length === 1);
   assert.equal(await page.locator('[data-testid="master-house-select"] option').count(), 1);
 
@@ -156,12 +164,14 @@ async function runMasterDataAndCrossFarm(page) {
   await page.locator("#master-flock-male").fill("40");
   await page.locator("#master-flock-female").fill("60");
   await page.locator('[data-testid="create-flock"]').click();
+  await confirmMasterOperation(page);
   assert.equal(await page.locator('[data-testid="master-flock-row"]').count(), 1);
   assert.match(await page.locator('[data-testid="master-flock-row"]').innerText(), /公 40／母 60/);
 
   await page.locator('[data-testid="master-house-name"]').fill("Phase 3 二舍");
   await page.locator('[data-testid="master-house-code"]').fill("P3-H2");
   await page.locator('[data-testid="create-house"]').click();
+  await confirmMasterOperation(page);
   await page.waitForFunction(() => document.querySelectorAll('[data-testid="master-house-select"] option').length === 2);
   assert.equal(await page.locator('[data-testid="master-house-select"] option').count(), 2);
   await page.locator('[data-testid="master-flock-code"]').fill("P3-002");
@@ -171,6 +181,7 @@ async function runMasterDataAndCrossFarm(page) {
   await page.locator('#master-flock-male').fill("");
   await page.locator('#master-flock-female').fill("");
   await page.locator('[data-testid="create-flock"]').click();
+  await confirmMasterOperation(page);
   const secondFlockRows = await page.locator('[data-testid="master-flock-row"]').count();
   assert.equal(secondFlockRows, 1, await page.locator(".sheet-panel").innerText());
   assert.match(await page.locator(".sheet-panel").innerText(), /公母數未提供/);
@@ -182,6 +193,7 @@ async function runMasterDataAndCrossFarm(page) {
 
   await page.locator('[data-testid="master-caretaker-name"]').fill("Phase 3 照顧者");
   await page.locator('[data-testid="assign-caretaker"]').click();
+  await confirmMasterOperation(page);
   assert.match(await page.locator(".sheet-panel").innerText(), /已指派照顧者：Phase 3 照顧者/);
   assert.ok((await page.locator(".master-list-row").count()) >= 5);
 
@@ -283,7 +295,7 @@ async function runCorrection(page) {
   assert.match(await page.locator(".sheet-panel").innerText(), /原紀錄只能保留/);
   await page.locator('[data-action="open-correction"]').waitFor({ state: "visible" });
   await page.waitForTimeout(350);
-  await page.locator('[data-action="open-correction"]').evaluate((element) => element.click());
+  await page.locator('[data-action="open-correction"]').click();
   await page.locator('[data-sheet-kind="correction"]').waitFor({ state: "visible" });
   const correctionText = await page.locator(".sheet-panel").innerText();
   assert.match(correctionText, /修正紀錄/);
