@@ -19,9 +19,10 @@ assert.match(index, /<meta name="viewport" content="width=device-width, initial-
 assert.match(index, /<link rel="stylesheet" href="\.\/styles\.css">/);
 assert.equal((index.match(/<style(?:\s[^>]*)?>/g) || []).length, 0, "index keeps CSS external");
 assert.equal((index.match(/<script>(?![\s\S]*src=)[\s\S]*?<\/script>/g) || []).length, 0, "index keeps JavaScript external");
-for (const file of ["src/domain.js", "src/storage.js", "src/ai.js", "src/lab-fixture.js", "src/finance-fixture.js"]) assert.ok(fs.existsSync(path.join(root, file)), `${file} exists`);
+for (const file of ["src/domain.js", "src/storage.js", "src/admin.js", "src/ai.js", "src/lab-fixture.js", "src/finance-fixture.js"]) assert.ok(fs.existsSync(path.join(root, file)), `${file} exists`);
 assert.match(index, /src\/lab-fixture\.js/);
 assert.match(index, /src\/finance-fixture\.js/);
+assert.match(index, /src\/admin\.js/);
 assert.match(app, /const DATA = window\.JinjiLabFixture;/);
 
 const financeMapMatch = app.match(/const FINANCE_CONTEXT_FARM_MAP = Object\.freeze\((\{[\s\S]*?\})\);/);
@@ -108,7 +109,7 @@ assert.equal(finance.listSourceReferences().length, 12);
 assert.deepEqual(finance.getPortfolioTotals(), { gross: 901000, allocated: 121250, expense: 6000, net: 115250 });
 assert.equal(finance.getCumulativeNetSeries().at(-1).value, 115250);
 
-const guardedSource = [app, read("src/domain.js"), read("src/storage.js"), read("src/ai.js"), read("src/finance-fixture.js")].join("\n");
+const guardedSource = [app, read("src/domain.js"), read("src/storage.js"), read("src/admin.js"), read("src/ai.js"), read("src/finance-fixture.js")].join("\n");
 assert.doesNotMatch(app, /farm\.finance|\.finance\b/);
 assert.doesNotMatch(app, /labData\(\)\.history/);
 assert.doesNotMatch(app, /(?:204000|120000|5000|115000)/);
@@ -120,6 +121,8 @@ assert.match(app, /reconstructOperationalEvents\(labData\(\)\.events\)/);
 assert.match(app, /escapeHtml\(state\.quickRecordDraft\)/);
 assert.match(app, /data-action="commit-lab-event"/);
 assert.match(app, /PREPROD LAB/);
+assert.match(read("src/admin.js"), /LocalLabAdminAuthorizationAdapter/);
+assert.match(read("src/domain.js"), /validateMasterData/);
 assert.equal(financeFixture.farms.every((farm) => farm.id.startsWith("syn-") && farm.name.startsWith("模擬場")), true);
 assert.equal(financeFixture.investors.every((investor) => investor.id.startsWith("syn-") && investor.name.startsWith("模擬投資人")), true);
 assert.equal(financeFixture.distributions.every((row) => row.id.startsWith("syn-") && row.sourceDataset === "SYNTHETIC_FINANCE_V1" && row.sourceRowKey.startsWith("fixture://")), true);

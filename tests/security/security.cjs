@@ -3,7 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "../..");
-const files = ["index.html", "styles.css", "app.js", "src/domain.js", "src/storage.js", "src/ai.js", "src/lab-fixture.js", "src/finance-fixture.js"];
+const files = ["index.html", "styles.css", "app.js", "src/domain.js", "src/storage.js", "src/admin.js", "src/ai.js", "src/lab-fixture.js", "src/finance-fixture.js"];
 const source = files.map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
 
 assert.doesNotMatch(source, /https?:\/\/[^\s"']*(?:workers\.dev|api\.line\.me|cloudflareworkers\.com)/i);
