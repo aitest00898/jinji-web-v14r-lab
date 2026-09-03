@@ -53,7 +53,7 @@ async function runViewport(browser, viewport, label) {
 
   await page.locator(`${navRoot} [data-nav="more"]`).click();
   await page.locator('[data-action="open-sheet"][data-sheet-kind="quick-actions"]').click();
-  assert.equal(await page.locator('[data-action="start-quick-record-farm"]').count(), 4);
+  assert.equal(await page.locator('[data-action="start-quick-record-farm"]').count(), 7);
   await page.locator('[data-action="start-quick-record-farm"][data-farm-id="red"]').click();
   assert.equal(await page.locator('[data-sheet-kind="quick-record"]').count(), 1);
   await page.locator('button.sheet-close[data-action="close-sheet"]').click();
