@@ -13,13 +13,15 @@ const phase3BaselineRoot = path.join(__dirname, "baseline");
 const labPort = Number(process.env.VISUAL_PORT || 4182);
 const referenceRoot = process.env.REFERENCE_ROOT || "/Users/joe/Downloads";
 const referenceFile = path.join(referenceRoot, process.env.REFERENCE_FILE || "jinji-management-center-v7.html");
-const hasReference = fs.existsSync(referenceFile);
+const useLocalVisualReference = process.env.CI !== "true";
+const hasReference = useLocalVisualReference && fs.existsSync(referenceFile);
 const referencePort = Number(process.env.REFERENCE_PORT || 4183);
 const labUrl = `http://127.0.0.1:${labPort}`;
 const referenceUrl = `http://127.0.0.1:${referencePort}`;
 const expectedTitle = "金雞管理中心 V14R Plus r4 Desktop v7（測試版）";
 const expectedReferenceTitle = "金雞管理中心 V14R Plus r4 Desktop v2（測試版）";
 const expectedMarker = "jinji-v14r-plus-r4-desktop-v7-mobile-nav";
+const useLocalPhase3Baseline = useLocalVisualReference;
 const responsiveMatrix = [
   ["mobile-320", 320, 568], ["mobile-360", 360, 800], ["mobile-390", 390, 844], ["mobile-393", 393, 852], ["mobile-430", 430, 932],
   ["tablet-768", 768, 1024], ["tablet-834", 834, 1194], ["tablet-1023", 1023, 900],
@@ -55,7 +57,7 @@ async function screenshotAndCompare(labPage, referencePage, name) {
   const phase3ReferencePath = path.join(phase3BaselineRoot, `phase3-${name}.png`);
   const diffPath = path.join(output, `diff-${name}.png`);
   const labBuffer = await labPage.screenshot({ path: labPath, fullPage: true });
-  const hasPhase3Baseline = fs.existsSync(phase3ReferencePath);
+  const hasPhase3Baseline = useLocalPhase3Baseline && fs.existsSync(phase3ReferencePath);
   if (!referencePage && !hasPhase3Baseline) return { labPath, comparison: "structural-only", pixelDiff: "NOT_COMPARED" };
   const referenceBuffer = hasPhase3Baseline
     ? fs.readFileSync(phase3ReferencePath)
@@ -152,7 +154,7 @@ async function main() {
     }
     assert.deepEqual(labErrors, []);
     assert.deepEqual(referenceErrors, []);
-    const hasPhase3Baseline = fs.existsSync(path.join(phase3BaselineRoot, "phase3-390x844.png")) && fs.existsSync(path.join(phase3BaselineRoot, "phase3-1440x900.png"));
+    const hasPhase3Baseline = useLocalPhase3Baseline && fs.existsSync(path.join(phase3BaselineRoot, "phase3-390x844.png")) && fs.existsSync(path.join(phase3BaselineRoot, "phase3-1440x900.png"));
     const evidence = { comparison: hasPhase3Baseline ? "phase3-baseline-pixel" : hasReference ? "V7-reference-pixel" : "structural-only", reference: hasPhase3Baseline ? phase3BaselineRoot : hasReference ? referenceFile : "NOT_AVAILABLE", mobile, desktop, matrix, mobileComparison, desktopComparison, labErrors: labErrors.length, referenceErrors: referenceErrors.length };
     fs.writeFileSync(path.join(output, "visual-diff.json"), JSON.stringify(evidence, null, 2) + "\n");
     console.log("VISUAL_PASS", JSON.stringify(evidence));

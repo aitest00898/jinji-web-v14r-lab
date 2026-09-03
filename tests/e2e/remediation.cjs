@@ -140,12 +140,13 @@ async function runMasterDataAndCrossFarm(page) {
   await page.locator('[data-testid="create-farm"]').click();
   const newFarmId = await page.locator('[data-testid="master-farm-select"]').inputValue();
   assert.match(newFarmId, /^lab-farm-/);
+  await page.locator('[data-testid="master-farm-select"] option').filter({ hasText: "Phase 3 測試場" }).waitFor({ state: "attached" });
   assert.match(await page.locator(".sheet-panel").innerText(), /Finance identity 已建立/);
 
   await page.locator('[data-testid="master-house-name"]').fill("Phase 3 一舍");
   await page.locator('[data-testid="master-house-code"]').fill("P3-H1");
   await page.locator('[data-testid="create-house"]').click();
-  await page.locator('[data-testid="master-house-select"]').waitFor();
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="master-house-select"] option').length === 1);
   assert.equal(await page.locator('[data-testid="master-house-select"] option').count(), 1);
 
   await page.locator('[data-testid="master-flock-code"]').fill("P3-001");
@@ -161,6 +162,7 @@ async function runMasterDataAndCrossFarm(page) {
   await page.locator('[data-testid="master-house-name"]').fill("Phase 3 二舍");
   await page.locator('[data-testid="master-house-code"]').fill("P3-H2");
   await page.locator('[data-testid="create-house"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="master-house-select"] option').length === 2);
   assert.equal(await page.locator('[data-testid="master-house-select"] option').count(), 2);
   await page.locator('[data-testid="master-flock-code"]').fill("P3-002");
   await page.locator('[data-testid="master-flock-initial"]').fill("50");
