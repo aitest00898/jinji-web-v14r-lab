@@ -197,7 +197,222 @@
   class EventRepository extends BaseRepository {}
   class PendingRepository extends BaseRepository {}
   class CalendarRepository extends BaseRepository {}
-  class FinanceRepository extends BaseRepository {}
+  class FinanceRepository extends BaseRepository {
+    constructor(options = {}) {
+      super(options.store || null);
+      const source = options.dataset || root?.JinjiFinanceFixture;
+      if (!source) throw new Error("FINANCE_DATASET_REQUIRED");
+      const dataset = clone(source);
+      const validator = options.validate || root?.JinjiDomain?.validateFinanceDataset;
+      if (typeof validator === "function") {
+        validator(dataset);
+      } else if (dataset.metadata?.classification !== "synthetic" || !String(dataset.metadata?.datasetId || "").startsWith("SYNTHETIC_")) {
+        throw new Error("FINANCE_SYNTHETIC_DATASET_REQUIRED");
+      }
+      this.dataset = this.freeze(dataset);
+    }
+
+    freeze(value) {
+      if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+      Object.values(value).forEach((child) => this.freeze(child));
+      return Object.freeze(value);
+    }
+
+    normalizeFilters(filters = {}) {
+      const list = (value) => {
+        if (value === undefined || value === null || value === "") return [];
+        return (Array.isArray(value) ? value : [value]).map(String);
+      };
+      return {
+        farmIds: [...new Set([...list(filters.farmId), ...list(filters.farmIds)])],
+        investorIds: [...new Set([...list(filters.investorId), ...list(filters.investorIds)])],
+        fromDate: filters.fromDate || filters.dateFrom || filters.startDate || null,
+        toDate: filters.toDate || filters.dateTo || filters.endDate || null,
+      };
+    }
+
+    distributionRows(filters = {}) {
+      const normalized = this.normalizeFilters(filters);
+      const investorIds = new Set(normalized.investorIds);
+      return this.dataset.distributions
+        .filter((row) => !normalized.farmIds.length || normalized.farmIds.includes(row.farmId))
+        .filter((row) => !normalized.fromDate || row.distributionDate >= normalized.fromDate)
+        .filter((row) => !normalized.toDate || row.distributionDate <= normalized.toDate)
+        .filter((row) => !investorIds.size || this.dataset.allocations.some((allocation) => allocation.distributionId === row.id && investorIds.has(allocation.investorId)))
+        .sort((a, b) => `${a.distributionDate} ${a.id}`.localeCompare(`${b.distributionDate} ${b.id}`));
+    }
+
+    selectedFarmIds(filters = {}, distributions = this.distributionRows(filters)) {
+      const normalized = this.normalizeFilters(filters);
+      if (normalized.farmIds.length) return normalized.farmIds;
+      if (!normalized.investorIds.length) return this.dataset.farms.map((farm) => farm.id);
+      const investorIds = new Set(normalized.investorIds);
+      const distributionFarmIds = new Set(distributions.map((row) => row.farmId));
+      this.dataset.farmInvestorEquity.forEach((row) => {
+        if (investorIds.has(row.investorId)) distributionFarmIds.add(row.farmId);
+      });
+      return this.dataset.farms.map((farm) => farm.id).filter((farmId) => distributionFarmIds.has(farmId));
+    }
+
+    getDataset() {
+      return clone(this.dataset);
+    }
+
+    getPortfolioTotals(filters = {}) {
+      return clone(this.getSummary(filters).totals);
+    }
+
+    getSummary(filters = {}) {
+      const normalized = this.normalizeFilters(filters);
+      const distributions = this.distributionRows(filters);
+      const distributionIds = new Set(distributions.map((row) => row.id));
+      const investorIds = new Set(normalized.investorIds);
+      const allocations = this.dataset.allocations.filter((row) => distributionIds.has(row.distributionId) && (!investorIds.size || investorIds.has(row.investorId)));
+      const selectedFarmIds = new Set(this.selectedFarmIds(filters, distributions));
+      const farmRows = this.dataset.farms.filter((farm) => selectedFarmIds.has(farm.id)).map((farm) => {
+        const farmDistributions = distributions.filter((row) => row.farmId === farm.id);
+        const farmAllocations = allocations.filter((row) => farmDistributions.some((distribution) => distribution.id === row.distributionId));
+        const allocated = investorIds.size
+          ? farmAllocations.reduce((sum, row) => sum + Number(row.amount || 0), 0)
+          : farmDistributions.reduce((sum, row) => sum + Number(row.allocatedProfitLoss || 0), 0);
+        const expense = farmDistributions.reduce((sum, row) => sum + Number(row.expense || 0), 0);
+        const gross = farmDistributions.reduce((sum, row) => sum + Number(row.grossProfitLoss || 0), 0);
+        const net = investorIds.size ? allocated : farmDistributions.reduce((sum, row) => sum + Number(row.netIncome || 0), 0);
+        const latest = farmDistributions.at(-1);
+        return {
+          ...clone(farm),
+          equityFraction: Number(farm.playerGroupEquityFraction || 0),
+          distributionCount: farmDistributions.length,
+          grossProfitLoss: gross,
+          allocatedProfitLoss: allocated,
+          expense,
+          netIncome: net,
+          latestDistributionDate: latest?.distributionDate || null,
+          historyStatus: farmDistributions.length ? "has_history" : "no_history",
+        };
+      });
+
+      const equityRows = this.dataset.farmInvestorEquity.filter((row) => selectedFarmIds.has(row.farmId) && (!investorIds.size || investorIds.has(row.investorId)));
+      const investorRows = this.dataset.investors.filter((investor) => !investorIds.size || investorIds.has(investor.id)).map((investor) => {
+        const investorAllocations = allocations.filter((row) => row.investorId === investor.id);
+        const investorEquities = equityRows.filter((row) => row.investorId === investor.id);
+        const latestAllocation = investorAllocations
+          .map((allocation) => ({ allocation, distribution: this.dataset.distributions.find((row) => row.id === allocation.distributionId) }))
+          .filter((row) => row.distribution)
+          .sort((a, b) => `${a.distribution.distributionDate} ${a.allocation.id}`.localeCompare(`${b.distribution.distributionDate} ${b.allocation.id}`))
+          .at(-1);
+        return {
+          ...clone(investor),
+          farms: investorEquities.map((equity) => ({
+            farmId: equity.farmId,
+            farm: this.dataset.farms.find((farm) => farm.id === equity.farmId)?.name || equity.farmId,
+            equityFraction: Number(equity.equityFraction || 0),
+            share: Number(equity.equityFraction || 0) * 100,
+            allocationTotal: investorAllocations
+              .filter((allocation) => this.dataset.distributions.find((row) => row.id === allocation.distributionId)?.farmId === equity.farmId)
+              .reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0),
+          })),
+          equityTotal: investorEquities.reduce((sum, equity) => sum + Number(equity.equityFraction || 0), 0),
+          allocationTotal: investorAllocations.reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0),
+          positiveDistributionCount: investorAllocations.filter((allocation) => Number(allocation.amount) > 0).length,
+          negativeDistributionCount: investorAllocations.filter((allocation) => Number(allocation.amount) < 0).length,
+          latestAllocation: latestAllocation ? {
+            amount: Number(latestAllocation.allocation.amount),
+            distributionId: latestAllocation.allocation.distributionId,
+            date: latestAllocation.distribution.distributionDate,
+          } : null,
+        };
+      });
+
+      const totals = distributions.reduce((result, row) => ({
+        gross: result.gross + Number(row.grossProfitLoss || 0),
+        allocated: result.allocated + (investorIds.size
+          ? allocations.filter((allocation) => allocation.distributionId === row.id).reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0)
+          : Number(row.allocatedProfitLoss || 0)),
+        expense: result.expense + Number(row.expense || 0),
+        net: result.net + (investorIds.size
+          ? allocations.filter((allocation) => allocation.distributionId === row.id).reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0)
+          : Number(row.netIncome || 0)),
+      }), { gross: 0, allocated: 0, expense: 0, net: 0 });
+
+      return clone({
+        dataset: this.dataset.metadata,
+        organization: this.dataset.organization,
+        totals,
+        farms: farmRows,
+        investors: investorRows,
+        farmInvestorEquity: equityRows,
+        distributions,
+        allocations,
+      });
+    }
+
+    listFarms(filters = {}) { return this.getSummary(filters).farms; }
+    getFarm(farmId, filters = {}) { return this.listFarms({ ...filters, farmId }).find((farm) => farm.id === farmId) || null; }
+    listInvestors(filters = {}) { return this.getSummary(filters).investors; }
+    getInvestor(investorId, filters = {}) { return this.listInvestors({ ...filters, investorId }).find((investor) => investor.id === investorId) || null; }
+    listEquities(filters = {}) {
+      const normalized = this.normalizeFilters(filters);
+      return clone(this.dataset.farmInvestorEquity.filter((row) => (!normalized.farmIds.length || normalized.farmIds.includes(row.farmId)) && (!normalized.investorIds.length || normalized.investorIds.includes(row.investorId))));
+    }
+    listDistributions(filters = {}) { return clone(this.distributionRows(filters)); }
+    getDistribution(distributionId) { return clone(this.dataset.distributions.find((row) => row.id === distributionId) || null); }
+    listAllocations(filters = {}) { return this.getSummary(filters).allocations; }
+    getDistributionAllocations(distributionId) { return clone(this.dataset.allocations.filter((row) => row.distributionId === distributionId)); }
+    getInvestorAllocations(investorId, filters = {}) { return clone(this.dataset.allocations.filter((row) => row.investorId === investorId && this.distributionRows({ ...filters, investorId }).some((distribution) => distribution.id === row.distributionId))); }
+    listSourceReferences(filters = {}) {
+      const distributions = this.listDistributions(filters);
+      const distributionById = new Map(distributions.map((distribution) => [distribution.id, distribution]));
+      const references = this.dataset.sourceReferences || this.dataset.distributions.map((distribution) => ({
+        id: `syn-source-${distribution.id}`,
+        distributionId: distribution.id,
+        sourceDataset: distribution.sourceDataset,
+        sourceRowKey: distribution.sourceRowKey,
+        sourceDateRoc: distribution.sourceDateRoc,
+      }));
+      return clone(references.filter((reference) => distributionById.has(reference.distributionId)).map((reference) => ({
+        ...reference,
+        distributionDate: distributionById.get(reference.distributionId).distributionDate,
+        classification: this.dataset.metadata.classification,
+      })));
+    }
+    getSourceReference(distributionId) { return this.listSourceReferences().find((row) => row.distributionId === distributionId) || null; }
+    getCumulativeNetSeries(filters = {}) {
+      const normalized = this.normalizeFilters(filters);
+      const distributions = this.distributionRows(filters);
+      const allocationsByDistribution = new Map();
+      const investorIds = new Set(normalized.investorIds);
+      if (investorIds.size) {
+        this.dataset.allocations.forEach((allocation) => {
+          if (!investorIds.has(allocation.investorId)) return;
+          allocationsByDistribution.set(allocation.distributionId, (allocationsByDistribution.get(allocation.distributionId) || 0) + Number(allocation.amount || 0));
+        });
+      }
+      let runningTotal = 0;
+      return distributions.map((distribution) => {
+        const netIncome = investorIds.size ? allocationsByDistribution.get(distribution.id) || 0 : Number(distribution.netIncome || 0);
+        runningTotal += netIncome;
+        return {
+          date: distribution.distributionDate,
+          label: distribution.distributionDate.slice(0, 7),
+          distributionId: distribution.id,
+          netIncome,
+          expense: Number(distribution.expense || 0),
+          runningTotal,
+          value: runningTotal,
+        };
+      });
+    }
+    getExpenseSeries(filters = {}) {
+      return this.distributionRows(filters).map((distribution) => ({
+        date: distribution.distributionDate,
+        label: distribution.distributionDate.slice(0, 7),
+        distributionId: distribution.id,
+        expense: Number(distribution.expense || 0),
+        value: Number(distribution.expense || 0),
+      }));
+    }
+  }
   class AuditRepository extends BaseRepository {}
   class SettingsRepository extends BaseRepository {}
   class AnalyticsRepository extends BaseRepository {}

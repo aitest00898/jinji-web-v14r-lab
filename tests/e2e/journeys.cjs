@@ -170,6 +170,21 @@ async function runContextJourney(page) {
   assert.match(retainedContext, /紅羽一舍/);
   assert.match(retainedContext, /AUDIT-RED-ALPHA/);
   await closeSheet(page);
+
+  for (const [farmId, farmName, houseId, flockCode, eventLabel] of [
+    ["f", "模擬營運場 F", "f-1", "SYN-F-001", "死亡 2 隻"],
+    ["g", "模擬營運場 G", "g-1", "SYN-G-001", "死亡 1 隻"],
+    ["h", "模擬營運場 H", "h-1", "SYN-H-001", "死亡 2 隻"],
+  ]) {
+    await page.locator('[data-testid="farm-selector"]').click();
+    await page.locator(`[data-action="select-farm-direct"][data-farm-id="${farmId}"]`).click();
+    assert.match(await page.locator(".context-hub").innerText(), new RegExp(farmName));
+    await page.locator(`[data-action="select-house-direct"][data-house-id="${houseId}"]`).click();
+    await page.locator(`[data-action="select-flock-direct"][data-flock-id="${farmId}-a"]`).click();
+    assert.match(await page.locator(".context-hub").innerText(), new RegExp(flockCode));
+    await page.locator('.bottom-nav [data-nav="records"]').click();
+    assert.ok(await page.locator('.list-row[data-action="open-event"]').filter({ hasText: eventLabel }).count() >= 1, `${farmId} event is visible in Records`);
+  }
 }
 
 async function runOfflineJourney(browser) {
@@ -201,7 +216,7 @@ async function runOfflineJourney(browser) {
   await page.locator('[data-action="select-farm-direct"][data-farm-id="all"]').click();
   await page.locator('.bottom-nav [data-nav="today"]').click();
   assert.equal(await page.locator('[data-testid="mortality-value"]').innerText(), "6");
-  assert.equal(await page.locator('[data-testid="stock-value"]').innerText(), "31,412");
+  assert.equal(await page.locator('[data-testid="stock-value"]').innerText(), "55,294");
   return page;
 }
 

@@ -23,7 +23,7 @@
     spark: '<path d="m12 3 1.6 5.4L19 10l-5.4 1.6L12 17l-1.6-5.4L5 10l5.4-1.6L12 3Z"/><path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7L19 16Z"/>',
   };
 
-  const DATA = {"farms":[{"id":"all","name":"全部在養","subtitle":"全域總覽","readOnly":true,"stock":31412,"mortality":6,"cull":1,"net":115000,"houses":[]},{"id":"red","name":"稽核紅羽一場","subtitle":"紅羽場區","breed":"紅羽","risk":"死亡偏高＋高溫","stock":12132,"mortality":5,"cull":1,"caretakers":["模擬飼養者甲","模擬飼養者乙"],"finance":{"gross":55000,"allocated":33000,"expense":1200,"net":31800,"investors":[["模擬投資人甲",50,16500],["模擬投資人乙",50,16500]],"expenses":[["粗糠",420],["清雞糞",330],["維修",250],["其他",200]]},"houses":[{"id":"red-1","name":"紅羽一舍","code":"H1","flocks":[{"id":"alpha","code":"AUDIT-RED-ALPHA","status":"7 日內準備出雞","state":"active","initial":7000,"stock":6812,"chickIn":"2026-07-20","ship":"2026-09-06","upcoming":true}]},{"id":"red-2","name":"紅羽二舍","code":"H2","flocks":[{"id":"beta","code":"AUDIT-RED-BETA","status":"進行中","state":"active","initial":5500,"stock":5320,"chickIn":"2026-08-01","ship":"2026-09-25","upcoming":false}]}]},{"id":"black","name":"稽核黑羽二場","subtitle":"黑羽場區","breed":"黑羽","risk":"穩定","stock":5420,"mortality":0,"cull":0,"caretakers":["模擬飼養者丙"],"finance":{"gross":70000,"allocated":42000,"expense":1500,"net":40500,"investors":[["模擬投資人甲",40,16800],["模擬投資人丙",60,25200]],"expenses":[["粗糠",500],["清雞糞",420],["水電",330],["維修",250]]},"houses":[{"id":"black-1","name":"黑羽一舍","code":"H1","flocks":[{"id":"black-a","code":"AUDIT-BLACK-001","status":"進行中","state":"active","initial":5600,"stock":5420,"chickIn":"2026-07-28","ship":"2026-09-18","upcoming":false}]},{"id":"black-2","name":"黑羽二舍","code":"H2","flocks":[]}]},{"id":"silkie","name":"稽核烏骨三場","subtitle":"烏骨場區","breed":"烏骨","risk":"飲水異常追蹤","stock":5940,"mortality":1,"cull":0,"caretakers":["模擬飼養者丁","模擬飼養者乙"],"finance":{"gross":46000,"allocated":27600,"expense":900,"net":26700,"investors":[["模擬投資人乙",50,13800],["模擬投資人丁",50,13800]],"expenses":[["粗糠",300],["清雞糞",250],["水電",200],["維修",150]]},"houses":[{"id":"silkie-1","name":"烏骨一舍","code":"H1","flocks":[{"id":"silkie-a","code":"AUDIT-SILKIE-A","status":"進行中","state":"active","initial":3300,"stock":3160,"chickIn":"2026-07-15","ship":"2026-09-10","upcoming":false}]},{"id":"silkie-2","name":"烏骨二舍","code":"H2","flocks":[{"id":"silkie-b","code":"AUDIT-SILKIE-B","status":"進行中","state":"active","initial":2900,"stock":2780,"chickIn":"2026-07-24","ship":"2026-09-17","upcoming":false}]}]},{"id":"new","name":"稽核新批四場","subtitle":"新批場區","breed":"紅羽新批","risk":"新批觀察","stock":7920,"mortality":0,"cull":0,"caretakers":["模擬飼養者戊"],"finance":{"gross":0,"allocated":0,"expense":600,"net":-600,"investors":[["模擬投資人甲",50,0],["模擬投資人戊",50,0]],"expenses":[["粗糠",200],["清雞糞",150],["水電",150],["其他",100]]},"houses":[{"id":"new-1","name":"新批一舍","code":"H1","flocks":[{"id":"new-a","code":"AUDIT-NEW-001","status":"進行中","state":"active","initial":8000,"stock":7920,"chickIn":"2026-08-25","ship":"2026-11-20","upcoming":false}]}]},{"id":"history","name":"稽核歷史五場","subtitle":"歷史 review 區","breed":"歷史批","risk":"已出雞／僅供歷史查詢","stock":0,"mortality":0,"cull":0,"caretakers":["模擬飼養者己"],"finance":{"gross":33000,"allocated":17400,"expense":800,"net":16600,"investors":[["模擬投資人乙",60,10440],["模擬投資人己",40,6960]],"expenses":[["清雞糞",260],["水電",220],["維修",180],["其他",140]]},"houses":[{"id":"history-1","name":"歷史一舍","code":"H1","flocks":[{"id":"history-old","code":"AUDIT-HISTORY-OLD","status":"已出雞","state":"closed","initial":5000,"stock":0,"chickIn":"2026-05-01","ship":"2026-07-31","upcoming":false}]},{"id":"history-2","name":"歷史二舍","code":"H2","flocks":[]}]}],"pending":[{"id":"pending-1","title":"死亡 3？來源不完整","detail":"需要確認雞舍後才能成為正式紀錄。","kind":"死亡紀錄","farmId":"red","houseId":null,"flockId":null},{"id":"pending-2","title":"確認 7 日內出雞準備","detail":"AUDIT-RED-ALPHA 預計 09/06 出雞。","kind":"出雞準備","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"pending-3","title":"飼料數量可能缺單位","detail":"來源文字「飼料 6」，需人工確認。","kind":"飼料紀錄","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"pending-4","title":"飲水異常需要追蹤","detail":"烏骨一舍飲水量偏低。","kind":"異常追蹤","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"}],"abnormalities":[{"id":"abnormal-1","title":"活動力下降","category":"健康","state":"追蹤中","status":"active","date":"2026-08-30","time":"15:20","temp":34.0,"farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"abnormal-2","title":"飲水量偏低","category":"飲水","state":"追蹤中","status":"active","date":"2026-08-31","time":"07:10","temp":31.0,"farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"abnormal-3","title":"水線壓力不穩","category":"設備","state":"追蹤中","status":"active","date":"2026-08-29","time":"14:40","temp":32.2,"farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"abnormal-4","title":"歷史高溫紀錄","category":"環境","state":"已結案","status":"resolved","date":"2026-07-20","time":"14:00","temp":35.1,"farmId":"history","houseId":"history-1","flockId":"history-old"}],"events":[{"id":"e-r1","date":"2026-08-31","time":"08:10","type":"mortality","qty":5,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"e-r2","date":"2026-08-31","time":"07:50","type":"cull","qty":1,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"e-r3","date":"2026-08-29","time":"09:05","type":"feed","qty":240,"unit":"kg","farmId":"red","houseId":null,"flockId":null},{"id":"e-b1","date":"2026-08-30","time":"10:10","type":"feed","qty":210,"unit":"kg","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"e-b2","date":"2026-08-28","time":"07:40","type":"mortality","qty":1,"unit":"隻","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"e-s1","date":"2026-08-31","time":"06:50","type":"mortality","qty":1,"unit":"隻","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"e-s2","date":"2026-08-30","time":"08:30","type":"water","qty":1850,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"e-n1","date":"2026-08-30","time":"09:00","type":"feed","qty":120,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"e-h1","date":"2026-07-31","time":"06:00","type":"shipment","qty":4705,"unit":"隻","farmId":"history","houseId":"history-1","flockId":"history-old"}],"history":[{"label":"07/01","value":76000},{"label":"07/15","value":84200},{"label":"08/01","value":96500},{"label":"08/15","value":107500},{"label":"09/01","value":115000}]};
+  const DATA = window.JinjiLabFixture;
 
   /* V14R Plus r3 linked test events — every chart point is also a normal scoped record. */
   const PLUS_LINKED_TEST_EVENTS = [{"id":"plus-ra-0825-m","date":"2026-08-25","time":"07:35","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0825-f","date":"2026-08-25","time":"09:10","type":"feed","qty":230,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0825-w","date":"2026-08-25","time":"18:20","type":"water","qty":2400,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0826-m","date":"2026-08-26","time":"07:30","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0826-f","date":"2026-08-26","time":"09:05","type":"feed","qty":232,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0826-w","date":"2026-08-26","time":"18:10","type":"water","qty":2380,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0827-m","date":"2026-08-27","time":"07:42","type":"mortality","qty":2,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0827-w","date":"2026-08-27","time":"18:15","type":"water","qty":2360,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0828-m","date":"2026-08-28","time":"07:38","type":"mortality","qty":2,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0828-f","date":"2026-08-28","time":"09:00","type":"feed","qty":236,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0828-w","date":"2026-08-28","time":"18:12","type":"water","qty":2310,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0829-m","date":"2026-08-29","time":"07:44","type":"mortality","qty":3,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0829-w","date":"2026-08-29","time":"18:00","type":"water","qty":2230,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0830-m","date":"2026-08-30","time":"07:50","type":"mortality","qty":4,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0830-f","date":"2026-08-30","time":"09:15","type":"feed","qty":238,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0830-w","date":"2026-08-30","time":"18:05","type":"water","qty":2100,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-rb-0825-f","date":"2026-08-25","time":"09:25","type":"feed","qty":190,"unit":"kg","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0825-w","date":"2026-08-25","time":"18:30","type":"water","qty":1950,"unit":"L","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0827-m","date":"2026-08-27","time":"07:55","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0827-f","date":"2026-08-27","time":"09:20","type":"feed","qty":194,"unit":"kg","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0829-m","date":"2026-08-29","time":"08:02","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0829-w","date":"2026-08-29","time":"18:20","type":"water","qty":1900,"unit":"L","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0831-f","date":"2026-08-31","time":"09:18","type":"feed","qty":198,"unit":"kg","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0831-w","date":"2026-08-31","time":"18:18","type":"water","qty":1930,"unit":"L","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-ba-0825-f","date":"2026-08-25","time":"09:12","type":"feed","qty":202,"unit":"kg","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0825-w","date":"2026-08-25","time":"18:16","type":"water","qty":1880,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0826-m","date":"2026-08-26","time":"07:48","type":"mortality","qty":1,"unit":"隻","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0826-w","date":"2026-08-26","time":"18:11","type":"water","qty":1900,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0829-f","date":"2026-08-29","time":"09:14","type":"feed","qty":208,"unit":"kg","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0829-w","date":"2026-08-29","time":"18:22","type":"water","qty":1910,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0831-w","date":"2026-08-31","time":"18:15","type":"water","qty":1940,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-sa-0825-f","date":"2026-08-25","time":"09:35","type":"feed","qty":118,"unit":"kg","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0825-w","date":"2026-08-25","time":"18:10","type":"water","qty":2080,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0827-w","date":"2026-08-27","time":"18:14","type":"water","qty":2010,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0828-f","date":"2026-08-28","time":"09:32","type":"feed","qty":120,"unit":"kg","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0828-w","date":"2026-08-28","time":"18:08","type":"water","qty":1950,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0829-w","date":"2026-08-29","time":"18:05","type":"water","qty":1900,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0831-f","date":"2026-08-31","time":"09:28","type":"feed","qty":116,"unit":"kg","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0831-w","date":"2026-08-31","time":"06:30","type":"water","qty":1680,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sb-0825-f","date":"2026-08-25","time":"09:42","type":"feed","qty":106,"unit":"kg","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0825-w","date":"2026-08-25","time":"18:25","type":"water","qty":1800,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0827-w","date":"2026-08-27","time":"18:26","type":"water","qty":1760,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0828-w","date":"2026-08-28","time":"18:24","type":"water","qty":1720,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0829-f","date":"2026-08-29","time":"09:38","type":"feed","qty":104,"unit":"kg","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0829-w","date":"2026-08-29","time":"13:55","type":"water","qty":1480,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0830-w","date":"2026-08-30","time":"18:24","type":"water","qty":1710,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0831-w","date":"2026-08-31","time":"18:21","type":"water","qty":1770,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-na-0825-f","date":"2026-08-25","time":"09:50","type":"feed","qty":72,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0825-w","date":"2026-08-25","time":"18:35","type":"water","qty":980,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0826-f","date":"2026-08-26","time":"09:52","type":"feed","qty":82,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0826-w","date":"2026-08-26","time":"18:34","type":"water","qty":1080,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0827-f","date":"2026-08-27","time":"09:51","type":"feed","qty":92,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0827-w","date":"2026-08-27","time":"18:33","type":"water","qty":1170,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0828-f","date":"2026-08-28","time":"09:49","type":"feed","qty":102,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0828-w","date":"2026-08-28","time":"18:31","type":"water","qty":1280,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0829-f","date":"2026-08-29","time":"09:46","type":"feed","qty":112,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0829-w","date":"2026-08-29","time":"18:28","type":"water","qty":1390,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0830-w","date":"2026-08-30","time":"18:27","type":"water","qty":1480,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0831-f","date":"2026-08-31","time":"09:44","type":"feed","qty":128,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0831-w","date":"2026-08-31","time":"18:26","type":"water","qty":1560,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"}];
@@ -31,6 +31,17 @@
   const LAB_FIXTURE = structuredClone(DATA);
   LAB_FIXTURE.events.push(...PLUS_LINKED_TEST_EVENTS);
   const LAB_STORE = new window.JinjiStorage.LabRepository({ fixture: LAB_FIXTURE });
+  const FINANCE_CONTEXT_FARM_MAP = Object.freeze({
+    red: "syn-farm-a",
+    black: "syn-farm-b",
+    silkie: "syn-farm-c",
+    new: "syn-farm-d",
+    history: "syn-farm-e",
+    f: "syn-farm-f",
+    g: "syn-farm-g",
+    h: "syn-farm-h",
+  });
+  const FINANCE_REPO = new window.JinjiStorage.FinanceRepository({ dataset: window.JinjiFinanceFixture });
 
   function labData() {
     const overlay = LAB_STORE.snapshot();
@@ -39,7 +50,6 @@
       pending: [...LAB_FIXTURE.pending, ...(overlay.pendingReviews || [])],
       abnormalities: [...LAB_FIXTURE.abnormalities, ...(overlay.abnormalities || [])],
       events: [...LAB_FIXTURE.events, ...(overlay.events || [])],
-      history: LAB_FIXTURE.history,
     };
   }
 
@@ -255,8 +265,15 @@
     return value === null || value === undefined ? "—" : Number(value).toLocaleString("zh-TW");
   }
 
+  const MONEY_FORMATTER = new Intl.NumberFormat("zh-TW", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const MONEY_PRECISE_FORMATTER = new Intl.NumberFormat("zh-TW", { minimumFractionDigits: 0, maximumFractionDigits: 12 });
+
   function money(value) {
-    return value === null || value === undefined ? "—" : Number(value).toLocaleString("zh-TW");
+    return value === null || value === undefined ? "—" : MONEY_FORMATTER.format(Number(value));
+  }
+
+  function moneyPrecise(value) {
+    return value === null || value === undefined ? "—" : MONEY_PRECISE_FORMATTER.format(Number(value));
   }
 
   function escapeHtml(value) {
@@ -446,33 +463,24 @@
     return Math.max(0, base - runtimeStockDelta({ farmId: farm?.id || "all", houseId: house.id, flockId: null }));
   }
 
-  function financeScopeFromFarms(farms) {
-    return {
-      gross: farms.reduce((sum, farm) => sum + farm.finance.gross, 0),
-      allocated: farms.reduce((sum, farm) => sum + farm.finance.allocated, 0),
-      expense: farms.reduce((sum, farm) => sum + farm.finance.expense, 0),
-      net: farms.reduce((sum, farm) => sum + farm.finance.net, 0),
-    };
+  function financeFilters() {
+    if (state.context.farmId === "all") return {};
+    return { farmId: FINANCE_CONTEXT_FARM_MAP[state.context.farmId] || "__no_matching_synthetic_farm__" };
   }
 
   function financeScope() {
-    if (state.context.farmId === "all") {
-      const farms = allProductionFarms();
-      return { farms, ...financeScopeFromFarms(farms), chart: true };
-    }
-    const farm = farmById(state.context.farmId);
-    return { farms: [farm], ...farm.finance, chart: false };
+    const context = currentContext();
+    const summary = FINANCE_REPO.getSummary(financeFilters());
+    return {
+      ...summary,
+      currentContext: context,
+      scopedToFarm: state.context.farmId !== "all",
+      contextNote: context.house || context.flock ? "目前營運範圍已選到雞舍／批次；財務資料目前仍以所屬雞場為範圍。" : "",
+    };
   }
 
-  function investorSummary(farms = allProductionFarms()) {
-    const totals = new Map();
-    farms.forEach((farm) => farm.finance.investors.forEach(([name, share, amount]) => {
-      const row = totals.get(name) || { name, amount: 0, farms: [] };
-      row.amount += amount;
-      row.farms.push({ farm: farm.name, share, amount });
-      totals.set(name, row);
-    }));
-    return [...totals.values()].sort((a, b) => b.amount - a.amount);
+  function investorSummary() {
+    return FINANCE_REPO.getSummary(financeFilters()).investors;
   }
 
   function assertDataContract() {
@@ -483,22 +491,33 @@
     const closed = flocks.filter((flock) => flock.state === "closed");
     const expect = (condition, message) => { if (!condition) throw new Error(`V14R_DATA_CONTRACT: ${message}`); };
 
-    expect(farms.length === 5, "farm count");
-    expect(houses.length === 9, "house count");
-    expect(flocks.length === 7, "flock count");
-    expect(active.length === 6, "active flock count");
+    expect(farms.length === 8, "farm count");
+    expect(houses.length === 15, "house count");
+    expect(flocks.length === 13, "flock count");
+    expect(active.length === 12, "active flock count");
     expect(closed.length === 1 && closed[0].code === "AUDIT-HISTORY-OLD", "closed history flock");
-    expect(active.reduce((sum, flock) => sum + flock.stock, 0) === 31412, "all stock");
-    expect(farmById("red").stock === 12132 && farmById("black").stock === 5420 && farmById("silkie").stock === 5940 && farmById("new").stock === 7920 && farmById("history").stock === 0, "farm stocks");
-    expect(["AUDIT-RED-ALPHA","AUDIT-RED-BETA","AUDIT-BLACK-001","AUDIT-SILKIE-A","AUDIT-SILKIE-B","AUDIT-NEW-001"].every((code) => active.some((flock) => flock.code === code)), "active flock membership");
-    expect(LAB_FIXTURE.pending.length === 4, "pending count");
+    expect(active.reduce((sum, flock) => sum + flock.stock, 0) === 55294, "all stock");
+    expect(farmById("all").stock === 55294, "all farm stock");
+    expect(farmById("red").stock === 12132 && farmById("black").stock === 5420 && farmById("silkie").stock === 5940 && farmById("new").stock === 7920 && farmById("history").stock === 0 && farmById("f").stock === 7728 && farmById("g").stock === 9606 && farmById("h").stock === 6548, "farm stocks");
+    expect(["AUDIT-RED-ALPHA","AUDIT-RED-BETA","AUDIT-BLACK-001","AUDIT-SILKIE-A","AUDIT-SILKIE-B","AUDIT-NEW-001","SYN-F-001","SYN-F-002","SYN-G-001","SYN-G-002","SYN-H-001","SYN-H-002"].every((code) => active.some((flock) => flock.code === code)), "active flock membership");
+    expect(LAB_FIXTURE.pending.length === 7, "pending count");
     expect(["死亡 3？來源不完整","確認 7 日內出雞準備","飼料數量可能缺單位","飲水異常需要追蹤"].every((title) => LAB_FIXTURE.pending.some((item) => item.title === title)), "pending membership");
-    expect(LAB_FIXTURE.abnormalities.length === 4 && LAB_FIXTURE.abnormalities.filter((item) => item.status === "active").length === 3, "abnormality baseline");
+    expect(LAB_FIXTURE.abnormalities.length === 7 && LAB_FIXTURE.abnormalities.filter((item) => item.status === "active").length === 6, "abnormality baseline");
     expect(LAB_FIXTURE.events.filter((event) => event.type === "mortality" && event.date === "2026-08-31").reduce((sum, event) => sum + event.qty, 0) === 6, "today mortality");
     expect(LAB_FIXTURE.events.filter((event) => event.type === "cull" && event.date === "2026-08-31").reduce((sum, event) => sum + event.qty, 0) === 1, "today cull");
-    const finance = financeScopeFromFarms(farms);
-    expect(finance.gross === 204000 && finance.allocated === 120000 && finance.expense === 5000 && finance.net === 115000, "finance totals");
-    expect(labData().history.at(-1)?.value === 115000, "history endpoint");
+    expect(["f", "g", "h"].every((farmId) => {
+      const farm = farmById(farmId);
+      return farm && farm.houses.length > 0 && farm.houses.some((house) => house.flocks.length > 0) && LAB_FIXTURE.events.some((event) => event.farmId === farmId) && LAB_FIXTURE.pending.some((item) => item.farmId === farmId) && LAB_FIXTURE.abnormalities.some((item) => item.farmId === farmId);
+    }), "horizontal synthetic farm coverage");
+    const finance = FINANCE_REPO.getSummary();
+    expect(finance.farms.length === 8, "finance farm count");
+    expect(finance.investors.length === 3, "finance investor count");
+    expect(finance.farmInvestorEquity.length === 24, "finance equity count");
+    expect(finance.distributions.length === 12, "finance distribution count");
+    expect(finance.allocations.length === 36, "finance allocation count");
+    const financeContract = window.JinjiDomain.validateFinanceDataset(window.JinjiFinanceFixture);
+    expect(JSON.stringify(finance.totals) === JSON.stringify(financeContract.totals), "finance totals");
+    expect(window.JinjiDomain.financeApproxEqual(FINANCE_REPO.getCumulativeNetSeries().at(-1)?.value, financeContract.totals.net), "finance cumulative series");
     expect(PLUS_LINKED_TEST_EVENTS.length >= 40, "linked test event volume");
     expect(PLUS_LINKED_TEST_EVENTS.every((event) => {
       const farm = farmById(event.farmId);
@@ -555,6 +574,12 @@
     "silkie-b": { male: 1450, female: 1450 },
     "new-a": { male: 4100, female: 3900 },
     "history-old": { male: 2600, female: 2400 },
+    "f-a": { male: 2100, female: 2000 },
+    "f-b": { male: 1950, female: 1850 },
+    "g-a": { male: 2700, female: 2500 },
+    "g-b": { male: 2350, female: 2250 },
+    "h-a": { male: 1900, female: 1700 },
+    "h-b": { male: 1600, female: 1500 },
   });
   const CALENDAR_WEIGH_LEAD_DAYS = 3;
 
@@ -1052,7 +1077,7 @@
       <div class="more-list">
         <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="insights"><span class="more-item-icon">${icon("chart")}</span><span><strong>洞察</strong><span>死亡、目前在養、飼料、飲水與異常摘要</span></span><span>›</span></button>
         <button type="button" class="more-item" data-nav="calendar"><span class="more-item-icon">${icon("records")}</span><span><strong>月曆</strong><span>排程、入雛、磅雞、出雞與營運紀錄</span></span><span>›</span></button>
-        <button type="button" class="more-item" data-action="go-finance"><span class="more-item-icon">${icon("finance")}</span><span><strong>財務</strong><span>總覽、各場、股權、費用、分配與統計</span></span><span>›</span></button>
+        <button type="button" class="more-item" data-action="go-finance"><span class="more-item-icon">${icon("finance")}</span><span><strong>財務</strong><span>總覽、各場、股權、歷史分配、費用、投資績效與資料來源</span></span><span>›</span></button>
         <button type="button" class="more-item" data-action="go-ai"><span class="more-item-icon">${icon("ai")}</span><span><strong>AI 助理</strong><span>帶入目前工作範圍；此測試版維持唯讀</span></span><span>›</span></button>
         <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="system"><span class="more-item-icon">${icon("lock")}</span><span><strong>系統</strong><span>查看雞場、雞舍、批次與服務邊界</span></span><span>›</span></button>
         <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="audit"><span class="more-item-icon">${icon("records")}</span><span><strong>變更紀錄</strong><span>修改、取消與操作歷程的入口</span></span><span>›</span></button>
@@ -1119,84 +1144,96 @@
     </section>`;
   }
 
-
-  function financeContext() {
-    return financeScope();
+  function financeTabs() {
+    return [["overview", "總覽"], ["farms", "各場"], ["equity", "投資人／股權"], ["distributions", "歷史分配"], ["expenses", "費用"], ["performance", "投資績效"], ["source", "資料來源"]];
   }
 
   function chartMarkup() {
-    const values = labData().history;
+    const values = FINANCE_REPO.getCumulativeNetSeries(financeFilters());
+    if (!values.length) return `<div class="empty-tab" data-testid="finance-chart-empty"><strong>尚無歷史結算</strong><p>目前範圍沒有可建立的累積淨收入序列。</p></div>`;
     const width = 680;
     const height = 240;
-    const left = 48;
+    const left = 56;
     const right = 24;
     const top = 24;
     const bottom = 40;
-    const min = 70000;
-    const max = 120000;
+    const rawValues = values.map((item) => item.value);
+    const rawMin = Math.min(...rawValues, 0);
+    const rawMax = Math.max(...rawValues, 0);
+    const padding = Math.max((rawMax - rawMin) * 0.12, 1);
+    const min = rawMin - padding;
+    const max = rawMax + padding;
     const plotWidth = width - left - right;
     const plotHeight = height - top - bottom;
     const points = values.map((item, index) => {
-      const x = left + (plotWidth * index) / (values.length - 1);
+      const x = values.length === 1 ? left + plotWidth / 2 : left + (plotWidth * index) / (values.length - 1);
       const y = top + ((max - item.value) / (max - min)) * plotHeight;
       return { ...item, x, y };
     });
     const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
     const area = `${points[0].x},${height - bottom} ${polyline} ${points[points.length - 1].x},${height - bottom}`;
-    const yTicks = [70000, 95000, 120000];
-    return `<div class="chart-wrap"><svg class="net-chart" data-testid="finance-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="測試資料 歷史淨值變化折線圖，最後資料點為 115,000">
+    const yTicks = [min, (min + max) / 2, max];
+    const last = values.at(-1);
+    return `<div class="chart-wrap"><svg class="net-chart" data-testid="finance-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="累積淨收入變化折線圖，最後資料點為 ${escapeHtml(money(last.value))}">
+      <title>依歷史分配動態計算的累積淨收入</title>
       ${yTicks.map((tick) => { const y = top + ((max - tick) / (max - min)) * plotHeight; return `<line class="chart-grid" x1="${left}" x2="${width - right}" y1="${y}" y2="${y}"/><text class="chart-axis" x="4" y="${y + 4}">${money(tick)}</text>`; }).join("")}
       <polygon class="chart-area" points="${area}"/><polyline class="chart-line" points="${polyline}"/>
-      ${points.map((point, index) => `<circle class="chart-point ${index === points.length - 1 ? "current" : ""}" cx="${point.x}" cy="${point.y}" r="${index === points.length - 1 ? 6 : 4}"/><circle class="chart-query-hit" cx="${point.x}" cy="${point.y}" r="15" tabindex="0" data-chart-tip="${escapeHtml(`${point.label}｜淨值 ${money(point.value)}`)}" aria-label="${escapeHtml(`${point.label} 淨值 ${money(point.value)}`)}"/><text class="chart-axis" text-anchor="middle" x="${point.x}" y="${height - 13}">${point.label}</text>${index === points.length - 1 ? `<text class="chart-value" text-anchor="end" x="${point.x - 10}" y="${point.y - 12}">${money(point.value)}</text>` : ""}`).join("")}
+      ${points.map((point, index) => `<circle class="chart-point ${index === points.length - 1 ? "current" : ""}" cx="${point.x}" cy="${point.y}" r="${index === points.length - 1 ? 6 : 4}"/><circle class="chart-query-hit" cx="${point.x}" cy="${point.y}" r="15" tabindex="0" data-chart-tip="${escapeHtml(`${point.date}｜累積淨收入 ${moneyPrecise(point.value)}`)}" aria-label="${escapeHtml(`${point.date} 累積淨收入 ${money(point.value)}`)}"/><text class="chart-axis" text-anchor="middle" x="${point.x}" y="${height - 13}">${escapeHtml(point.label)}</text>${index === points.length - 1 ? `<text class="chart-value" text-anchor="end" x="${point.x - 10}" y="${point.y - 12}">${money(last.value)}</text>` : ""}`).join("")}
     </svg></div>`;
   }
 
   function renderFinanceOverview() {
-    const totals = financeContext();
-    const context = currentContext();
-    return `<section class="finance-header"><div class="finance-kpis"><button type="button" class="finance-kpi finance-kpi-button" data-action="open-finance-metric" data-finance-metric="gross"><span>毛利</span><strong>${money(totals.gross)}</strong><small>查看構成 ›</small></button><button type="button" class="finance-kpi finance-kpi-button amber" data-action="open-finance-metric" data-finance-metric="allocated"><span>已配置</span><strong>${money(totals.allocated)}</strong><small>查看分配 ›</small></button><button type="button" class="finance-kpi finance-kpi-button red" data-action="open-finance-metric" data-finance-metric="expense"><span>費用</span><strong>${money(totals.expense)}</strong><small>查看分類 ›</small></button><button type="button" class="finance-kpi finance-kpi-button green" data-action="open-finance-metric" data-finance-metric="net"><span>目前淨額</span><strong data-testid="finance-net">${money(totals.net)}</strong><small>查看計算 ›</small></button></div><div class="metric-note"><strong>${context.farm.id === "all" ? "全部在養財務" : `${context.farm.name} 財務`}</strong><span>${context.farm.id === "all" ? "五個雞場合計。" : "雞舍／批次沿用所屬雞場財務。"}</span></div></section>${totals.chart ? `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>測試用歷史趨勢 · 最後一點為目前淨額 115,000</p></div><span class="status-chip warn">測試資料</span></div>${chartMarkup()}</section>` : `<section class="chart-panel"><div class="chart-title"><div><h3>歷史淨值變化</h3><p>目前只有全部在養的測試用歷史趨勢。</p></div><span class="status-chip warn">此場無獨立趨勢</span></div><div class="empty-tab"><strong>此雞場沒有獨立歷史序列</strong><p>避免把全部在養趨勢誤看成 ${context.farm.name} 的獨立歷史。</p></div></section>`}`;
+    const scope = financeScope();
+    const totals = scope.totals;
+    const context = scope.currentContext;
+    const scopeTitle = context.farm.id === "all" ? "全部在養財務" : `${context.farm.name} 財務`;
+    const scopeCopy = context.farm.id === "all" ? "八個模擬場合計；所有金額均為 synthetic fixture。" : "財務最小範圍為雞場；雞舍／批次沿用所屬雞場。";
+    return `<section class="finance-header"><div class="finance-kpis"><button type="button" class="finance-kpi finance-kpi-button" data-action="open-finance-metric" data-finance-metric="gross"><span>歷史總盈虧</span><strong>${money(totals.gross)}</strong><small>查看構成 ›</small></button><button type="button" class="finance-kpi finance-kpi-button amber" data-action="open-finance-metric" data-finance-metric="allocated"><span>已配置盈虧</span><strong>${money(totals.allocated)}</strong><small>查看歷史分配 ›</small></button><button type="button" class="finance-kpi finance-kpi-button red" data-action="open-finance-metric" data-finance-metric="expense"><span>費用</span><strong>${money(totals.expense)}</strong><small>查看費用合計 ›</small></button><button type="button" class="finance-kpi finance-kpi-button green" data-action="open-finance-metric" data-finance-metric="net"><span>投資人淨收入</span><strong data-testid="finance-net">${money(totals.net)}</strong><small>查看計算 ›</small></button></div><div class="metric-note"><strong>${scopeTitle}</strong><span>${scopeCopy}${scope.contextNote ? ` ${scope.contextNote}` : ""}</span></div></section><section class="chart-panel"><div class="chart-title"><div><h3>累積淨收入趨勢</h3><p>由 FinanceRepository 依分配日期排序後動態計算。</p></div><span class="status-chip warn">Synthetic</span></div>${chartMarkup()}</section>`;
+  }
+
+  function financeFarmRows(scope) {
+    return scope.farms.map((farm) => {
+      const history = farm.historyStatus === "has_history";
+      const description = history
+        ? `歷史總盈虧 ${money(farm.grossProfitLoss)} · 已配置盈虧 ${money(farm.allocatedProfitLoss)} · 費用 ${money(farm.expense)}`
+        : "尚無歷史結算";
+      return `<button type="button" class="list-row" data-action="open-finance-farm" data-farm-id="${escapeHtml(farm.id)}"><span><strong>${escapeHtml(farm.name)}</strong><span>${description}</span></span><span class="row-end"><span class="row-value">${history ? money(farm.netIncome) : "—"}</span><span>${history ? "投資人淨收入 ›" : "尚無歷史結算"}</span></span></button>`;
+    }).join("");
+  }
+
+  function financeInvestorRows(scope) {
+    return scope.investors.map((investor) => `<button type="button" class="list-row" data-action="open-investor-detail" data-investor-id="${escapeHtml(investor.id)}"><span><strong>${escapeHtml(investor.name)}</strong><span>${investor.farms.map((row) => `${escapeHtml(row.farm)} ${row.share.toFixed(1)}%`).join(" · ") || "尚無股權資料"} · 正向 ${investor.positiveDistributionCount} 筆 · 負向 ${investor.negativeDistributionCount} 筆</span></span><span class="row-end"><span class="row-value">${money(investor.allocationTotal)}</span><span>配置合計 ›</span></span></button>`).join("");
+  }
+
+  function financeDistributionRows(scope) {
+    return scope.distributions.map((distribution) => `<button type="button" class="list-row" data-action="open-distribution-detail" data-distribution-id="${escapeHtml(distribution.id)}"><span><strong>${escapeHtml(distribution.distributionDate)} · ${escapeHtml(distribution.sourceRowKey)}</strong><span>歷史總盈虧 ${money(distribution.grossProfitLoss)} · 已配置盈虧 ${money(distribution.allocatedProfitLoss)} · 費用 ${money(distribution.expense)}</span></span><span class="row-end"><span class="row-value">${money(distribution.netIncome)}</span><span>投資人淨收入 ›</span></span></button>`).join("");
   }
 
   function financeTabBody() {
     const scope = financeScope();
     if (state.financeTab === "overview") return renderFinanceOverview();
-    if (state.financeTab === "farms") {
-      const farms = state.context.farmId === "all" ? allProductionFarms() : scope.farms;
-      return `<section class="content-panel"><div class="panel-title"><div><h3>各場</h3><p>查看各場毛利、已配置、費用與淨額。</p></div><span class="status-chip good">${farms.length} 場</span></div><div class="list-stack">${farms.map((farm) => `<button type="button" class="list-row" data-action="open-finance-farm" data-farm-id="${farm.id}"><span><strong>${farm.name}</strong><span>毛利 ${money(farm.finance.gross)} · 已配置 ${money(farm.finance.allocated)} · 費用 ${money(farm.finance.expense)}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.net)}</span><span>淨額 ›</span></span></button>`).join("")}</div></section>`;
+    if (state.financeTab === "farms") return `<section class="content-panel"><div class="panel-title"><div><h3>各場</h3><p>顯示 FinanceRepository 的場級歷史彙總；沒有資料的場不補造結算。</p></div><span class="status-chip good">${scope.farms.length} 場</span></div><div class="list-stack">${financeFarmRows(scope) || `<div class="empty-tab"><strong>沒有符合範圍的模擬場</strong></div>`}</div></section>`;
+    if (state.financeTab === "equity") return `<section class="content-panel"><div class="panel-title"><div><h3>投資人／股權</h3><p>由投資人、場級股權與歷史分配資料 join；不使用均分假設。</p></div><span class="status-chip good">${scope.investors.length} 位</span></div><div class="list-stack">${financeInvestorRows(scope) || `<div class="empty-tab"><strong>沒有符合範圍的投資人</strong></div>`}</div></section>`;
+    if (state.financeTab === "distributions") return `<section class="content-panel"><div class="panel-title"><div><h3>歷史分配</h3><p>每筆 ProfitDistribution 與其三筆投資人配置均可進入明細。</p></div><span class="status-chip good">${scope.distributions.length} 筆</span></div><div class="list-stack">${financeDistributionRows(scope) || `<div class="empty-tab"><strong>尚無歷史結算</strong></div>`}</div></section>`;
+    if (state.financeTab === "expenses") return `<section class="content-panel"><div class="panel-title"><div><h3>費用</h3><p>只呈現分配層級的費用合計，不虛構費用分類。</p></div><span class="status-chip warn">${money(scope.totals.expense)}</span></div><div class="list-stack">${scope.farms.map((farm) => `<button type="button" class="list-row" data-action="open-expense-detail" data-farm-id="${escapeHtml(farm.id)}"><span><strong>${escapeHtml(farm.name)}</strong><span>${farm.distributionCount ? `${farm.distributionCount} 筆歷史分配 · 分配層級費用合計` : "尚無歷史結算"}</span></span><span class="row-end"><span class="row-value">${farm.distributionCount ? money(farm.expense) : "—"}</span><span>費用明細 ›</span></span></button>`).join("") || `<div class="empty-tab"><strong>沒有符合範圍的模擬場</strong></div>`}</div></section>`;
+    if (state.financeTab === "performance") {
+      const positive = scope.distributions.filter((row) => Number(row.netIncome) > 0).length;
+      const negative = scope.distributions.filter((row) => Number(row.netIncome) < 0).length;
+      const latest = scope.distributions.at(-1);
+      return `<section class="content-panel"><div class="panel-title"><div><h3>投資績效</h3><p>僅呈現已配置盈虧與投資人淨收入；沒有資本投入資料時不推導 ROI／IRR。</p></div><span class="status-chip good">唯讀計算</span></div><div class="detail-list"><div class="detail-block"><h3>投資人淨收入</h3><p data-testid="finance-performance-net">${money(scope.totals.net)}</p></div><div class="detail-block"><h3>正向／負向歷史分配</h3><p>${positive} ／ ${negative} 筆</p></div><div class="detail-block"><h3>最近歷史分配</h3><p>${latest ? `${latest.distributionDate} · ${money(latest.netIncome)}` : "尚無歷史結算"}</p></div><div class="readonly-note">ROI、IRR、年化報酬與回收期未提供：合約沒有資本投入基準，因此不自行推導。</div></div></section>`;
     }
-    if (state.financeTab === "equity") {
-      const investors = investorSummary(scope.farms);
-      return `<section class="content-panel"><div class="panel-title"><div><h3>投資人／股權</h3><p>依目前財務範圍顯示投資人配置。</p></div><span class="status-chip good">${investors.length} 位</span></div><div class="list-stack">${investors.map((investor) => `<button type="button" class="list-row" data-action="open-investor-detail" data-investor-name="${escapeHtml(investor.name)}"><span><strong>${investor.name}</strong><span>${investor.farms.map((row) => `${row.farm} ${row.share}%`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(investor.amount)}</span><span>配置金額 ›</span></span></button>`).join("")}</div></section>`;
-    }
-    if (state.financeTab === "expenses") {
-      return `<section class="content-panel"><div class="panel-title"><div><h3>費用</h3><p>測試用費用分類；各場分類總和與目前費用一致。</p></div><span class="status-chip warn">${money(scope.expense)}</span></div><div class="list-stack">${scope.farms.map((farm) => `<button type="button" class="list-row" data-action="open-expense-detail" data-farm-id="${farm.id}"><span><strong>${farm.name}</strong><span>${farm.finance.expenses.map(([name, value]) => `${name} ${money(value)}`).join(" · ")}</span></span><span class="row-end"><span class="row-value">${money(farm.finance.expense)}</span><span>費用 ›</span></span></button>`).join("")}</div></section>`;
-    }
-    if (state.financeTab === "distribution") {
-      const rows = scope.farms.flatMap((farm) => farm.finance.investors.map(([name, share, amount]) => ({ farm, name, share, amount })));
-      return `<section class="content-panel"><div class="panel-title"><div><h3>分配</h3><p>依各場股權比例列出本期測試配置。</p></div><span class="status-chip good">${money(scope.allocated)}</span></div><div class="list-stack">${rows.map((row) => `<button type="button" class="list-row" data-action="open-distribution-detail" data-farm-id="${row.farm.id}" data-investor-name="${escapeHtml(row.name)}"><span><strong>${row.name} · ${row.farm.name}</strong><span>股權 ${row.share}%</span></span><span class="row-end"><span class="row-value">${money(row.amount)}</span><span>›</span></span></button>`).join("")}</div></section>`;
-    }
-    const allocationRate = scope.gross ? (scope.allocated / scope.gross) * 100 : 0;
-    const expenseRate = scope.gross ? (scope.expense / scope.gross) * 100 : 0;
-    const netMargin = scope.gross ? (scope.net / scope.gross) * 100 : 0;
-    const bestFarm = [...scope.farms].sort((a, b) => b.finance.net - a.finance.net)[0];
-    const topInvestor = investorSummary(scope.farms)[0];
-    return `<section class="content-panel"><div class="panel-title"><div><h3>統計分析</h3><p>全部由目前測試財務資料計算，不引入外部產業數據。</p></div><span class="status-chip good">計算值</span></div><div class="list-stack">
-      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="allocation"><span><strong>配置率</strong><span>已配置 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${allocationRate.toFixed(1)}%</span><span>›</span></span></button>
-      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="expense"><span><strong>費用率</strong><span>費用 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${expenseRate.toFixed(2)}%</span><span>›</span></span></button>
-      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="net"><span><strong>淨額／毛利</strong><span>淨額 ÷ 毛利</span></span><span class="row-end"><span class="row-value">${netMargin.toFixed(1)}%</span><span>›</span></span></button>
-      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="best-farm"><span><strong>最高淨額場次</strong><span>${bestFarm?.name || "—"}</span></span><span class="row-end"><span class="row-value">${bestFarm ? money(bestFarm.finance.net) : "—"}</span><span>›</span></span></button>
-      <button type="button" class="list-row" data-action="open-analysis-detail" data-analysis-key="top-investor"><span><strong>最高配置投資人</strong><span>${topInvestor?.name || "—"}</span></span><span class="row-end"><span class="row-value">${topInvestor ? money(topInvestor.amount) : "—"}</span><span>›</span></span></button>
-    </div></section>`;
+    const sources = FINANCE_REPO.listSourceReferences(financeFilters());
+    return `<section class="content-panel"><div class="panel-title"><div><h3>資料來源</h3><p>所有財務列均來自 synthetic fixture；此頁只呈現可追溯欄位。</p></div><span class="status-chip warn">synthetic</span></div><div class="list-stack">${sources.map((source) => `<button type="button" class="list-row" data-action="open-distribution-detail" data-distribution-id="${escapeHtml(source.distributionId)}"><span><strong>${escapeHtml(source.sourceDataset)}</strong><span>${escapeHtml(source.sourceRowKey)} · ROC ${escapeHtml(source.sourceDateRoc)} · ${escapeHtml(source.distributionDate)}</span></span><span class="row-end"><span class="row-value">synthetic</span><span>查看 ›</span></span></button>`).join("") || `<div class="empty-tab"><strong>沒有來源資料</strong></div>`}</div></section>`;
   }
 
   function renderFinance() {
-    const tabs = [["overview", "總覽"], ["farms", "各場"], ["equity", "投資人／股權"], ["expenses", "費用"], ["distribution", "分配"], ["analysis", "統計分析"]];
+    const tabs = financeTabs();
     return `<section class="page" data-page="finance">
       ${contextBar()}
-      ${pageIntro("", "財務", "總覽、各場、股權、費用、分配與統計都使用同一組測試資料。")}
+      ${pageIntro("", "財務", "七個財務檢視均使用 FinanceRepository 的 synthetic fixture。")}
       <div class="finance-tabs" role="tablist" aria-label="財務分頁">${tabs.map(([key, label]) => `<button type="button" role="tab" aria-selected="${state.financeTab === key}" class="finance-tab ${state.financeTab === key ? "active" : ""}" data-action="finance-tab" data-finance-tab="${key}">${label}</button>`).join("")}</div>
       ${financeTabBody()}
-      <div class="sync-note"><strong>財務範圍：</strong>${contextLabel()}。財務最小範圍為雞場；選到雞舍或批次時沿用所屬雞場財務資料。</div>
+      <div class="sync-note"><strong>財務範圍：</strong>${contextLabel()}。${financeScope().contextNote || "FinanceRepository 只讀 synthetic fixture，不連線外部資料源。"}</div>
     </section>`;
   }
 
@@ -1466,55 +1503,65 @@
 
 
   function financeFarmSheet(farmId) {
-    const farm = farmById(farmId);
-    return sheetShell(`${farm.name} · 財務`, "場級財務詳細", `<div class="detail-list"><div class="detail-block"><h3>毛利</h3><p>${money(farm.finance.gross)}</p></div><div class="detail-block"><h3>已配置</h3><p>${money(farm.finance.allocated)}</p></div><div class="detail-block"><h3>費用</h3><p>${money(farm.finance.expense)}</p></div><div class="detail-block"><h3>目前淨額</h3><p>${money(farm.finance.net)}</p></div><div class="detail-block"><h3>投資人／股權</h3><div class="sheet-item-list">${farm.finance.investors.map(([name, share, amount]) => `<button type="button" class="sheet-item" data-action="open-distribution-detail" data-farm-id="${farm.id}" data-investor-name="${escapeHtml(name)}"><span><strong>${name}</strong><span>股權 ${share}%</span></span><span class="sheet-item-end">${money(amount)} ›</span></button>`).join("")}</div></div><div class="detail-block"><h3>費用分類</h3><button type="button" class="sheet-primary" data-action="open-expense-detail" data-farm-id="${farm.id}">查看費用分類</button></div></div>`, "finance-farm");
+    const farm = FINANCE_REPO.getFarm(farmId);
+    if (!farm) return sheetShell("場級財務詳細", "找不到資料", `<div class="empty-tab"><strong>目前範圍沒有這個模擬場</strong></div>`, "finance-farm");
+    const summary = FINANCE_REPO.getSummary({ farmId });
+    const distributions = FINANCE_REPO.listDistributions({ farmId });
+    return sheetShell(`${escapeHtml(farm.name)} · 財務`, "場級財務詳細", `<div class="detail-list"><div class="detail-block"><h3>歷史總盈虧</h3><p>${money(farm.grossProfitLoss)}</p></div><div class="detail-block"><h3>已配置盈虧</h3><p>${money(farm.allocatedProfitLoss)}</p></div><div class="detail-block"><h3>費用</h3><p>${money(farm.expense)}</p></div><div class="detail-block"><h3>投資人淨收入</h3><p>${money(farm.netIncome)}</p></div><div class="detail-block"><h3>場級股權</h3><p>${(Number(farm.equityFraction) * 100).toFixed(1)}%</p></div><div class="detail-block"><h3>投資人／股權</h3><div class="sheet-item-list">${summary.investors.map((investor) => `<button type="button" class="sheet-item" data-action="open-investor-detail" data-investor-id="${escapeHtml(investor.id)}"><span><strong>${escapeHtml(investor.name)}</strong><span>${investor.farms.find((row) => row.farmId === farmId)?.share.toFixed(1) || "0.0"}% · 配置合計 ${money(investor.farms.find((row) => row.farmId === farmId)?.allocationTotal || 0)}</span></span><span class="sheet-item-end">查看 ›</span></button>`).join("") || `<div class="empty-tab">沒有股權資料。</div>`}</div></div><div class="detail-block"><h3>歷史分配</h3><div class="sheet-item-list">${distributions.map((distribution) => `<button type="button" class="sheet-item" data-action="open-distribution-detail" data-distribution-id="${escapeHtml(distribution.id)}"><span><strong>${escapeHtml(distribution.distributionDate)}</strong><span>投資人淨收入 ${money(distribution.netIncome)}</span></span><span class="sheet-item-end">查看 ›</span></button>`).join("") || `<div class="empty-tab"><strong>尚無歷史結算</strong></div>`}</div></div></div>`, "finance-farm");
   }
 
-  function investorDetailSheet(name) {
-    const scope = financeScope();
-    const investor = investorSummary(scope.farms).find((row) => row.name === name);
+  function investorDetailSheet(investorId) {
+    const investor = FINANCE_REPO.getInvestor(investorId, financeFilters());
     if (!investor) return sheetShell("投資人詳細", "找不到資料", `<div class="empty-tab"><strong>目前範圍沒有這位投資人</strong></div>`, "investor-detail");
-    return sheetShell(investor.name, `配置金額 ${money(investor.amount)}`, `<div class="sheet-item-list">${investor.farms.map((row) => `<div class="sheet-item static"><span><strong>${row.farm}</strong><span>股權 ${row.share}%</span></span><span class="sheet-item-end">${money(row.amount)}</span></div>`).join("")}</div>`, "investor-detail");
+    const allocations = FINANCE_REPO.getInvestorAllocations(investor.id, financeFilters()).map((allocation) => ({ allocation, distribution: FINANCE_REPO.getDistribution(allocation.distributionId) }));
+    return sheetShell(escapeHtml(investor.name), `配置合計 ${moneyPrecise(investor.allocationTotal)}`, `<div class="detail-list"><div class="detail-block"><h3>場級股權</h3><div class="sheet-item-list">${investor.farms.map((row) => `<div class="sheet-item static"><span><strong>${escapeHtml(row.farm)}</strong><span>股權 ${(row.share).toFixed(1)}% · 場級配置 ${moneyPrecise(row.allocationTotal)}</span></span><span class="sheet-item-end">${moneyPrecise(row.allocationTotal)}</span></div>`).join("") || `<div class="empty-tab">沒有股權資料。</div>`}</div></div><div class="detail-block"><h3>正向／負向歷史分配</h3><p>${investor.positiveDistributionCount} ／ ${investor.negativeDistributionCount} 筆</p></div><div class="detail-block"><h3>配置紀錄</h3><div class="sheet-item-list">${allocations.map(({ allocation, distribution }) => `<div class="sheet-item static"><span><strong>${escapeHtml(distribution?.distributionDate || "—")}</strong><span>${escapeHtml(distribution?.sourceRowKey || "")}</span></span><span class="sheet-item-end">${moneyPrecise(allocation.amount)}</span></div>`).join("") || `<div class="empty-tab"><strong>尚無歷史分配</strong></div>`}</div></div></div>`, "investor-detail");
   }
 
   function expenseDetailSheet(farmId) {
-    const farm = farmById(farmId);
-    return sheetShell(`${farm.name} · 費用`, `合計 ${money(farm.finance.expense)}`, `<div class="sheet-item-list">${farm.finance.expenses.map(([name, value]) => `<div class="sheet-item static"><span><strong>${name}</strong><span>測試用分類</span></span><span class="sheet-item-end">${money(value)}</span></div>`).join("")}</div>`, "expense-detail");
+    const farm = FINANCE_REPO.getFarm(farmId);
+    if (!farm) return sheetShell("費用詳細", "找不到資料", `<div class="empty-tab"><strong>目前範圍沒有這個模擬場</strong></div>`, "expense-detail");
+    const distributions = FINANCE_REPO.listDistributions({ farmId });
+    return sheetShell(`${escapeHtml(farm.name)} · 費用`, `分配層級合計 ${money(farm.expense)}`, `<div class="readonly-note">合約只提供 ProfitDistribution.expense；沒有費用分類資料，因此不建立分類明細。</div><div class="sheet-item-list">${distributions.map((distribution) => `<div class="sheet-item static"><span><strong>${escapeHtml(distribution.distributionDate)}</strong><span>${escapeHtml(distribution.sourceRowKey)}</span></span><span class="sheet-item-end">${money(distribution.expense)}</span></div>`).join("") || `<div class="empty-tab"><strong>尚無歷史結算</strong></div>`}</div>`, "expense-detail");
   }
 
-  function distributionDetailSheet(farmId, investorName) {
-    const farm = farmById(farmId);
-    const row = farm.finance.investors.find(([name]) => name === investorName);
-    if (!row) return sheetShell("分配詳細", farm.name, `<div class="empty-tab"><strong>找不到這筆分配</strong></div>`, "distribution-detail");
-    const [name, share, amount] = row;
-    return sheetShell(`${name} · ${farm.name}`, "分配詳細", `<div class="detail-hero"><small>配置金額</small><strong>${money(amount)}</strong><span>股權 ${share}%</span></div><div class="detail-block"><h3>所屬雞場</h3><p>${farm.name}</p></div>`, "distribution-detail");
+  function distributionDetailSheet(distributionId) {
+    const distribution = FINANCE_REPO.getDistribution(distributionId);
+    if (!distribution) return sheetShell("歷史分配詳細", "找不到資料", `<div class="empty-tab"><strong>找不到這筆歷史分配</strong></div>`, "distribution-detail");
+    const farm = FINANCE_REPO.getFarm(distribution.farmId);
+    const allocations = FINANCE_REPO.getDistributionAllocations(distribution.id);
+    const source = FINANCE_REPO.getSourceReference(distribution.id);
+    return sheetShell(`${escapeHtml(distribution.distributionDate)} · ${escapeHtml(farm?.name || distribution.farmId)}`, "歷史分配詳細", `<div class="detail-hero"><small>投資人淨收入</small><strong>${moneyPrecise(distribution.netIncome)}</strong><span>已配置盈虧 ${moneyPrecise(distribution.allocatedProfitLoss)} · 費用 ${moneyPrecise(distribution.expense)}</span></div><div class="detail-block"><h3>金額合約</h3><p>歷史總盈虧 ${moneyPrecise(distribution.grossProfitLoss)} · 已配置盈虧 − 費用 = 投資人淨收入</p></div><div class="detail-block"><h3>投資人配置</h3><div class="sheet-item-list">${allocations.map((allocation) => `<div class="sheet-item static"><span><strong>${escapeHtml(FINANCE_REPO.getInvestor(allocation.investorId)?.name || allocation.investorId)}</strong><span>${escapeHtml(allocation.investorId)}</span></span><span class="sheet-item-end">${moneyPrecise(allocation.amount)}</span></div>`).join("")}</div></div><div class="detail-block"><h3>資料來源</h3><p>${escapeHtml(source?.sourceDataset || "")} · ${escapeHtml(source?.sourceRowKey || "")} · ROC ${escapeHtml(source?.sourceDateRoc || "")}</p></div>`, "distribution-detail");
   }
 
   function financeMetricSheet(metric) {
     const scope = financeScope();
+    const fieldMap = { gross: "grossProfitLoss", allocated: "allocatedProfitLoss", expense: "expense", net: "netIncome" };
+    const field = fieldMap[metric] || fieldMap.net;
+    const labelMap = { gross: "歷史總盈虧", allocated: "已配置盈虧", expense: "費用", net: "投資人淨收入" };
+    const title = labelMap[metric] || labelMap.net;
+    const value = scope.totals[metric] ?? scope.totals.net;
     const map = {
-      gross: ["毛利", scope.gross, "各場毛利加總"],
-      allocated: ["已配置", scope.allocated, "目前範圍內投資人配置金額加總"],
-      expense: ["費用", scope.expense, "各場費用加總"],
-      net: ["目前淨額", scope.net, `已配置 ${money(scope.allocated)} 扣除費用 ${money(scope.expense)}；沿用既有測試財務定義`],
+      gross: "各場歷史總盈虧加總",
+      allocated: "目前範圍內已配置盈虧加總",
+      expense: "目前範圍內分配層級費用加總",
+      net: `已配置 ${money(scope.totals.allocated)} 扣除費用 ${money(scope.totals.expense)}`,
     };
-    const [title, value, copy] = map[metric] || map.net;
-    return sheetShell(title, contextLabel(), `<div class="detail-hero"><small>${title}</small><strong>${money(value)}</strong><span>${copy}</span></div><div class="sheet-item-list">${scope.farms.map((farm) => `<button type="button" class="sheet-item" data-action="open-finance-farm" data-farm-id="${farm.id}"><span><strong>${farm.name}</strong><span>${title} ${money(farm.finance[metric])}</span></span><span class="sheet-item-end">›</span></button>`).join("")}</div>`, "finance-metric");
+    return sheetShell(title, contextLabel(), `<div class="detail-hero"><small>${title}</small><strong>${money(value)}</strong><span>${map[metric] || map.net}</span></div><div class="sheet-item-list">${scope.farms.map((farm) => `<button type="button" class="sheet-item" data-action="open-finance-farm" data-farm-id="${escapeHtml(farm.id)}"><span><strong>${escapeHtml(farm.name)}</strong><span>${title} ${money(farm[field])}</span></span><span class="sheet-item-end">›</span></button>`).join("")}</div>`, "finance-metric");
   }
 
   function analysisDetailSheet(key) {
     const scope = financeScope();
-    const allocationRate = scope.gross ? (scope.allocated / scope.gross) * 100 : 0;
-    const expenseRate = scope.gross ? (scope.expense / scope.gross) * 100 : 0;
-    const netMargin = scope.gross ? (scope.net / scope.gross) * 100 : 0;
-    const bestFarm = [...scope.farms].sort((a, b) => b.finance.net - a.finance.net)[0];
-    const topInvestor = investorSummary(scope.farms)[0];
+    const allocationRate = scope.totals.gross ? (scope.totals.allocated / scope.totals.gross) * 100 : 0;
+    const expenseRate = scope.totals.gross ? (scope.totals.expense / scope.totals.gross) * 100 : 0;
+    const netMargin = scope.totals.gross ? (scope.totals.net / scope.totals.gross) * 100 : 0;
+    const bestFarm = [...scope.farms].sort((a, b) => b.netIncome - a.netIncome)[0];
+    const topInvestor = [...scope.investors].sort((a, b) => b.allocationTotal - a.allocationTotal)[0];
     const detail = {
-      allocation: ["配置率", `${allocationRate.toFixed(1)}%`, `${money(scope.allocated)} ÷ ${money(scope.gross)}`],
-      expense: ["費用率", `${expenseRate.toFixed(2)}%`, `${money(scope.expense)} ÷ ${money(scope.gross)}`],
-      net: ["淨額／毛利", `${netMargin.toFixed(1)}%`, `${money(scope.net)} ÷ ${money(scope.gross)}`],
-      "best-farm": ["最高淨額場次", bestFarm?.name || "—", bestFarm ? `目前淨額 ${money(bestFarm.finance.net)}` : "沒有資料"],
-      "top-investor": ["最高配置投資人", topInvestor?.name || "—", topInvestor ? `配置金額 ${money(topInvestor.amount)}` : "沒有資料"],
+      allocation: ["已配置盈虧率", `${allocationRate.toFixed(1)}%`, `${money(scope.totals.allocated)} ÷ ${money(scope.totals.gross)}`],
+      expense: ["費用率", `${expenseRate.toFixed(2)}%`, `${money(scope.totals.expense)} ÷ ${money(scope.totals.gross)}`],
+      net: ["投資人淨收入率", `${netMargin.toFixed(1)}%`, `${money(scope.totals.net)} ÷ ${money(scope.totals.gross)}`],
+      "best-farm": ["最高投資人淨收入場", bestFarm?.name || "—", bestFarm ? `投資人淨收入 ${money(bestFarm.netIncome)}` : "沒有資料"],
+      "top-investor": ["最高配置投資人", topInvestor?.name || "—", topInvestor ? `配置合計 ${money(topInvestor.allocationTotal)}` : "沒有資料"],
     };
     const [title, value, copy] = detail[key] || detail.net;
     return sheetShell(title, "由目前測試財務資料直接計算", `<div class="detail-hero"><small>${title}</small><strong>${value}</strong><span>${copy}</span></div><div class="readonly-note">不引入外部產業平均、IRR、ROI 或未授權指標。</div>`, "analysis-detail");
@@ -1583,9 +1630,9 @@
     if (state.sheet.kind === "system-detail") return systemDetailSheet(state.sheet.key);
     if (state.sheet.kind === "settings-detail") return settingsDetailSheet(state.sheet.key);
     if (state.sheet.kind === "finance-farm") return financeFarmSheet(state.sheet.farmId);
-    if (state.sheet.kind === "investor-detail") return investorDetailSheet(state.sheet.name);
+    if (state.sheet.kind === "investor-detail") return investorDetailSheet(state.sheet.investorId);
     if (state.sheet.kind === "expense-detail") return expenseDetailSheet(state.sheet.farmId);
-    if (state.sheet.kind === "distribution-detail") return distributionDetailSheet(state.sheet.farmId, state.sheet.name);
+    if (state.sheet.kind === "distribution-detail") return distributionDetailSheet(state.sheet.distributionId);
     if (state.sheet.kind === "finance-metric") return financeMetricSheet(state.sheet.metric);
     if (state.sheet.kind === "analysis-detail") return analysisDetailSheet(state.sheet.key);
     if (state.sheet.kind === "developer-clicks") return developerClicksSheet();
@@ -1685,13 +1732,18 @@
   function desktopMore() {
     const totalClicks=Object.values(developerAnalytics.counts).reduce((s,v)=>s+v,0);
     const tool=(iconName,title,desc,action,kind="")=>`<button type="button" class="more-item" data-action="${action}" ${kind?`data-sheet-kind="${kind}"`:""}><span class="more-item-icon">${icon(iconName)}</span><span><strong>${title}</strong><span>${desc}</span></span><span>›</span></button>`;
-    return `<section class="desktop-v2-page" data-page="more">${desktopContextToolbar()}<div class="desktop-more-grid"><section class="desktop-pane"><div class="desktop-pane-head"><div><h2>工具與管理</h2><p>桌面一次展開高頻與低頻工具</p></div></div><div class="more-list">${tool("chart","洞察","在養、死亡、飼料、飲水與異常","open-sheet","insights")}${tool("records","月曆","排程、入雛、磅雞、出雞與營運紀錄","go-calendar")}${tool("finance","財務","總覽、各場、股權、費用與分配","go-finance")}${tool("ai","AI 助理","帶入目前工作範圍；維持唯讀","go-ai")}${tool("lock","系統","雞場、雞舍、批次與服務邊界","open-sheet","system")}${tool("records","變更紀錄","修改、取消與操作歷程入口","open-sheet","audit")}${tool("more","設定","操作與管理設定","open-sheet","settings")}</div></section><aside class="desktop-pane"><div class="desktop-pane-head"><div><h2>開發者</h2><p>本機測試分析 · 不上傳操作資料</p></div><span class="env-chip">${number(totalClicks)} 次點擊</span></div><section class="developer-block"><div class="developer-grid"><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-clicks"><span>${icon("todo")}</span><strong>點擊計數</strong><small>組件使用次數</small></button><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-log"><span>${icon("records")}</span><strong>UI Log</strong><small>最近互動</small></button><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-notes"><span>${icon("spark")}</span><strong>開發者筆記</strong><small>本機儲存</small></button><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-diagnostics"><span>${icon("lock")}</span><strong>診斷</strong><small>資料契約與降級</small></button><button type="button" class="developer-item wide" data-action="open-sheet" data-sheet-kind="developer-fallback"><span>${icon("ai")}</span><strong>AI／Cloudflare 降級方案</strong><small>暫時中斷與永久遷移</small></button></div></section></aside></div></section>`;
+    return `<section class="desktop-v2-page" data-page="more">${desktopContextToolbar()}<div class="desktop-more-grid"><section class="desktop-pane"><div class="desktop-pane-head"><div><h2>工具與管理</h2><p>桌面一次展開高頻與低頻工具</p></div></div><div class="more-list">${tool("chart","洞察","在養、死亡、飼料、飲水與異常","open-sheet","insights")}${tool("records","月曆","排程、入雛、磅雞、出雞與營運紀錄","go-calendar")}${tool("finance","財務","總覽、各場、股權、歷史分配、費用、投資績效與資料來源","go-finance")}${tool("ai","AI 助理","帶入目前工作範圍；維持唯讀","go-ai")}${tool("lock","系統","雞場、雞舍、批次與服務邊界","open-sheet","system")}${tool("records","變更紀錄","修改、取消與操作歷程入口","open-sheet","audit")}${tool("more","設定","操作與管理設定","open-sheet","settings")}</div></section><aside class="desktop-pane"><div class="desktop-pane-head"><div><h2>開發者</h2><p>本機測試分析 · 不上傳操作資料</p></div><span class="env-chip">${number(totalClicks)} 次點擊</span></div><section class="developer-block"><div class="developer-grid"><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-clicks"><span>${icon("todo")}</span><strong>點擊計數</strong><small>組件使用次數</small></button><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-log"><span>${icon("records")}</span><strong>UI Log</strong><small>最近互動</small></button><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-notes"><span>${icon("spark")}</span><strong>開發者筆記</strong><small>本機儲存</small></button><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-diagnostics"><span>${icon("lock")}</span><strong>診斷</strong><small>資料契約與降級</small></button><button type="button" class="developer-item wide" data-action="open-sheet" data-sheet-kind="developer-fallback"><span>${icon("ai")}</span><strong>AI／Cloudflare 降級方案</strong><small>暫時中斷與永久遷移</small></button></div></section></aside></div></section>`;
   }
 
   function desktopFinance() {
-    const tabs=[["overview","總覽"],["farms","各場"],["equity","投資人／股權"],["expenses","費用"],["distribution","分配"],["analysis","統計分析"]];
-    const scope=financeScope(); const allocation=scope.gross?scope.allocated/scope.gross*100:0; const expense=scope.gross?scope.expense/scope.gross*100:0; const net=scope.gross?scope.net/scope.gross*100:0; const best=[...scope.farms].sort((a,b)=>b.finance.net-a.finance.net)[0];
-    return `<section class="desktop-v2-page" data-page="finance">${desktopContextToolbar()}<div class="desktop-finance-grid"><aside class="desktop-pane"><div class="desktop-pane-head"><div><h2>財務模組</h2><p>不再用橫向手機 Chip</p></div></div><nav class="desktop-finance-tabs">${tabs.map(([k,l])=>`<button type="button" class="${state.financeTab===k?"active":""}" data-action="finance-tab" data-finance-tab="${k}">${l}</button>`).join("")}</nav></aside><main class="desktop-finance-main">${financeTabBody()}</main><aside class="desktop-pane desktop-finance-facts-pane"><div class="desktop-pane-head"><div><h2>關鍵比率</h2><p>固定留在右側供比較</p></div></div><div class="desktop-finance-facts"><div class="desktop-fact"><span>目前淨額</span><strong>${money(scope.net)}</strong><small>已配置 − 費用</small></div><div class="desktop-fact"><span>配置率</span><strong>${allocation.toFixed(1)}%</strong><small>已配置 ÷ 毛利</small></div><div class="desktop-fact"><span>費用率</span><strong>${expense.toFixed(2)}%</strong><small>費用 ÷ 毛利</small></div><div class="desktop-fact"><span>淨額／毛利</span><strong>${net.toFixed(1)}%</strong><small>${best?`最高淨額：${escapeHtml(best.name)}`:"—"}</small></div></div></aside></div></section>`;
+    const tabs=financeTabs();
+    const scope=financeScope();
+    const totals=scope.totals;
+    const allocation=totals.gross?totals.allocated/totals.gross*100:0;
+    const expense=totals.gross?totals.expense/totals.gross*100:0;
+    const net=totals.gross?totals.net/totals.gross*100:0;
+    const best=[...scope.farms].sort((a,b)=>b.netIncome-a.netIncome)[0];
+    return `<section class="desktop-v2-page" data-page="finance">${desktopContextToolbar()}<div class="desktop-finance-grid"><aside class="desktop-pane"><div class="desktop-pane-head"><div><h2>財務模組</h2><p>七個唯讀 synthetic 檢視</p></div></div><nav class="desktop-finance-tabs">${tabs.map(([k,l])=>`<button type="button" class="${state.financeTab===k?"active":""}" data-action="finance-tab" data-finance-tab="${k}">${l}</button>`).join("")}</nav></aside><main class="desktop-finance-main">${financeTabBody()}</main><aside class="desktop-pane desktop-finance-facts-pane"><div class="desktop-pane-head"><div><h2>關鍵比率</h2><p>固定留在右側供比較</p></div></div><div class="desktop-finance-facts"><div class="desktop-fact"><span>投資人淨收入</span><strong>${money(totals.net)}</strong><small>已配置盈虧 − 費用</small></div><div class="desktop-fact"><span>已配置盈虧率</span><strong>${allocation.toFixed(1)}%</strong><small>已配置盈虧 ÷ 歷史總盈虧</small></div><div class="desktop-fact"><span>費用率</span><strong>${expense.toFixed(2)}%</strong><small>費用 ÷ 歷史總盈虧</small></div><div class="desktop-fact"><span>淨收入率</span><strong>${net.toFixed(1)}%</strong><small>${best?`最高投資人淨收入：${escapeHtml(best.name)}`:"—"}</small></div></div></aside></div></section>`;
   }
 
   function desktopPageMarkup() {
@@ -1914,9 +1966,9 @@
     if (action === "open-farm-detail") return openSheet({ kind: "farm-detail", farmId: actionElement.dataset.farmId });
     if (action === "open-house-detail") return openSheet({ kind: "house-detail", farmId: actionElement.dataset.farmId, houseId: actionElement.dataset.houseId });
     if (action === "open-finance-farm") return openSheet({ kind: "finance-farm", farmId: actionElement.dataset.farmId });
-    if (action === "open-investor-detail") return openSheet({ kind: "investor-detail", name: actionElement.dataset.investorName });
+    if (action === "open-investor-detail") return openSheet({ kind: "investor-detail", investorId: actionElement.dataset.investorId });
     if (action === "open-expense-detail") return openSheet({ kind: "expense-detail", farmId: actionElement.dataset.farmId });
-    if (action === "open-distribution-detail") return openSheet({ kind: "distribution-detail", farmId: actionElement.dataset.farmId, name: actionElement.dataset.investorName });
+    if (action === "open-distribution-detail") return openSheet({ kind: "distribution-detail", distributionId: actionElement.dataset.distributionId });
     if (action === "open-finance-metric") return openSheet({ kind: "finance-metric", metric: actionElement.dataset.financeMetric });
     if (action === "open-analysis-detail") return openSheet({ kind: "analysis-detail", key: actionElement.dataset.analysisKey });
     if (action === "open-insight-detail") return openSheet({ kind: "insight-detail", key: actionElement.dataset.insightKey });

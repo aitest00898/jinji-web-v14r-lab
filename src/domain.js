@@ -15,6 +15,11 @@
     "Abnormality",
     "CalendarEvent",
     "FinanceEntry",
+    "Investor",
+    "FarmInvestorEquity",
+    "ProfitDistribution",
+    "ProfitDistributionAllocation",
+    "FinanceSourceReference",
     "AuditEntry",
     "TrendThreshold",
     "ClickAnalytics",
@@ -56,6 +61,126 @@
   function clone(value) {
     if (value === undefined) return undefined;
     return JSON.parse(JSON.stringify(value));
+  }
+
+  const FINANCE_EPSILON = 1e-9;
+
+  function financeApproxEqual(left, right, epsilon = FINANCE_EPSILON) {
+    return Math.abs(Number(left) - Number(right)) <= epsilon;
+  }
+
+  function financeNumber(value, field) {
+    const numberValue = Number(value ?? 0);
+    if (!Number.isFinite(numberValue)) throw new Error(`FINANCE_NUMBER_INVALID:${field}`);
+    return numberValue;
+  }
+
+  function validateFinanceDataset(dataset) {
+    const expect = (condition, message) => {
+      if (!condition) throw new Error(`FINANCE_CONTRACT_INVALID:${message}`);
+    };
+    expect(dataset && typeof dataset === "object", "dataset");
+    expect(dataset.metadata?.classification === "synthetic", "classification");
+    expect(String(dataset.metadata?.datasetId || "").startsWith("SYNTHETIC_"), "datasetId");
+    expect(Number(dataset.metadata?.schemaVersion) >= 1, "schemaVersion");
+    expect(String(dataset.organization?.id || "").startsWith("syn-"), "organization id");
+    expect(Array.isArray(dataset.farms), "farms");
+    expect(Array.isArray(dataset.investors), "investors");
+    expect(Array.isArray(dataset.farmInvestorEquity), "farmInvestorEquity");
+    expect(Array.isArray(dataset.distributions), "distributions");
+    expect(Array.isArray(dataset.allocations), "allocations");
+
+    const farms = new Map();
+    dataset.farms.forEach((farm) => {
+      expect(String(farm.id || "").startsWith("syn-"), `farm id ${farm.id}`);
+      expect(!farms.has(farm.id), `duplicate farm ${farm.id}`);
+      const totalEquity = financeNumber(farm.farmTotalEquityFraction, `${farm.id}.farmTotalEquityFraction`);
+      const playerEquity = financeNumber(farm.playerGroupEquityFraction, `${farm.id}.playerGroupEquityFraction`);
+      expect(totalEquity >= 0 && totalEquity <= 1, `${farm.id} total equity range`);
+      expect(playerEquity >= 0 && playerEquity <= totalEquity + FINANCE_EPSILON, `${farm.id} player equity range`);
+      farms.set(farm.id, farm);
+    });
+    const investors = new Map();
+    dataset.investors.forEach((investor) => {
+      expect(String(investor.id || "").startsWith("syn-"), `investor id ${investor.id}`);
+      expect(!investors.has(investor.id), `duplicate investor ${investor.id}`);
+      investors.set(investor.id, investor);
+    });
+
+    const equityTotals = new Map();
+    dataset.farmInvestorEquity.forEach((row) => {
+      expect(String(row.id || "").startsWith("syn-"), `equity id ${row.id}`);
+      expect(farms.has(row.farmId), `equity farm ${row.farmId}`);
+      expect(investors.has(row.investorId), `equity investor ${row.investorId}`);
+      const fraction = financeNumber(row.equityFraction, `${row.id}.equityFraction`);
+      expect(fraction >= 0 && fraction <= 1, `${row.id} equity range`);
+      const key = row.farmId;
+      equityTotals.set(key, (equityTotals.get(key) || 0) + fraction);
+    });
+    farms.forEach((farm, farmId) => {
+      const actual = equityTotals.get(farmId) || 0;
+      expect(financeApproxEqual(actual, farm.playerGroupEquityFraction), `${farmId} equity sum`);
+    });
+
+    const distributions = new Map();
+    dataset.distributions.forEach((distribution) => {
+      expect(String(distribution.id || "").startsWith("syn-"), `distribution id ${distribution.id}`);
+      expect(distribution.organizationId === dataset.organization.id, `${distribution.id} organization`);
+      expect(farms.has(distribution.farmId), `${distribution.id} farm`);
+      expect(/^\d{4}-\d{2}-\d{2}$/.test(String(distribution.distributionDate || "")), `${distribution.id} distributionDate`);
+      expect(/^\d{3}\/\d{2}\/\d{2}$/.test(String(distribution.sourceDateRoc || "")), `${distribution.id} sourceDateRoc`);
+      expect(String(distribution.sourceDataset || "").startsWith("SYNTHETIC_"), `${distribution.id} sourceDataset`);
+      expect(String(distribution.sourceRowKey || "").startsWith("fixture://"), `${distribution.id} sourceRowKey`);
+      const allocated = financeNumber(distribution.allocatedProfitLoss, `${distribution.id}.allocatedProfitLoss`);
+      const expense = financeNumber(distribution.expense, `${distribution.id}.expense`);
+      const net = financeNumber(distribution.netIncome, `${distribution.id}.netIncome`);
+      financeNumber(distribution.grossProfitLoss, `${distribution.id}.grossProfitLoss`);
+      expect(financeApproxEqual(net, allocated - expense), `${distribution.id} net equation`);
+      expect(!distributions.has(distribution.id), `duplicate distribution ${distribution.id}`);
+      distributions.set(distribution.id, distribution);
+    });
+
+    const allocationTotals = new Map();
+    dataset.allocations.forEach((allocation) => {
+      expect(String(allocation.id || "").startsWith("syn-"), `allocation id ${allocation.id}`);
+      expect(distributions.has(allocation.distributionId), `allocation distribution ${allocation.distributionId}`);
+      expect(investors.has(allocation.investorId), `allocation investor ${allocation.investorId}`);
+      const amount = financeNumber(allocation.amount, `${allocation.id}.amount`);
+      allocationTotals.set(allocation.distributionId, (allocationTotals.get(allocation.distributionId) || 0) + amount);
+    });
+    distributions.forEach((distribution, distributionId) => {
+      expect(financeApproxEqual(allocationTotals.get(distributionId) || 0, distribution.netIncome), `${distributionId} allocation total`);
+    });
+
+    if (dataset.sourceReferences !== undefined) {
+      expect(Array.isArray(dataset.sourceReferences), "sourceReferences");
+      expect(dataset.sourceReferences.length === dataset.distributions.length, "sourceReferences count");
+      const sourceDistributionIds = new Set();
+      dataset.sourceReferences.forEach((reference) => {
+        expect(String(reference.id || "").startsWith("syn-"), `source reference id ${reference.id}`);
+        expect(distributions.has(reference.distributionId), `source reference distribution ${reference.distributionId}`);
+        expect(!sourceDistributionIds.has(reference.distributionId), `duplicate source reference ${reference.distributionId}`);
+        expect(reference.sourceDataset === distributions.get(reference.distributionId).sourceDataset, `source reference dataset ${reference.id}`);
+        expect(reference.sourceRowKey === distributions.get(reference.distributionId).sourceRowKey, `source reference row ${reference.id}`);
+        expect(reference.sourceDateRoc === distributions.get(reference.distributionId).sourceDateRoc, `source reference ROC ${reference.id}`);
+        sourceDistributionIds.add(reference.distributionId);
+      });
+    }
+
+    const totals = dataset.distributions.reduce((result, distribution) => ({
+      gross: result.gross + financeNumber(distribution.grossProfitLoss, `${distribution.id}.grossProfitLoss`),
+      allocated: result.allocated + financeNumber(distribution.allocatedProfitLoss, `${distribution.id}.allocatedProfitLoss`),
+      expense: result.expense + financeNumber(distribution.expense, `${distribution.id}.expense`),
+      net: result.net + financeNumber(distribution.netIncome, `${distribution.id}.netIncome`),
+    }), { gross: 0, allocated: 0, expense: 0, net: 0 });
+    return {
+      farms: dataset.farms.length,
+      investors: dataset.investors.length,
+      equityRows: dataset.farmInvestorEquity.length,
+      distributions: dataset.distributions.length,
+      allocations: dataset.allocations.length,
+      totals,
+    };
   }
 
   function nowIso(now = new Date()) {
@@ -243,6 +368,9 @@
     EVENT_UNITS,
     ...TYPES,
     clone,
+    FINANCE_EPSILON,
+    financeApproxEqual,
+    validateFinanceDataset,
     id,
     clientOperationId,
     createOperationalEvent,

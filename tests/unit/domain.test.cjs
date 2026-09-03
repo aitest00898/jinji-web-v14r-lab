@@ -4,7 +4,7 @@ const domain = require("../../src/domain.js");
 
 test("domain exposes all required model types", () => {
   assert.deepEqual(domain.MODEL_NAMES, [
-    "Organization", "Farm", "House", "Flock", "OperationalEvent", "PendingReview", "Abnormality", "CalendarEvent", "FinanceEntry", "AuditEntry", "TrendThreshold", "ClickAnalytics", "DeveloperLog", "SyncOperation",
+    "Organization", "Farm", "House", "Flock", "OperationalEvent", "PendingReview", "Abnormality", "CalendarEvent", "FinanceEntry", "Investor", "FarmInvestorEquity", "ProfitDistribution", "ProfitDistributionAllocation", "FinanceSourceReference", "AuditEntry", "TrendThreshold", "ClickAnalytics", "DeveloperLog", "SyncOperation",
   ]);
   for (const name of domain.MODEL_NAMES) assert.equal(typeof domain[name], "function");
 });
