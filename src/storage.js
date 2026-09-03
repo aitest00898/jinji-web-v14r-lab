@@ -91,13 +91,26 @@
     constructor(options = {}) {
       this.fixture = options.fixture || null;
       const stored = readJson(KEYS.overlay);
-      this.state = validState(stored) ? { ...emptyState(), ...stored } : emptyState();
+      const storedWithoutMasterData = stored && typeof stored === "object" && !Array.isArray(stored)
+        ? { ...stored, masterData: emptyState().masterData }
+        : stored;
+      this.state = validState(storedWithoutMasterData) ? { ...emptyState(), ...stored } : emptyState();
+      let masterDataWasSanitized = false;
+      const storedMasterData = stored && typeof stored === "object" && !Array.isArray(stored) ? stored.masterData : undefined;
+      if (storedMasterData !== undefined && (!storedMasterData || typeof storedMasterData !== "object" || Array.isArray(storedMasterData))) {
+        masterDataWasSanitized = true;
+      }
       this.state.masterData = {
         ...emptyState().masterData,
         ...(this.state.masterData && typeof this.state.masterData === "object" ? this.state.masterData : {}),
       };
       Object.keys(emptyState().masterData).forEach((key) => {
-        if (!Array.isArray(this.state.masterData[key])) this.state.masterData[key] = [];
+        if (!Array.isArray(this.state.masterData[key])) {
+          if (storedMasterData !== undefined && storedMasterData[key] !== undefined) masterDataWasSanitized = true;
+          this.state.masterData[key] = [];
+        } else if (this.state.masterData[key].some((row) => !row || typeof row !== "object" || Array.isArray(row))) {
+          masterDataWasSanitized = true;
+        }
       });
       if (typeof root?.JinjiDomain?.validateMasterData === "function") {
         try {
@@ -106,11 +119,17 @@
           // A corrupt local overlay must never prevent the Lab shell from loading.
           // Discard only the invalid master-data overlay; the checked-in fixture is untouched.
           this.state.masterData = emptyState().masterData;
+          masterDataWasSanitized = true;
         }
       }
       const mode = readJson(KEYS.mode);
       if (typeof mode === "string" && MODES.includes(mode)) this.state.mode = mode;
       this.idbPromise = this.openIndexedDb();
+      if (masterDataWasSanitized) {
+        // Self-heal only the master-data portion while preserving all valid runtime state.
+        writeJson(KEYS.overlay, this.state);
+        this.persistToIndexedDb();
+      }
     }
 
     openIndexedDb() {
@@ -184,22 +203,29 @@
     }
 
     appendMasterData(entityType, entity, auditEntry = null) {
-      const collection = MASTER_DATA_TYPES[entityType];
-      if (!collection || !entity || !entity.id) throw new Error("LAB_MASTER_DATA_INVALID");
-      if (!this.state.masterData[collection].some((item) => item.id === entity.id)) this.state.masterData[collection].push(clone(entity));
-      if (auditEntry && !this.state.auditEntries.some((entry) => entry.id === auditEntry.id)) this.state.auditEntries.push(clone(auditEntry));
-      return this.persist();
+      return this.appendMasterDataBatch([{ entityType, entity }], auditEntry ? [auditEntry] : []);
     }
 
     appendMasterDataBatch(entities = [], auditEntries = []) {
+      const nextState = clone(this.state);
       entities.forEach(({ entityType, entity }) => {
         const collection = MASTER_DATA_TYPES[entityType];
         if (!collection || !entity || !entity.id) throw new Error("LAB_MASTER_DATA_INVALID");
-        if (!this.state.masterData[collection].some((item) => item.id === entity.id)) this.state.masterData[collection].push(clone(entity));
+        if (!nextState.masterData[collection].some((item) => item.id === entity.id)) nextState.masterData[collection].push(clone(entity));
       });
       auditEntries.forEach((entry) => {
-        if (entry && !this.state.auditEntries.some((candidate) => candidate.id === entry.id)) this.state.auditEntries.push(clone(entry));
+        if (entry && !nextState.auditEntries.some((candidate) => candidate.id === entry.id)) nextState.auditEntries.push(clone(entry));
       });
+      if (typeof root?.JinjiDomain?.validateMasterData === "function") {
+        try {
+          root.JinjiDomain.validateMasterData(nextState.masterData);
+        } catch (error) {
+          const relationshipError = new Error("LAB_MASTER_DATA_RELATIONSHIP_INVALID");
+          relationshipError.cause = error;
+          throw relationshipError;
+        }
+      }
+      this.state = nextState;
       return this.persist();
     }
 

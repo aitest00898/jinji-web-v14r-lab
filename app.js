@@ -182,6 +182,7 @@
     masterDataHouseId: null,
     masterDataNotice: "",
     masterDataError: "",
+    masterDataConfirmation: null,
   };
 
   const app = document.getElementById("app");
@@ -1570,10 +1571,19 @@
     return (labOverlay().auditEntries || []).filter((entry) => ["Farm", "House", "Flock", "CaretakerAssignment", "FarmFinanceIdentity"].includes(entry.entityType));
   }
 
+  function masterDataConfirmationSheet() {
+    const confirmation = state.masterDataConfirmation;
+    if (!confirmation) return masterDataManagementSheet();
+    const summary = confirmation.summary.map(([label, value]) => `<div class="master-confirm-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`).join("");
+    const confirmLabel = confirmation.kind === "caretaker" ? "確認指派" : "確認新增";
+    return sheetShell("最後確認", "主檔操作 · 確認後才寫入", `<section class="master-auth-card" data-testid="master-final-confirmation"><div class="detail-hero"><small>請確認實際內容</small><strong>${escapeHtml(confirmation.title)}</strong><span>按下「${confirmLabel}」後，才會追加到 Lab runtime overlay 並留下 Audit。</span></div><div class="master-confirmation-summary">${summary}</div><div class="developer-actions"><button type="button" class="sheet-primary" data-action="confirm-master-operation" data-testid="master-final-confirmation-confirm">${confirmLabel}</button><button type="button" class="sheet-secondary" data-action="cancel-master-operation" data-testid="master-final-confirmation-cancel">取消，不寫入</button></div><div class="readonly-note">取消只會返回主檔表單，不會寫入主檔、Audit 或 outbox。</div></section>`, "master-data-confirmation");
+  }
+
   function masterDataManagementSheet() {
     if (!state.masterDataAuthorized) {
       return sheetShell("主檔管理", "場務 · PREPROD LAB", `<section class="master-auth-card" data-testid="master-data-auth"><div class="detail-hero"><small>需要額外確認</small><strong>測試環境管理者驗證</strong><span>主檔建立只在公開 synthetic PREPROD LAB 的本機 runtime overlay 進行，不代表正式系統權限。</span></div><label class="master-check"><input id="master-admin-confirm" data-testid="master-admin-confirm" type="checkbox"><span>我確認目前操作位於 PREPROD LAB，並了解不會連線正式資料。</span></label>${state.masterDataError ? `<div class="master-error" role="alert">${escapeHtml(state.masterDataError)}</div>` : ""}<button type="button" class="sheet-primary" data-action="authorize-master-data" data-testid="authorize-master-data">完成測試環境管理者驗證</button><div class="readonly-note">LocalLabAdminAuthorizationAdapter 只驗證本次測試環境確認；不收集密碼、token 或其他秘密。</div></section>`, "master-data");
     }
+    if (state.masterDataConfirmation) return masterDataConfirmationSheet();
     const farm = selectedMasterFarm();
     const house = selectedMasterHouse(farm);
     if (!farm) return sheetShell("主檔管理", "沒有可管理的雞場", `<div class="empty-tab"><strong>目前沒有可管理的雞場</strong><p>請先確認 Lab fixture。</p></div>`, "master-data");
@@ -1588,7 +1598,7 @@
       <section class="master-section"><div class="master-section-head"><div><h3>新增雞場</h3><p>建立後會自動產生一對一的財務身份，但不建立任何收入、分配、費用或歷史結算。</p></div><span class="scope-chip">${farms.length} 場</span></div><div class="master-form-grid"><label class="master-field"><span>雞場名稱（必填）</span><input id="master-farm-name" data-testid="master-farm-name" type="text" maxlength="80" placeholder="例如：北區測試場"></label><label class="master-field"><span>類型（選填）</span><input id="master-farm-type" type="text" maxlength="40" placeholder="例如：紅羽"></label><label class="master-field master-field-wide"><span>說明（選填）</span><input id="master-farm-description" type="text" maxlength="120" placeholder="例如：新建測試場"></label></div><button type="button" class="sheet-primary" data-action="create-farm" data-testid="create-farm">新增雞場</button></section>
       <section class="master-section"><div class="master-section-head"><div><h3>目前管理的雞場</h3><p>先選擇雞場，再建立雞舍與批次。</p></div></div><label class="master-field"><span>雞場</span><select id="master-farm-select" data-action="select-master-farm" data-testid="master-farm-select">${farms.map((candidate) => `<option value="${escapeHtml(candidate.id)}" ${candidate.id === farm.id ? "selected" : ""}>${escapeHtml(candidate.name)}</option>`).join("")}</select></label><div class="master-master-summary"><strong>${escapeHtml(farm.name)}</strong><span>${escapeHtml(farm.description || farm.subtitle || "尚未填寫說明")} · ${farm.houses.length} 舍 · ${farm.houses.flatMap((item) => item.flocks).length} 批 · ${farm.caretakers?.length || 0} 位照顧者</span></div></section>
       <section class="master-section"><div class="master-section-head"><div><h3>新增雞舍</h3><p>雞舍永遠隸屬目前選定雞場；不提供刪除或級聯刪除。</p></div><span class="scope-chip">${houses.length} 舍</span></div><div class="master-form-grid"><label class="master-field"><span>雞舍名稱（必填）</span><input id="master-house-name" data-testid="master-house-name" type="text" maxlength="80" placeholder="例如：第一舍"></label><label class="master-field"><span>代碼（必填）</span><input id="master-house-code" data-testid="master-house-code" type="text" maxlength="30" placeholder="例如：H1"></label></div><button type="button" class="sheet-primary" data-action="create-house" data-testid="create-house">新增雞舍</button>${houses.length ? `<label class="master-field"><span>目前雞舍</span><select id="master-house-select" data-action="select-master-house" data-testid="master-house-select">${houses.map((candidate) => `<option value="${escapeHtml(candidate.id)}" ${candidate.id === house?.id ? "selected" : ""}>${escapeHtml(candidate.name)} · ${escapeHtml(candidate.code)}</option>`).join("")}</select></label>` : `<div class="empty-tab master-inline-empty"><strong>尚未建立雞舍</strong><p>建立第一個雞舍後才能新增批次。</p></div>`}</section>
-      <section class="master-section"><div class="master-section-head"><div><h3>新增批次</h3><p>批次隸屬目前雞舍；公母數量是選填，若輸入必須加總等於初始入雞。</p></div><span class="scope-chip">${flocks.length} 批</span></div>${house ? `<div class="master-context-note">目前位置：${escapeHtml(farm.name)} · ${escapeHtml(house.name)}</div><div class="master-form-grid"><label class="master-field"><span>批次代碼（必填）</span><input id="master-flock-code" data-testid="master-flock-code" type="text" maxlength="80" placeholder="例如：2026-秋-01"></label><label class="master-field"><span>初始入雞（必填）</span><input id="master-flock-initial" data-testid="master-flock-initial" type="number" min="1" step="1" inputmode="numeric" placeholder="例如：1000"></label><label class="master-field"><span>入雛日期（必填）</span><input id="master-flock-chick-in" data-testid="master-flock-chick-in" type="date" value="2026-09-01"></label><label class="master-field"><span>預計出雞（必填）</span><input id="master-flock-ship" data-testid="master-flock-ship" type="date" value="2026-09-20"></label><label class="master-field"><span>公（選填）</span><input id="master-flock-male" type="number" min="0" step="1" inputmode="numeric" placeholder="不填不推算"></label><label class="master-field"><span>母（選填）</span><input id="master-flock-female" type="number" min="0" step="1" inputmode="numeric" placeholder="不填不推算"></label></div><button type="button" class="sheet-primary" data-action="create-flock" data-testid="create-flock">新增批次</button><div class="master-list">${flocks.length ? flocks.map((candidate) => `<div class="master-list-row" data-testid="master-flock-row"><strong>${escapeHtml(candidate.code)}</strong><span>${escapeHtml(candidate.chickIn)} 入雛 · 預計 ${escapeHtml(candidate.ship)} 出雞 · 初始 ${number(candidate.initial)} 隻${Number.isInteger(candidate.male) && Number.isInteger(candidate.female) ? ` · 公 ${number(candidate.male)}／母 ${number(candidate.female)}` : " · 公母數未提供"}</span></div>`).join("") : `<div class="master-inline-empty"><strong>尚未建立批次</strong></div>`}</div>` : `<div class="empty-tab master-inline-empty"><strong>請先建立雞舍</strong><p>批次需要明確的雞舍 Context。</p></div>`}</section>
+      <section class="master-section"><div class="master-section-head"><div><h3>新增批次</h3><p>批次隸屬目前雞舍；狀態只支援進行中或已出雞。公母數量是選填，若輸入必須加總等於初始入雞。</p></div><span class="scope-chip">${flocks.length} 批</span></div>${house ? `<div class="master-context-note">目前位置：${escapeHtml(farm.name)} · ${escapeHtml(house.name)}</div><div class="master-form-grid"><label class="master-field"><span>批次代碼（必填）</span><input id="master-flock-code" data-testid="master-flock-code" type="text" maxlength="80" placeholder="例如：2026-秋-01"></label><label class="master-field"><span>初始入雞（必填）</span><input id="master-flock-initial" data-testid="master-flock-initial" type="number" min="1" step="1" inputmode="numeric" placeholder="例如：1000"></label><label class="master-field"><span>入雛日期（必填）</span><input id="master-flock-chick-in" data-testid="master-flock-chick-in" type="date" value="2026-09-01"></label><label class="master-field"><span>預計出雞（必填）</span><input id="master-flock-ship" data-testid="master-flock-ship" type="date" value="2026-09-20"></label><label class="master-field"><span>狀態（必填）</span><select id="master-flock-state" data-testid="master-flock-state"><option value="active">進行中</option><option value="closed">已出雞</option></select></label><label class="master-field"><span>公（選填）</span><input id="master-flock-male" type="number" min="0" step="1" inputmode="numeric" placeholder="不填不推算"></label><label class="master-field"><span>母（選填）</span><input id="master-flock-female" type="number" min="0" step="1" inputmode="numeric" placeholder="不填不推算"></label></div><button type="button" class="sheet-primary" data-action="create-flock" data-testid="create-flock">新增批次</button><div class="master-list">${flocks.length ? flocks.map((candidate) => `<div class="master-list-row" data-testid="master-flock-row"><strong>${escapeHtml(candidate.code)}</strong><span>${escapeHtml(candidate.chickIn)} 入雛 · 預計 ${escapeHtml(candidate.ship)} 出雞 · 初始 ${number(candidate.initial)} 隻 · ${escapeHtml(candidate.status)}${Number.isInteger(candidate.male) && Number.isInteger(candidate.female) ? ` · 公 ${number(candidate.male)}／母 ${number(candidate.female)}` : " · 公母數未提供"}</span></div>`).join("") : `<div class="master-inline-empty"><strong>尚未建立批次</strong></div>`}</div>` : `<div class="empty-tab master-inline-empty"><strong>請先建立雞舍</strong><p>批次需要明確的雞舍 Context。</p></div>`}</section>
       <section class="master-section"><div class="master-section-head"><div><h3>指派照顧者</h3><p>這是 synthetic Lab 的照顧者指派，不建立 HR 或登入資料。</p></div><span class="scope-chip">${assignments.length} 筆新增</span></div><label class="master-field"><span>照顧者姓名（必填）</span><input id="master-caretaker-name" data-testid="master-caretaker-name" type="text" maxlength="80" placeholder="例如：測試照顧者甲"></label><button type="button" class="sheet-primary" data-action="assign-caretaker" data-testid="assign-caretaker">指派到目前雞場</button>${assignments.length ? `<div class="master-list">${assignments.map((assignment) => `<div class="master-list-row"><strong>${escapeHtml(assignment.caretakerName)}</strong><span>已指派 · ${escapeHtml(assignment.createdAt || "Lab")}</span></div>`).join("")}</div>` : ""}</section>
       <section class="master-section"><div class="master-section-head"><div><h3>主檔變更紀錄</h3><p>建立與指派都留下 Audit；歷史只能追加，沒有刪除入口。</p></div><span class="scope-chip">${masterDataAuditEntries().length} 筆</span></div><div class="master-list">${audits.length ? audits.map((entry) => `<div class="master-list-row"><strong>${escapeHtml(entry.entityType)} · ${escapeHtml(entry.operation === "assign" ? "指派" : "建立")}</strong><span>${escapeHtml(entry.entityId || "—")} · ${escapeHtml(entry.timestamp || "")}</span></div>`).join("") : `<div class="master-inline-empty"><strong>尚未有主檔變更</strong></div>`}</div></section>
       <div class="readonly-note">不可刪除、不可級聯、不可修改 fixture。新雞場的 Finance identity 會顯示「尚未建立財務資料」，不會顯示假的 0 結算。</div>`, "master-data");
@@ -1612,6 +1622,9 @@
       MASTER_DATA_SEX_TOTAL_MISMATCH: "公母數量加總必須等於初始入雞。",
       MASTER_DATA_MALE_INTEGER_INVALID: "公數量必須是零或正整數。",
       MASTER_DATA_FEMALE_INTEGER_INVALID: "母數量必須是零或正整數。",
+      MASTER_DATA_FLOCK_STATE_INVALID: "批次狀態只支援進行中或已出雞。",
+      MASTER_DATA_FLOCK_STATUS_INVALID: "批次狀態與顯示名稱不一致。",
+      LAB_MASTER_DATA_RELATIONSHIP_INVALID: "主檔關係驗證失敗，尚未寫入任何資料。",
     };
     return messages[error?.message] || "主檔資料格式不完整，請檢查後再試。";
   }
@@ -1642,16 +1655,19 @@
       const identity = window.JinjiDomain.createFarmFinanceIdentity({ id: `lab-finance-identity-${farm.id}`, operationalFarmId: farm.id });
       const farmAudit = window.JinjiDomain.createAuditEntry({ entityType: "Farm", entityId: farm.id, operation: "create", source: "master_data", metadata: { environment: "PREPROD LAB", financeIdentityId: identity.id } });
       const identityAudit = window.JinjiDomain.createAuditEntry({ entityType: "FarmFinanceIdentity", entityId: identity.id, operation: "create", source: "master_data", metadata: { operationalFarmId: farm.id, dataState: identity.dataState } });
-      LAB_STORE.appendMasterDataBatch([
-        { entityType: "Farm", entity: farm },
-        { entityType: "FarmFinanceIdentity", entity: identity },
-      ], [farmAudit, identityAudit]);
-      queueMasterDataOperation({ type: "create_farm", farmId: farm.id, financeIdentityId: identity.id });
-      state.masterDataFarmId = farm.id;
-      state.masterDataHouseId = null;
+      state.masterDataConfirmation = {
+        kind: "farm",
+        title: "新增雞場",
+        summary: [["雞場名稱", farm.name], ["類型", farm.type || "—"], ["說明", farm.description || "—"], ["Finance identity", identity.id], ["寫入邊界", "Lab runtime overlay"]],
+        entities: [{ entityType: "Farm", entity: farm }, { entityType: "FarmFinanceIdentity", entity: identity }],
+        audits: [farmAudit, identityAudit],
+        operation: { type: "create_farm", farmId: farm.id, financeIdentityId: identity.id },
+        nextFarmId: farm.id,
+        nextHouseId: null,
+        notice: `已新增雞場：${farm.name}；Finance identity 已建立，但尚無財務資料。`,
+      };
       state.masterDataError = "";
-      state.masterDataNotice = `已新增雞場：${farm.name}；Finance identity 已建立，但尚無財務資料。`;
-      return openSheet({ kind: "master-data" });
+      return openSheet({ kind: "master-data-confirmation" });
     } catch (error) {
       return showMasterDataError(masterDataErrorMessage(error));
     }
@@ -1666,12 +1682,19 @@
     try {
       const house = window.JinjiDomain.createHouse({ id: window.JinjiDomain.id("lab-house"), farmId: farm.id, name, code });
       const audit = window.JinjiDomain.createAuditEntry({ entityType: "House", entityId: house.id, operation: "create", source: "master_data", metadata: { farmId: farm.id } });
-      LAB_STORE.appendMasterData("House", house, audit);
-      queueMasterDataOperation({ type: "create_house", farmId: farm.id, houseId: house.id });
-      state.masterDataHouseId = house.id;
+      state.masterDataConfirmation = {
+        kind: "house",
+        title: "新增雞舍",
+        summary: [["所屬雞場", farm.name], ["雞舍名稱", house.name], ["雞舍代碼", house.code], ["寫入邊界", "Lab runtime overlay"]],
+        entities: [{ entityType: "House", entity: house }],
+        audits: [audit],
+        operation: { type: "create_house", farmId: farm.id, houseId: house.id },
+        nextFarmId: farm.id,
+        nextHouseId: house.id,
+        notice: `已新增雞舍：${farm.name} · ${house.name}。`,
+      };
       state.masterDataError = "";
-      state.masterDataNotice = `已新增雞舍：${farm.name} · ${house.name}。`;
-      return openSheet({ kind: "master-data" });
+      return openSheet({ kind: "master-data-confirmation" });
     } catch (error) {
       return showMasterDataError(masterDataErrorMessage(error));
     }
@@ -1684,6 +1707,7 @@
     const initial = masterInputValue("master-flock-initial");
     const chickIn = masterInputValue("master-flock-chick-in");
     const ship = masterInputValue("master-flock-ship");
+    const flockState = masterInputValue("master-flock-state") || "active";
     const maleRaw = masterInputValue("master-flock-male");
     const femaleRaw = masterInputValue("master-flock-female");
     if (!farm || !house) return showMasterDataError("請先選擇雞場與雞舍。");
@@ -1696,15 +1720,25 @@
         initial,
         chickIn,
         ship,
+        state: flockState,
+        status: flockState === "closed" ? "已出雞" : "進行中",
         ...(maleRaw ? { male: maleRaw } : {}),
         ...(femaleRaw ? { female: femaleRaw } : {}),
       });
       const audit = window.JinjiDomain.createAuditEntry({ entityType: "Flock", entityId: flock.id, operation: "create", source: "master_data", metadata: { farmId: farm.id, houseId: house.id } });
-      LAB_STORE.appendMasterData("Flock", flock, audit);
-      queueMasterDataOperation({ type: "create_flock", farmId: farm.id, houseId: house.id, flockId: flock.id });
+      state.masterDataConfirmation = {
+        kind: "flock",
+        title: "新增批次",
+        summary: [["所屬位置", `${farm.name} · ${house.name}`], ["批次代碼", flock.code], ["狀態", flock.status], ["初始入雞", `${number(flock.initial)} 隻`], ["入雛日期", flock.chickIn], ["預計出雞", flock.ship], ["公／母", Number.isInteger(flock.male) && Number.isInteger(flock.female) ? `${number(flock.male)}／${number(flock.female)}` : "未提供"]],
+        entities: [{ entityType: "Flock", entity: flock }],
+        audits: [audit],
+        operation: { type: "create_flock", farmId: farm.id, houseId: house.id, flockId: flock.id },
+        nextFarmId: farm.id,
+        nextHouseId: house.id,
+        notice: `已新增批次：${flock.code}；入雛、磅雞與預計出雞會同步進入月曆。`,
+      };
       state.masterDataError = "";
-      state.masterDataNotice = `已新增批次：${flock.code}；入雛、磅雞與預計出雞會同步進入月曆。`;
-      return openSheet({ kind: "master-data" });
+      return openSheet({ kind: "master-data-confirmation" });
     } catch (error) {
       return showMasterDataError(masterDataErrorMessage(error));
     }
@@ -1718,12 +1752,38 @@
     try {
       const assignment = window.JinjiDomain.createCaretakerAssignment({ id: window.JinjiDomain.id("lab-caretaker-assignment"), farmId: farm.id, caretakerName });
       const audit = window.JinjiDomain.createAuditEntry({ entityType: "CaretakerAssignment", entityId: assignment.id, operation: "assign", source: "master_data", metadata: { farmId: farm.id, caretakerId: assignment.caretakerId } });
-      LAB_STORE.appendMasterData("CaretakerAssignment", assignment, audit);
-      queueMasterDataOperation({ type: "assign_caretaker", farmId: farm.id, caretakerAssignmentId: assignment.id });
+      state.masterDataConfirmation = {
+        kind: "caretaker",
+        title: "指派照顧者",
+        summary: [["雞場", farm.name], ["照顧者", assignment.caretakerName], ["指派範圍", "目前雞場"], ["寫入邊界", "Lab runtime overlay"]],
+        entities: [{ entityType: "CaretakerAssignment", entity: assignment }],
+        audits: [audit],
+        operation: { type: "assign_caretaker", farmId: farm.id, caretakerAssignmentId: assignment.id },
+        nextFarmId: farm.id,
+        nextHouseId: state.masterDataHouseId,
+        notice: `已指派照顧者：${assignment.caretakerName} → ${farm.name}。`,
+      };
       state.masterDataError = "";
-      state.masterDataNotice = `已指派照顧者：${assignment.caretakerName} → ${farm.name}。`;
+      return openSheet({ kind: "master-data-confirmation" });
+    } catch (error) {
+      return showMasterDataError(masterDataErrorMessage(error));
+    }
+  }
+
+  function commitMasterDataConfirmation() {
+    const confirmation = state.masterDataConfirmation;
+    if (!confirmation) return openSheet({ kind: "master-data" });
+    try {
+      LAB_STORE.appendMasterDataBatch(confirmation.entities, confirmation.audits);
+      queueMasterDataOperation(confirmation.operation);
+      state.masterDataFarmId = confirmation.nextFarmId;
+      state.masterDataHouseId = confirmation.nextHouseId;
+      state.masterDataError = "";
+      state.masterDataNotice = confirmation.notice;
+      state.masterDataConfirmation = null;
       return openSheet({ kind: "master-data" });
     } catch (error) {
+      state.masterDataConfirmation = null;
       return showMasterDataError(masterDataErrorMessage(error));
     }
   }
@@ -2037,6 +2097,7 @@
     if (state.sheet.kind === "farm-detail") return farmDetailSheet(state.sheet.farmId);
     if (state.sheet.kind === "house-detail") return houseDetailSheet(state.sheet.farmId, state.sheet.houseId);
     if (state.sheet.kind === "master-data") return masterDataManagementSheet();
+    if (state.sheet.kind === "master-data-confirmation") return masterDataConfirmationSheet();
     if (state.sheet.kind === "quick-actions") return quickActionsSheet();
     if (state.sheet.kind === "quick-record") return quickRecordSheet();
     if (state.sheet.kind === "quick-record-preview") return quickRecordPreviewSheet();
@@ -2293,6 +2354,7 @@
     state.sheet = null;
     state.contextDraft = null;
     state.resumeAfterFarmSelection = null;
+    state.masterDataConfirmation = null;
     state.previousFocus = null;
     state.previousFocusMeta = null;
     render();
@@ -2334,6 +2396,7 @@
       state.page = nav.dataset.nav;
       state.sheet = null;
       state.contextDraft = null;
+      state.masterDataConfirmation = null;
       render();
       return;
     }
@@ -2347,6 +2410,7 @@
     if (action === "open-master-data") {
       if (state.context.farmId !== "all" && state.context.farmId !== "history") state.masterDataFarmId = state.context.farmId;
       state.masterDataError = "";
+      state.masterDataConfirmation = null;
       return openSheet({ kind: "master-data" });
     }
     if (action === "authorize-master-data") {
@@ -2361,6 +2425,12 @@
     if (action === "create-house") return createMasterHouse();
     if (action === "create-flock") return createMasterFlock();
     if (action === "assign-caretaker") return assignMasterCaretaker();
+    if (action === "cancel-master-operation") {
+      state.masterDataConfirmation = null;
+      state.masterDataError = "";
+      return openSheet({ kind: "master-data" });
+    }
+    if (action === "confirm-master-operation") return commitMasterDataConfirmation();
     if (action === "select-farm-direct") {
       const farmId = actionElement.dataset.farmId;
       state.context = { farmId, houseId: null, flockId: null };

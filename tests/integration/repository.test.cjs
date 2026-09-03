@@ -7,6 +7,17 @@ function event(id, quantity = 1) {
   return domain.createOperationalEvent({ id, type: "mortality", date: "2026-08-31", time: "09:30", farmId: "red", houseId: "red-1", flockId: "alpha", quantity, source: "quick_record", clientOperationId: `op-${id}` }, new Date("2026-09-02T00:00:00Z"));
 }
 
+function installMemoryStorage(initial = {}) {
+  const previousStorage = global.localStorage;
+  const values = { ...initial };
+  global.localStorage = {
+    getItem(key) { return values[key] || null; },
+    setItem(key, value) { values[key] = String(value); },
+    removeItem(key) { delete values[key]; },
+  };
+  return { values, restore() { global.localStorage = previousStorage; } };
+}
+
 test("LabRepository uses an overlay and keeps the fixture object unchanged", () => {
   const fixture = { events: [event("fixture-event", 5)] };
   const before = JSON.stringify(fixture);
@@ -112,31 +123,92 @@ test("master data stays in the runtime overlay and is append-only", () => {
   assert.deepEqual(reset.masterData, { farms: [], houses: [], flocks: [], caretakerAssignments: [], financeIdentities: [] });
 });
 
-test("malformed persisted overlay rows are discarded without crashing the Lab repository", () => {
-  const previousStorage = global.localStorage;
-  const values = {
+test("master data write boundary rejects invalid relationships without partial single writes", () => {
+  const memory = installMemoryStorage();
+  const previousDomain = global.JinjiDomain;
+  global.JinjiDomain = domain;
+  try {
+    const now = new Date("2026-09-03T00:00:00Z");
+    const farm = domain.createFarm({ id: "boundary-farm", name: "Boundary 場" }, now);
+    const identity = domain.createFarmFinanceIdentity({ id: "boundary-identity", operationalFarmId: farm.id }, now);
+    const repo = new storage.LabRepository();
+    repo.appendMasterDataBatch([
+      { entityType: "Farm", entity: farm },
+      { entityType: "FarmFinanceIdentity", entity: identity },
+    ]);
+    const before = repo.snapshot();
+    const persistedBefore = memory.values["jinji-v14r-lab-runtime-overlay-v1"];
+    const invalidHouse = domain.createHouse({ id: "boundary-invalid-house", farmId: "missing-farm", name: "孤兒舍", code: "X1" }, now);
+    assert.throws(() => repo.appendMasterData("House", invalidHouse), /LAB_MASTER_DATA_RELATIONSHIP_INVALID|MASTER_DATA_CONTRACT_INVALID/);
+    assert.deepEqual(repo.snapshot(), before);
+    assert.equal(memory.values["jinji-v14r-lab-runtime-overlay-v1"], persistedBefore);
+  } finally {
+    global.JinjiDomain = previousDomain;
+    memory.restore();
+  }
+});
+
+test("master data batch is atomic when any relationship is invalid", () => {
+  const memory = installMemoryStorage();
+  const previousDomain = global.JinjiDomain;
+  global.JinjiDomain = domain;
+  try {
+    const now = new Date("2026-09-03T00:00:00Z");
+    const farm = domain.createFarm({ id: "atomic-farm", name: "Atomic 場" }, now);
+    const identity = domain.createFarmFinanceIdentity({ id: "atomic-identity", operationalFarmId: farm.id }, now);
+    const invalidHouse = domain.createHouse({ id: "atomic-invalid-house", farmId: "missing-farm", name: "孤兒舍", code: "X1" }, now);
+    const repo = new storage.LabRepository();
+    const audits = [farm, identity, invalidHouse].map((entity) => domain.createAuditEntry({ entityType: entity === farm ? "Farm" : entity === identity ? "FarmFinanceIdentity" : "House", entityId: entity.id, source: "master_data" }, now));
+    assert.throws(() => repo.appendMasterDataBatch([
+      { entityType: "Farm", entity: farm },
+      { entityType: "FarmFinanceIdentity", entity: identity },
+      { entityType: "House", entity: invalidHouse },
+    ], audits), /LAB_MASTER_DATA_RELATIONSHIP_INVALID|MASTER_DATA_CONTRACT_INVALID/);
+    assert.deepEqual(repo.snapshot().masterData, { farms: [], houses: [], flocks: [], caretakerAssignments: [], financeIdentities: [] });
+    assert.deepEqual(repo.snapshot().auditEntries, []);
+    assert.equal(memory.values["jinji-v14r-lab-runtime-overlay-v1"], undefined);
+  } finally {
+    global.JinjiDomain = previousDomain;
+    memory.restore();
+  }
+});
+
+test("malformed persisted master-data overlay is discarded, persisted, and preserves valid runtime state", () => {
+  const memory = installMemoryStorage({
     "jinji-v14r-lab-runtime-overlay-v1": JSON.stringify({
       version: 1,
-      events: [],
-      pendingReviews: [],
-      abnormalities: [],
-      auditEntries: [],
-      outbox: [],
+      events: [{ id: "preserve-event" }],
+      pendingReviews: [{ id: "preserve-pending" }],
+      abnormalities: [{ id: "preserve-abnormality" }],
+      auditEntries: [{ id: "preserve-audit" }],
+      outbox: [{ clientOperationId: "preserve-operation" }],
+      syncedOperationIds: ["preserve-synced"],
+      settings: { keep: true },
       masterData: { farms: [null], houses: [], flocks: [], caretakerAssignments: [], financeIdentities: [] },
+      mode: "BACKEND_TEMP_DOWN",
     }),
-  };
-  global.localStorage = {
-    getItem(key) { return values[key] || null; },
-    setItem() {},
-    removeItem(key) { delete values[key]; },
-  };
+  });
+  const previousDomain = global.JinjiDomain;
   global.JinjiDomain = domain;
   try {
     const repo = new storage.LabRepository();
     assert.deepEqual(repo.snapshot().masterData, { farms: [], houses: [], flocks: [], caretakerAssignments: [], financeIdentities: [] });
-    assert.deepEqual(repo.snapshot().events, []);
+    assert.deepEqual(repo.snapshot().events, [{ id: "preserve-event" }]);
+    assert.deepEqual(repo.snapshot().pendingReviews, [{ id: "preserve-pending" }]);
+    assert.deepEqual(repo.snapshot().abnormalities, [{ id: "preserve-abnormality" }]);
+    assert.deepEqual(repo.snapshot().auditEntries, [{ id: "preserve-audit" }]);
+    assert.deepEqual(repo.snapshot().outbox, [{ clientOperationId: "preserve-operation" }]);
+    assert.deepEqual(repo.snapshot().syncedOperationIds, ["preserve-synced"]);
+    assert.deepEqual(repo.snapshot().settings, { keep: true });
+    assert.equal(repo.snapshot().mode, "BACKEND_TEMP_DOWN");
+    const persisted = JSON.parse(memory.values["jinji-v14r-lab-runtime-overlay-v1"]);
+    assert.deepEqual(persisted.masterData, { farms: [], houses: [], flocks: [], caretakerAssignments: [], financeIdentities: [] });
+    assert.deepEqual(persisted.events, [{ id: "preserve-event" }]);
+    const reloaded = new storage.LabRepository();
+    assert.deepEqual(reloaded.snapshot().masterData, { farms: [], houses: [], flocks: [], caretakerAssignments: [], financeIdentities: [] });
+    assert.deepEqual(reloaded.snapshot().events, [{ id: "preserve-event" }]);
   } finally {
-    global.localStorage = previousStorage;
-    delete global.JinjiDomain;
+    global.JinjiDomain = previousDomain;
+    memory.restore();
   }
 });

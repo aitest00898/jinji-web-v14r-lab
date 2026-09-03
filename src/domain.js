@@ -58,6 +58,7 @@
     "caretakerAssignments",
     "financeIdentities",
   ]);
+  const MASTER_FLOCK_STATES = Object.freeze(["active", "closed"]);
 
   const TYPES = {};
   MODEL_NAMES.forEach((name) => {
@@ -421,6 +422,10 @@
       : null;
     if (sex && sex.male + sex.female !== initial) throw new Error("MASTER_DATA_SEX_TOTAL_MISMATCH");
     const state = input.state || (input.status === "已出雞" ? "closed" : "active");
+    if (!MASTER_FLOCK_STATES.includes(state)) throw new Error("MASTER_DATA_FLOCK_STATE_INVALID");
+    const status = input.status || (state === "closed" ? "已出雞" : "進行中");
+    const expectedStatus = state === "closed" ? "已出雞" : "進行中";
+    if (status !== expectedStatus) throw new Error("MASTER_DATA_FLOCK_STATUS_INVALID");
     return {
       id: input.id || id("flock"),
       houseId,
@@ -431,7 +436,7 @@
       plannedShipment: ship,
       stock,
       state,
-      status: input.status || (state === "closed" ? "已出雞" : "進行中"),
+      status,
       ...(sex || {}),
       source: input.source || "lab_master_data",
       createdAt: input.createdAt || nowIso(now),
@@ -487,7 +492,11 @@
     const farmIds = new Set(rows.farms.map((farm) => farm.id));
     const houseIds = new Set(rows.houses.map((house) => house.id));
     rows.houses.forEach((house) => expect(farmIds.has(house.farmId), `house farm ${house.id}`));
-    rows.flocks.forEach((flock) => expect(houseIds.has(flock.houseId), `flock house ${flock.id}`));
+    rows.flocks.forEach((flock) => {
+      expect(houseIds.has(flock.houseId), `flock house ${flock.id}`);
+      expect(MASTER_FLOCK_STATES.includes(flock.state), `flock state ${flock.id}`);
+      expect(flock.status === (flock.state === "closed" ? "已出雞" : "進行中"), `flock status ${flock.id}`);
+    });
     rows.caretakerAssignments.forEach((assignment) => expect(farmIds.has(assignment.farmId), `caretaker farm ${assignment.id}`));
     const financeFarmIds = new Set();
     rows.financeIdentities.forEach((identity) => {
