@@ -28,6 +28,7 @@ function waitForServer(server) {
 async function main() {
   fs.mkdirSync(resultsDir, { recursive: true });
   const server = spawn("python3", ["-m", "http.server", String(port), "--bind", "127.0.0.1"], { cwd: root, stdio: ["ignore", "pipe", "pipe"] });
+  let browser;
   try {
     await waitForServer(server);
     console.log(`SERVER_PID=${server.pid}`);
@@ -36,7 +37,7 @@ async function main() {
     const executablePath = process.env.CHROME_PATH;
     const launchOptions = { headless: true };
     if (browserName === "chromium" && executablePath && fs.existsSync(executablePath)) launchOptions.executablePath = executablePath;
-    const browser = await (browserName === "webkit" ? webkit : chromium).launch(launchOptions);
+    browser = await (browserName === "webkit" ? webkit : chromium).launch(launchOptions);
     const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await context.newPage();
     const consoleErrors = [];
@@ -117,6 +118,8 @@ async function main() {
     await page.locator('.bottom-nav [data-nav="records"]').click();
     const newDeath = page.locator('.list-row').filter({ hasText: "死亡 5 隻" }).first();
     await newDeath.click();
+    await page.locator('[data-action="open-correction"]').waitFor({ state: "visible" });
+    await page.waitForTimeout(350);
     await page.locator('[data-action="open-correction"]').click();
     await page.locator("#correction-qty").fill("2");
     await page.locator('[data-action="commit-correction"]').click();
@@ -147,8 +150,8 @@ async function main() {
     assert.deepEqual(pageErrors, []);
     assert.deepEqual(unexpectedRequests, []);
     console.log(`E2E_PASS=${browserName}`, JSON.stringify({ mobile: "390x844", desktop: "1440x900", consoleErrors: consoleErrors.length, pageErrors: pageErrors.length, unexpectedRequests: unexpectedRequests.length }));
-    await browser.close();
   } finally {
+    if (browser) await browser.close();
     server.kill("SIGTERM");
   }
 }
