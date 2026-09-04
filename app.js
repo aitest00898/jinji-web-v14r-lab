@@ -1625,8 +1625,8 @@
       MASTER_DATA_FLOCK_STATE_INVALID: "批次狀態只支援進行中或已出雞。",
       MASTER_DATA_FLOCK_STATUS_INVALID: "批次狀態與顯示名稱不一致。",
       LAB_MASTER_DATA_RELATIONSHIP_INVALID: "主檔關係驗證失敗，尚未寫入任何資料。",
-      LAB_STORAGE_WRITE_FAILED: "本機儲存失敗，尚未確認寫入；請保留內容後再試。",
-      LAB_STORAGE_CONFLICT: "另一個頁面先更新了 Lab，尚未確認寫入；請重新載入後再試。",
+      LAB_STORAGE_WRITE_FAILED: "本機儲存失敗，這筆資料尚未寫入；請保留內容後再試。",
+      LAB_STORAGE_CONFLICT: "另一個頁面先更新了 Lab，這筆資料尚未寫入；請重新載入後再試。",
     };
     return messages[error?.message] || "主檔資料格式不完整，請檢查後再試。";
   }
@@ -1637,13 +1637,41 @@
     return openSheet({ kind: "master-data" });
   }
 
-  function queueMasterDataOperation(operation) {
-    LAB_STORE.queueOperation({
-      clientOperationId: window.JinjiDomain.clientOperationId("master-data"),
-      source: "master_data",
-      ...operation,
+  function syncAfterLocalOperation() {
+    const snapshot = LAB_STORE.snapshot();
+    if (snapshot.mode !== "ONLINE") return { status: "PENDING", synced: 0, conflicts: 0, pending: snapshot.outbox.length };
+    try {
+      return LAB_STORE.sync({ backendAvailable: true });
+    } catch (error) {
+      if (["LAB_STORAGE_CONFLICT", "LAB_STORAGE_WRITE_FAILED"].includes(error?.message)) {
+        return { status: "PENDING", synced: 0, conflicts: error.message === "LAB_STORAGE_CONFLICT" ? 1 : 0, pending: LAB_STORE.snapshot().outbox.length };
+      }
+      throw error;
+    }
+  }
+
+  function commitLabLocalOperation(bundle) {
+    const operation = LAB_STORE.commitLocalOperation(bundle);
+    return { operation, sync: syncAfterLocalOperation() };
+  }
+
+  function operationNotice(successText, syncResult) {
+    const syncIncomplete = syncResult?.status !== "ONLINE" || Number(syncResult.conflicts) > 0 || Number(syncResult.pending) > 0;
+    return syncIncomplete
+      ? `${successText}；資料已儲存在這台裝置，但同步尚未完成，稍後可再處理。`
+      : successText;
+  }
+
+  function queueMasterDataOperation(operation, entities, audits) {
+    return commitLabLocalOperation({
+      masterData: entities,
+      auditEntries: audits,
+      operation: {
+        clientOperationId: window.JinjiDomain.clientOperationId("master-data"),
+        source: "master_data",
+        ...operation,
+      },
     });
-    if (LAB_STORE.snapshot().mode === "ONLINE") LAB_STORE.sync({ backendAvailable: true });
   }
 
   function createMasterFarm() {
@@ -1776,12 +1804,11 @@
     const confirmation = state.masterDataConfirmation;
     if (!confirmation) return openSheet({ kind: "master-data" });
     try {
-      LAB_STORE.appendMasterDataBatch(confirmation.entities, confirmation.audits);
-      queueMasterDataOperation(confirmation.operation);
+      const { sync } = queueMasterDataOperation(confirmation.operation, confirmation.entities, confirmation.audits);
       state.masterDataFarmId = confirmation.nextFarmId;
       state.masterDataHouseId = confirmation.nextHouseId;
       state.masterDataError = "";
-      state.masterDataNotice = confirmation.notice;
+      state.masterDataNotice = operationNotice(confirmation.notice, sync);
       state.masterDataConfirmation = null;
       return openSheet({ kind: "master-data" });
     } catch (error) {
@@ -1839,16 +1866,18 @@
     if (parsed.status !== "event" || !event) return openSheet({ kind: "quick-record-preview" });
     const audit = window.JinjiDomain.createAuditEntry({ entityId: event.id, operation: "create", source: "quick_record", newEventIds: [event.id] });
     try {
-      LAB_STORE.appendEvent(event, audit);
-      LAB_STORE.queueOperation({ clientOperationId: event.clientOperationId, type: "create_event", eventId: event.id, source: "quick_record" });
-      if (LAB_STORE.snapshot().mode === "ONLINE") LAB_STORE.sync({ backendAvailable: true });
+      const { sync } = commitLabLocalOperation({
+        events: [event],
+        auditEntries: [audit],
+        operation: { clientOperationId: event.clientOperationId, type: "create_event", eventId: event.id, source: "quick_record" },
+      });
+      state.quickRecordNotice = operationNotice(`已寫入 Lab：${eventLabel(event.type)} ${number(event.quantity)} ${event.unit} · ${contextLabel()}`, sync);
     } catch (error) {
       state.quickRecordError = masterDataErrorMessage(error);
       return openSheet({ kind: "quick-record-preview" });
     }
     state.quickRecordDraft = "";
     state.quickRecordError = "";
-    state.quickRecordNotice = `已寫入 Lab：${eventLabel(event.type)} ${number(event.quantity)} ${event.unit} · ${contextLabel()}`;
     state.calendarYear = Number(PLUS_AS_OF.slice(0, 4));
     state.calendarMonth = Number(PLUS_AS_OF.slice(5, 7));
     state.selectedCalendarDate = PLUS_AS_OF;
@@ -1869,16 +1898,18 @@
       source: "lab_correction",
     });
     try {
-      LAB_STORE.appendEvents([ledger.reversal, ...ledger.replacements], [ledger.audit]);
-      LAB_STORE.queueOperation({ clientOperationId: ledger.audit.id, type: "correct_event", eventId: original.id, replacementEventIds: ledger.audit.newEventIds, source: "lab_correction" });
-      if (LAB_STORE.snapshot().mode === "ONLINE") LAB_STORE.sync({ backendAvailable: true });
+      const { sync } = commitLabLocalOperation({
+        events: [ledger.reversal, ...ledger.replacements],
+        auditEntries: [ledger.audit],
+        operation: { clientOperationId: ledger.audit.id, type: "correct_event", eventId: original.id, replacementEventIds: ledger.audit.newEventIds, source: "lab_correction" },
+      });
+      state.quickRecordNotice = operationNotice(`已新增修正紀錄：${eventLabel(original.type)} ${number(nextQuantity)} ${original.unit}；原紀錄仍保留於變更紀錄。`, sync);
     } catch (error) {
       state.correctionNotice = masterDataErrorMessage(error);
       return openSheet({ kind: "correction", id: eventId });
     }
     state.correctionNotice = "";
     state.quickRecordError = "";
-    state.quickRecordNotice = `已新增修正紀錄：${eventLabel(original.type)} ${number(nextQuantity)} ${original.unit}；原紀錄仍保留於變更紀錄。`;
     state.sheet = null;
     render();
   }
@@ -1897,15 +1928,17 @@
       source: "quick_record",
     };
     try {
-      LAB_STORE.appendPending(review);
-      LAB_STORE.queueOperation({ clientOperationId: window.JinjiDomain.clientOperationId("pending"), type: "create_pending_review", pendingId: review.id, source: "quick_record" });
+      const { sync } = commitLabLocalOperation({
+        pendingReviews: [review],
+        operation: { clientOperationId: window.JinjiDomain.clientOperationId("pending"), type: "create_pending_review", pendingId: review.id, source: "quick_record" },
+      });
+      state.quickRecordNotice = operationNotice("這筆內容已保留到 Pending Review，沒有建立不確定的正式事件。", sync);
     } catch (error) {
       state.quickRecordError = masterDataErrorMessage(error);
       return openSheet({ kind: "quick-record-preview" });
     }
     state.quickRecordDraft = "";
     state.quickRecordError = "";
-    state.quickRecordNotice = "這筆內容已保留到 Pending Review，沒有建立不確定的正式事件。";
     state.sheet = null;
     render();
   }
