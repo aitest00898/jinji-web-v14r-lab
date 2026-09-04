@@ -1909,6 +1909,7 @@ html, body { background: var(--canvas); }
 
 /* Lab runtime state is intentionally conditional; the V7 fixture view remains unchanged. */
 .lab-write-notice { margin: 0 0 12px; padding: 11px 13px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--green-soft); color: var(--green-dark); font-size: 14px; line-height: 1.45; }
+.lab-write-notice.error { border-color: #e5aaa0; background: #fff3f0; color: #a4372b; }
 .lab-mode-status { display: block; margin-top: 2px; color: var(--amber); font-size: 10px; line-height: 1.2; }
 
 /* Mobile viewport lock: keep the browsing range stable and prevent iOS Safari

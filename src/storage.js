@@ -30,6 +30,7 @@
   function emptyState() {
     return {
       version: 1,
+      revision: 0,
       events: [],
       pendingReviews: [],
       abnormalities: [],
@@ -46,6 +47,17 @@
       },
       mode: "ONLINE",
     };
+  }
+
+  function revisionOf(value) {
+    const revision = Number(value);
+    return Number.isInteger(revision) && revision >= 0 ? revision : 0;
+  }
+
+  function hasLocalStorage() {
+    return Boolean(root?.localStorage
+      && typeof root.localStorage.getItem === "function"
+      && typeof root.localStorage.setItem === "function");
   }
 
   function validState(value) {
@@ -74,13 +86,75 @@
     }
   }
 
+  function readRaw(key) {
+    try {
+      return root?.localStorage?.getItem(key) ?? null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function restoreRaw(key, raw) {
+    try {
+      if (raw === null || raw === undefined) root?.localStorage?.removeItem?.(key);
+      else root?.localStorage?.setItem?.(key, raw);
+    } catch (_) {}
+  }
+
   function writeJson(key, value) {
     try {
       root?.localStorage?.setItem(key, JSON.stringify(value));
       return true;
-    } catch (_) {
-      return false;
+    } catch (error) {
+      const failure = new Error("LAB_STORAGE_WRITE_FAILED");
+      failure.cause = error;
+      throw failure;
     }
+  }
+
+  function fixtureMasterData(fixture) {
+    const farms = [];
+    const houses = [];
+    const flocks = [];
+    (Array.isArray(fixture?.farms) ? fixture.farms : []).forEach((farm) => {
+      if (!farm || typeof farm !== "object" || !farm.id || farm.id === "all") return;
+      farms.push({ id: farm.id });
+      (Array.isArray(farm.houses) ? farm.houses : []).forEach((house) => {
+        if (!house || typeof house !== "object" || !house.id) return;
+        houses.push({ id: house.id, farmId: farm.id });
+        (Array.isArray(house.flocks) ? house.flocks : []).forEach((flock) => {
+          if (!flock || typeof flock !== "object" || !flock.id) return;
+          flocks.push({ id: flock.id, houseId: house.id });
+        });
+      });
+    });
+    return { farms, houses, flocks, caretakerAssignments: [], financeIdentities: [] };
+  }
+
+  function validPersistedEvent(row) {
+    if (!row || typeof row !== "object" || Array.isArray(row) || !String(row.id || "").trim()) return false;
+    const hasEventFields = row.type !== undefined || row.quantity !== undefined || row.qty !== undefined || row.value !== undefined;
+    // Preserve opaque legacy runtime rows that never entered the event contract;
+    // they are harmless to reconstruct and are retained for backward compatibility.
+    if (!hasEventFields) return true;
+    if (typeof root?.JinjiDomain?.validateOperationalEvent === "function") {
+      try {
+        root.JinjiDomain.validateOperationalEvent(row);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+    const eventTypes = ["mortality", "cull", "feed", "water", "shipment", "chick_in", "weigh", "other"];
+    const quantity = Number(row.quantity ?? row.qty ?? row.value);
+    return eventTypes.includes(String(row.type || "other")) && Number.isFinite(quantity) && quantity >= 0;
+  }
+
+  function storageConflict(expectedRevision, actualRevision) {
+    const error = new Error("LAB_STORAGE_CONFLICT");
+    error.expectedRevision = expectedRevision;
+    error.actualRevision = actualRevision;
+    return error;
   }
 
   function dispatch(name, detail) {
@@ -90,11 +164,19 @@
   class LabRepository {
     constructor(options = {}) {
       this.fixture = options.fixture || null;
+      this.masterDataContext = clone(options.masterDataContext || fixtureMasterData(this.fixture));
       const stored = readJson(KEYS.overlay);
       const storedWithoutMasterData = stored && typeof stored === "object" && !Array.isArray(stored)
         ? { ...stored, masterData: emptyState().masterData }
         : stored;
       this.state = validState(storedWithoutMasterData) ? { ...emptyState(), ...stored } : emptyState();
+      this.state.revision = revisionOf(this.state.revision);
+      let eventRowsWereSanitized = false;
+      this.state.events = this.state.events.filter((row) => {
+        const valid = validPersistedEvent(row);
+        if (!valid) eventRowsWereSanitized = true;
+        return valid;
+      });
       let masterDataWasSanitized = false;
       const storedMasterData = stored && typeof stored === "object" && !Array.isArray(stored) ? stored.masterData : undefined;
       if (storedMasterData !== undefined && (!storedMasterData || typeof storedMasterData !== "object" || Array.isArray(storedMasterData))) {
@@ -114,7 +196,7 @@
       });
       if (typeof root?.JinjiDomain?.validateMasterData === "function") {
         try {
-          root.JinjiDomain.validateMasterData(this.state.masterData);
+          root.JinjiDomain.validateMasterData(this.state.masterData, this.masterDataContext);
         } catch (_) {
           // A corrupt local overlay must never prevent the Lab shell from loading.
           // Discard only the invalid master-data overlay; the checked-in fixture is untouched.
@@ -125,10 +207,13 @@
       const mode = readJson(KEYS.mode);
       if (typeof mode === "string" && MODES.includes(mode)) this.state.mode = mode;
       this.idbPromise = this.openIndexedDb();
-      if (masterDataWasSanitized) {
-        // Self-heal only the master-data portion while preserving all valid runtime state.
-        writeJson(KEYS.overlay, this.state);
-        this.persistToIndexedDb();
+      if (masterDataWasSanitized || eventRowsWereSanitized) {
+        // Self-heal only invalid runtime rows while preserving all valid runtime state.
+        try {
+          this.persist(this.state);
+        } catch (_) {
+          // Recovery must not prevent the Lab shell from loading when local storage is unavailable.
+        }
       }
     }
 
@@ -149,20 +234,36 @@
       });
     }
 
-    persistToIndexedDb() {
+    persistToIndexedDb(candidate = this.state) {
       this.idbPromise.then((db) => {
         if (!db) return;
         try {
           const transaction = db.transaction("runtime", "readwrite");
-          transaction.objectStore("runtime").put(clone(this.state), "overlay");
+          transaction.objectStore("runtime").put(clone(candidate), "overlay");
         } catch (_) {}
       });
     }
 
-    persist() {
-      writeJson(KEYS.overlay, this.state);
-      writeJson(KEYS.mode, this.state.mode);
-      this.persistToIndexedDb();
+    persist(nextState = this.state) {
+      const candidate = clone(nextState);
+      const expectedRevision = revisionOf(this.state.revision);
+      if (hasLocalStorage()) {
+        const currentRevision = revisionOf(readJson(KEYS.overlay)?.revision);
+        if (currentRevision !== expectedRevision) throw storageConflict(expectedRevision, currentRevision);
+      }
+      candidate.revision = expectedRevision + 1;
+      const previousOverlay = readRaw(KEYS.overlay);
+      const previousMode = readRaw(KEYS.mode);
+      try {
+        writeJson(KEYS.overlay, candidate);
+        writeJson(KEYS.mode, candidate.mode);
+      } catch (error) {
+        restoreRaw(KEYS.overlay, previousOverlay);
+        restoreRaw(KEYS.mode, previousMode);
+        throw error;
+      }
+      this.state = candidate;
+      this.persistToIndexedDb(candidate);
       dispatch("jinji:lab-store-updated", this.snapshot());
       return this.snapshot();
     }
@@ -173,33 +274,38 @@
 
     setMode(mode) {
       if (!MODES.includes(mode)) throw new Error(`LAB_MODE_INVALID:${mode}`);
-      this.state.mode = mode;
-      return this.persist();
+      const nextState = clone(this.state);
+      nextState.mode = mode;
+      return this.persist(nextState);
     }
 
     appendEvent(event, auditEntry = null) {
-      const existing = this.state.events.find((candidate) => candidate.id === event.id);
-      if (!existing) this.state.events.push(clone(event));
-      if (auditEntry) this.state.auditEntries.push(clone(auditEntry));
-      return this.persist();
+      const nextState = clone(this.state);
+      const existing = nextState.events.find((candidate) => candidate.id === event.id);
+      if (!existing) nextState.events.push(clone(event));
+      if (auditEntry) nextState.auditEntries.push(clone(auditEntry));
+      return this.persist(nextState);
     }
 
     appendEvents(events = [], auditEntries = []) {
+      const nextState = clone(this.state);
       events.forEach((event) => {
-        if (!this.state.events.some((candidate) => candidate.id === event.id)) this.state.events.push(clone(event));
+        if (!nextState.events.some((candidate) => candidate.id === event.id)) nextState.events.push(clone(event));
       });
-      auditEntries.forEach((entry) => this.state.auditEntries.push(clone(entry)));
-      return this.persist();
+      auditEntries.forEach((entry) => nextState.auditEntries.push(clone(entry)));
+      return this.persist(nextState);
     }
 
     appendPending(review) {
-      if (!this.state.pendingReviews.some((item) => item.id === review.id)) this.state.pendingReviews.push(clone(review));
-      return this.persist();
+      const nextState = clone(this.state);
+      if (!nextState.pendingReviews.some((item) => item.id === review.id)) nextState.pendingReviews.push(clone(review));
+      return this.persist(nextState);
     }
 
     appendAbnormality(abnormality) {
-      if (!this.state.abnormalities.some((item) => item.id === abnormality.id)) this.state.abnormalities.push(clone(abnormality));
-      return this.persist();
+      const nextState = clone(this.state);
+      if (!nextState.abnormalities.some((item) => item.id === abnormality.id)) nextState.abnormalities.push(clone(abnormality));
+      return this.persist(nextState);
     }
 
     appendMasterData(entityType, entity, auditEntry = null) {
@@ -218,15 +324,21 @@
       });
       if (typeof root?.JinjiDomain?.validateMasterData === "function") {
         try {
-          root.JinjiDomain.validateMasterData(nextState.masterData);
+          root.JinjiDomain.validateMasterData(nextState.masterData, this.masterDataContext);
         } catch (error) {
           const relationshipError = new Error("LAB_MASTER_DATA_RELATIONSHIP_INVALID");
           relationshipError.cause = error;
           throw relationshipError;
         }
       }
-      this.state = nextState;
-      return this.persist();
+      return this.persist(nextState);
+    }
+
+    setSettings(patch = {}) {
+      if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw new Error("LAB_SETTINGS_INVALID");
+      const nextState = clone(this.state);
+      nextState.settings = { ...nextState.settings, ...clone(patch) };
+      return this.persist(nextState);
     }
 
     queueOperation(operation) {
@@ -236,8 +348,9 @@
       const existing = this.state.outbox.find((item) => item.clientOperationId === key);
       if (existing) return { ...clone(existing), duplicate: true };
       const row = { ...clone(operation), status: "queued", queuedAt: operation.queuedAt || new Date().toISOString() };
-      this.state.outbox.push(row);
-      this.persist();
+      const nextState = clone(this.state);
+      nextState.outbox.push(row);
+      this.persist(nextState);
       return clone(row);
     }
 
@@ -248,11 +361,12 @@
       let synced = 0;
       let conflictCount = 0;
       const remaining = [];
-      this.state.outbox.forEach((operation) => {
+      const nextState = clone(this.state);
+      nextState.outbox.forEach((operation) => {
         if (conflicts.has(operation.clientOperationId)) {
           conflictCount += 1;
           const pendingId = `pending-conflict-${operation.clientOperationId}`;
-          if (!this.state.pendingReviews.some((item) => item.id === pendingId)) this.state.pendingReviews.push({
+          if (!nextState.pendingReviews.some((item) => item.id === pendingId)) nextState.pendingReviews.push({
             id: pendingId,
             title: "同步衝突需要人工確認",
             detail: "Mock sync 偵測到同一筆操作的內容衝突，不採用 last-write-wins。",
@@ -264,24 +378,22 @@
           return;
         }
         synced += 1;
-        this.state.syncedOperationIds.push(operation.clientOperationId);
+        nextState.syncedOperationIds.push(operation.clientOperationId);
       });
-      this.state.outbox = remaining;
-      this.persist();
+      nextState.outbox = remaining;
+      this.persist(nextState);
       return { status: "ONLINE", synced, conflicts: conflictCount, pending: remaining.length };
     }
 
     resetFixture() {
       const auditEntries = clone(this.state.auditEntries);
-      this.state = emptyState();
+      const nextState = emptyState();
       // Fixture reset clears only local runtime state. Audit history is append-only
       // and must remain available for reconstruction after a developer reset.
-      this.state.auditEntries = auditEntries;
-      writeJson(KEYS.overlay, this.state);
-      writeJson(KEYS.mode, this.state.mode);
-      this.persistToIndexedDb();
-      dispatch("jinji:lab-fixture-reset", this.snapshot());
-      return this.snapshot();
+      nextState.auditEntries = auditEntries;
+      const snapshot = this.persist(nextState);
+      dispatch("jinji:lab-fixture-reset", snapshot);
+      return snapshot;
     }
   }
 
