@@ -50,7 +50,7 @@ async function newPage(browser, viewport = { width: 390, height: 844 }) {
     if (message.type() === "error") evidence.consoleErrors.push(message.text());
   });
   page.on("pageerror", (error) => evidence.pageErrors.push(error.message));
-  await page.goto(`${baseUrl}/index.html?remediation=${browserName}-${Date.now()}`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/index.html?remediation=${browserName}-${Date.now()}&test-date=2026-08-31`, { waitUntil: "networkidle" });
   await assertIdentity(page);
   return page;
 }
@@ -242,6 +242,7 @@ async function runMasterDataAndCrossFarm(page) {
   await page.locator('[data-action="select-farm-direct"][data-farm-id="all"]').click();
 
   await page.locator('.bottom-nav [data-nav="calendar"]').click();
+  await page.locator('[data-action="calendar-next-month"]').click();
   const septemberCell = page.locator('.calendar-cell[data-date="2026-09-01"]');
   assert.equal(await septemberCell.count(), 1, await page.locator(".calendar-title-block h1").innerText());
   await septemberCell.click();
@@ -277,6 +278,7 @@ async function runCorrection(page) {
     await page.locator("#quick-record-input").fill(text);
     await page.locator('[data-action="preview-quick-record"]').click();
     await page.locator('[data-action="commit-lab-event"]').click();
+    await page.locator('[data-action="apply-farm-scope"]').click();
   }
 
   await quickRecord("死亡5");

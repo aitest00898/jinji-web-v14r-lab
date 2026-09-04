@@ -46,7 +46,7 @@ async function main() {
     page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
     page.on("pageerror", (error) => pageErrors.push(error.message));
     page.on("request", (request) => { if (!request.url().startsWith(baseUrl)) unexpectedRequests.push(request.url()); });
-    await page.goto(`${baseUrl}/index.html?e2e=${browserName}`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/index.html?e2e=${browserName}&test-date=2026-08-31`, { waitUntil: "networkidle" });
 
     // Required first assertion: browser target identity.
     assert.equal(await page.evaluate("document.documentElement.dataset.appId"), "jinji-web-v14r-lab");
@@ -91,6 +91,7 @@ async function main() {
     assert.match(preview, /寫入 Lab 紀錄/);
     assert.match(preview, /稽核紅羽一場/);
     await page.locator('[data-action="commit-lab-event"]').click();
+    await page.locator('[data-action="apply-farm-scope"]').click();
     assert.equal(await page.locator('[data-testid="mortality-value"]').innerText(), "10");
     assert.equal(await page.locator('[data-testid="stock-value"]').innerText(), "12,127");
     assert.match(await page.locator(".lab-write-notice").innerText(), /死亡 5/);
@@ -104,6 +105,37 @@ async function main() {
     await page.locator('[data-action="open-sheet"][data-sheet-kind="audit"]').click();
     assert.match(await page.locator(".sheet-panel").innerText(), /quick_record/);
     await page.locator('button.sheet-close[data-action="close-sheet"]').click();
+
+    // Qualitative observations are recorded without inventing a quantity or
+    // changing mortality/stock statistics.
+    await page.locator(".mobile-quick-button").click();
+    await page.locator('[data-action="open-quick-record"]').click();
+    const overlayBeforeObservation = await page.evaluate(() => JSON.parse(localStorage.getItem("jinji-v14r-lab-runtime-overlay-v1")));
+    const mortalityEventsBeforeObservation = overlayBeforeObservation.events.filter((row) => row.type === "mortality").length;
+    await page.locator("#quick-record-input").fill("咳嗽");
+    assert.match(await page.locator('[data-testid="quick-record-input-status"]').innerText(), /現場觀察/);
+    await page.locator('[data-action="preview-quick-record"]').click();
+    assert.match(await page.locator(".sheet-panel").innerText(), /小範圍|中範圍|大範圍/);
+    assert.equal(await page.locator('[data-action="quick-extent"]').count(), 3);
+    await page.locator('[data-action="quick-extent"][data-extent="medium"]').click();
+    assert.match(await page.locator(".sheet-panel").innerText(), /咳嗽｜中範圍/);
+    assert.equal(await page.locator('[data-action="commit-observation"]').count(), 1);
+    assert.equal(await page.locator('[data-action="commit-lab-event"]').count(), 0);
+    await page.locator('[data-action="commit-observation"]').click();
+    await page.locator('[data-action="apply-farm-scope"]').click();
+    assert.match(await page.locator(".lab-write-notice").innerText(), /現場觀察：咳嗽/);
+    const observationOverlay = await page.evaluate(() => JSON.parse(localStorage.getItem("jinji-v14r-lab-runtime-overlay-v1")));
+    assert.equal(observationOverlay.events.filter((row) => row.type === "mortality").length, mortalityEventsBeforeObservation);
+    assert.deepEqual(observationOverlay.observations.map((row) => row.text), ["咳嗽"]);
+    assert.equal(observationOverlay.observations[0].extent, "medium");
+    assert.equal(observationOverlay.auditEntries.some((entry) => entry.entityType === "OperationalObservation"), true);
+    await page.locator('.bottom-nav [data-nav="records"]').click();
+    assert.equal(await page.locator('.list-row').filter({ hasText: "現場觀察：咳嗽" }).count(), 1);
+    await page.locator('.list-row').filter({ hasText: "現場觀察：咳嗽" }).click();
+    assert.match(await page.locator(".sheet-panel").innerText(), /不會被計入死亡、淘汰、出雞或目前在養/);
+    await page.locator('button.sheet-close[data-action="close-sheet"]').click();
+    await page.locator('.bottom-nav [data-nav="calendar"]').click();
+    assert.equal(await page.locator(".calendar-detail-item").filter({ hasText: "現場觀察：咳嗽" }).count(), 1);
 
     // Ambiguous or unsafe text becomes Pending Review and never becomes HTML.
     await page.locator(".mobile-quick-button").click();
@@ -122,6 +154,9 @@ async function main() {
     await page.waitForTimeout(350);
     await page.locator('[data-action="open-correction"]').click();
     await page.locator('[data-sheet-kind="correction"]').waitFor({ state: "visible" });
+    await page.locator("#correction-qty").fill("");
+    await page.locator('[data-action="commit-correction"]').click();
+    assert.match(await page.locator('[data-sheet-kind="correction"] [role="alert"]').innerText(), /請填寫修正後數量/);
     await page.locator("#correction-qty").fill("2");
     await page.locator('[data-action="commit-correction"]').click();
     await page.locator('.bottom-nav [data-nav="records"]').click();
@@ -140,7 +175,7 @@ async function main() {
 
     await page.screenshot({ path: path.join(resultsDir, `${browserName}-390x844.png`), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(`${baseUrl}/index.html?e2e=${browserName}-desktop`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/index.html?e2e=${browserName}-desktop&test-date=2026-08-31`, { waitUntil: "networkidle" });
     assert.equal(await page.evaluate("document.documentElement.dataset.appId"), "jinji-web-v14r-lab");
     assert.equal(await page.locator(".desktop-sidebar").isVisible(), true);
     assert.equal(await page.locator(".desktop-quick-button").isVisible(), true);

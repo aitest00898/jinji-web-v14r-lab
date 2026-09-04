@@ -128,7 +128,7 @@ async function main() {
     mobile.on("console", (message) => { if (message.type() === "error") mobileErrors.console.push(message.text()); });
     mobile.on("pageerror", (error) => mobileErrors.page.push(error.message));
     mobile.on("request", (request) => { if (!request.url().startsWith(baseUrl)) mobileErrors.requests.push(request.url()); });
-    await mobile.goto(`${baseUrl}/index.html?finance=${browserName}-mobile`, { waitUntil: "networkidle" });
+    await mobile.goto(`${baseUrl}/index.html?finance=${browserName}-mobile&test-date=2026-08-31`, { waitUntil: "networkidle" });
     // Required first assertion: browser target identity.
     assert.equal(await mobile.evaluate("document.documentElement.dataset.appId"), "jinji-web-v14r-lab");
     assert.equal(await mobile.title(), expectedTitle);
@@ -143,7 +143,7 @@ async function main() {
     desktop.on("console", (message) => { if (message.type() === "error") desktopErrors.console.push(message.text()); });
     desktop.on("pageerror", (error) => desktopErrors.page.push(error.message));
     desktop.on("request", (request) => { if (!request.url().startsWith(baseUrl)) desktopErrors.requests.push(request.url()); });
-    await desktop.goto(`${baseUrl}/index.html?finance=${browserName}-desktop`, { waitUntil: "networkidle" });
+    await desktop.goto(`${baseUrl}/index.html?finance=${browserName}-desktop&test-date=2026-08-31`, { waitUntil: "networkidle" });
     assert.equal(await desktop.evaluate("document.documentElement.dataset.appId"), "jinji-web-v14r-lab");
     assert.equal(await desktop.title(), expectedTitle);
     await runDesktop(desktop);

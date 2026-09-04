@@ -99,7 +99,7 @@ async function main() {
     const referenceErrors = [];
     labPage.on("pageerror", (error) => labErrors.push(error.message));
     if (referencePage) referencePage.on("pageerror", (error) => referenceErrors.push(error.message));
-    await labPage.goto(`${labUrl}/index.html?visual=mobile`, { waitUntil: "networkidle" });
+    await labPage.goto(`${labUrl}/index.html?visual=mobile&test-date=2026-08-31`, { waitUntil: "networkidle" });
     await identity(labPage);
     await freezeMotion(labPage);
     if (referencePage) {
@@ -114,7 +114,7 @@ async function main() {
     const mobileComparison = await screenshotAndCompare(labPage, referencePage, "390x844");
 
     await labPage.setViewportSize({ width: 1440, height: 900 });
-    await labPage.goto(`${labUrl}/index.html?visual=desktop`, { waitUntil: "networkidle" });
+    await labPage.goto(`${labUrl}/index.html?visual=desktop&test-date=2026-08-31`, { waitUntil: "networkidle" });
     await identity(labPage);
     await freezeMotion(labPage);
     if (referencePage) {
@@ -132,7 +132,7 @@ async function main() {
     const matrix = {};
     for (const [name, width, height] of responsiveMatrix) {
       await labPage.setViewportSize({ width, height });
-      await labPage.goto(`${labUrl}/index.html?visual=${name}`, { waitUntil: "networkidle" });
+      await labPage.goto(`${labUrl}/index.html?visual=${name}&test-date=2026-08-31`, { waitUntil: "networkidle" });
       await identity(labPage);
       await freezeMotion(labPage);
       const metrics = await labPage.evaluate(() => ({ width: innerWidth, height: innerHeight, nav: document.querySelectorAll(".bottom-nav button").length, navDisplay: getComputedStyle(document.querySelector(".bottom-nav")).display, mobileQuick: Boolean(document.querySelector(".mobile-quick-slot")), mobileQuickDisplay: document.querySelector(".mobile-quick-slot") ? getComputedStyle(document.querySelector(".mobile-quick-slot")).display : "none", desktopSidebar: Boolean(document.querySelector(".desktop-sidebar")), desktopSidebarDisplay: document.querySelector(".desktop-sidebar") ? getComputedStyle(document.querySelector(".desktop-sidebar")).display : "none", desktopQuick: Boolean(document.querySelector(".desktop-quick-button")), overflow: document.documentElement.scrollWidth - innerWidth }));

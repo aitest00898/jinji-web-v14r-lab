@@ -91,7 +91,7 @@ async function main() {
     page.on("request", (request) => { if (!request.url().startsWith(baseUrl)) unexpectedRequests.push(request.url()); });
     page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
     page.on("pageerror", (error) => pageErrors.push(error.message));
-    await page.goto(`${baseUrl}/index.html?final-remediation=${browserName}`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/index.html?final-remediation=${browserName}&test-date=2026-08-31`, { waitUntil: "networkidle" });
     await assertIdentity(page);
 
     await openMasterData(page);

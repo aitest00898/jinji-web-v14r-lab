@@ -57,6 +57,88 @@ test("sync conflict becomes Pending Review instead of last-write-wins", () => {
   assert.equal(repo.snapshot().pendingReviews.length, 1);
 });
 
+test("qualitative observation is atomically stored outside numeric events", () => {
+  const memory = installMemoryStorage();
+  const previousDomain = global.JinjiDomain;
+  global.JinjiDomain = domain;
+  try {
+    const repo = new storage.LabRepository();
+    const observation = domain.createOperationalObservation({
+      id: "observation-repository-test",
+      text: "咳嗽",
+      date: "2026-09-03",
+      time: "09:30",
+      farmId: "red",
+      houseId: "red-1",
+      flockId: "alpha",
+      source: "quick_record",
+      clientOperationId: "observation-operation",
+    });
+    const audit = domain.createAuditEntry({
+      entityType: "OperationalObservation",
+      entityId: observation.id,
+      source: "quick_record",
+      metadata: { measurementStatus: "qualitative" },
+    });
+    repo.commitLocalOperation({
+      observations: [observation],
+      auditEntries: [audit],
+      operation: { clientOperationId: observation.clientOperationId, type: "create_observation" },
+    });
+    const snapshot = repo.snapshot();
+    assert.deepEqual(snapshot.events, []);
+    assert.deepEqual(snapshot.observations.map((row) => row.text), ["咳嗽"]);
+    assert.equal(snapshot.outbox.length, 1);
+    assert.equal(snapshot.auditEntries[0].entityType, "OperationalObservation");
+    assert.deepEqual(new storage.LabRepository().snapshot().observations.map((row) => row.id), [observation.id]);
+  } finally {
+    global.JinjiDomain = previousDomain;
+    memory.restore();
+  }
+});
+
+test("Pending Review approval atomically links the resolved source to a formal observation", () => {
+  const memory = installMemoryStorage();
+  const previousDomain = global.JinjiDomain;
+  global.JinjiDomain = domain;
+  try {
+    const repo = new storage.LabRepository();
+    const pending = { id: "pending-approval-test", rawText: "今天狀況怪怪的", farmId: "red", houseId: "red-1", source: "quick_record" };
+    const observation = domain.createOperationalObservation({
+      id: "approved-observation-test",
+      text: "咳嗽",
+      observationType: "cough",
+      extent: "small",
+      rawText: pending.rawText,
+      farmId: pending.farmId,
+      houseId: pending.houseId,
+      pendingReviewId: pending.id,
+      source: "pending_review",
+      scopeSelection: "house",
+      scopeConfirmed: true,
+    });
+    const resolution = { id: "pending-resolution-test", pendingReviewId: pending.id, status: "approved", resultType: "observation", resultId: observation.id, source: "pending_review" };
+    const audit = domain.createAuditEntry({ entityType: "OperationalObservation", entityId: observation.id, operation: "approve_pending_review", source: "pending_review", newEventIds: [observation.id], metadata: { pendingReviewId: pending.id, rawText: pending.rawText } });
+    repo.commitLocalOperation({
+      pendingReviews: [pending],
+      observations: [observation],
+      pendingResolutions: [resolution],
+      auditEntries: [audit],
+      operation: { clientOperationId: "pending-approval-operation", type: "approve_pending_review", pendingReviewId: pending.id, resultId: observation.id },
+    });
+    const snapshot = repo.snapshot();
+    assert.equal(snapshot.pendingReviews[0].id, pending.id);
+    assert.equal(snapshot.pendingResolutions[0].pendingReviewId, pending.id);
+    assert.equal(snapshot.observations[0].pendingReviewId, pending.id);
+    assert.equal(snapshot.auditEntries[0].metadata.pendingReviewId, pending.id);
+    assert.equal(snapshot.outbox[0].pendingReviewId, pending.id);
+    assert.equal(snapshot.events.length, 0);
+  } finally {
+    global.JinjiDomain = previousDomain;
+    memory.restore();
+  }
+});
+
 test("reset fixture clears runtime state but preserves append-only audit history", () => {
   const repo = new storage.LabRepository();
   repo.appendEvent(event("reset-event"), { id: "audit-reset", operation: "create" });

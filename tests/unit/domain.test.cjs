@@ -4,7 +4,7 @@ const domain = require("../../src/domain.js");
 
 test("domain exposes all required model types", () => {
   assert.deepEqual(domain.MODEL_NAMES, [
-    "Organization", "Farm", "House", "Flock", "OperationalEvent", "PendingReview", "Abnormality", "CalendarEvent", "FinanceEntry", "Investor", "FarmInvestorEquity", "ProfitDistribution", "ProfitDistributionAllocation", "FinanceSourceReference", "AuditEntry", "TrendThreshold", "ClickAnalytics", "DeveloperLog", "SyncOperation", "CaretakerAssignment", "FarmFinanceIdentity",
+    "Organization", "Farm", "House", "Flock", "OperationalEvent", "OperationalObservation", "PendingReview", "Abnormality", "CalendarEvent", "FinanceEntry", "Investor", "FarmInvestorEquity", "ProfitDistribution", "ProfitDistributionAllocation", "FinanceSourceReference", "AuditEntry", "TrendThreshold", "ClickAnalytics", "DeveloperLog", "SyncOperation", "CaretakerAssignment", "FarmFinanceIdentity",
   ]);
   for (const name of domain.MODEL_NAMES) assert.equal(typeof domain[name], "function");
 });
@@ -31,6 +31,57 @@ test("quick record parser accepts one metric and routes ambiguity to Pending Rev
   assert.equal(domain.parseQuickRecord("死亡5，淘汰1").status, "pending");
   assert.equal(domain.parseQuickRecord("<img src=x onerror=alert(1)>").status, "pending");
   assert.equal(domain.parseQuickRecord("死亡0").status, "pending");
+});
+
+test("quick record parser preserves qualitative observations without inventing a quantity", () => {
+  const cough = domain.parseQuickRecord("咳嗽");
+  assert.equal(cough.status, "observation");
+  assert.equal(cough.reason, "qualitative_observation");
+  assert.equal(cough.observation.text, "咳嗽");
+  assert.equal(Object.prototype.hasOwnProperty.call(cough.observation, "quantity"), false);
+  assert.match(cough.message, /沒有精確數字也可以記錄/);
+
+  const observation = domain.createOperationalObservation({
+    id: "observation-domain-test",
+    text: "臭腳",
+    date: "2026-09-03",
+    time: "09:30",
+    farmId: "red",
+    houseId: "red-1",
+    flockId: "alpha",
+    source: "quick_record",
+  }, new Date("2026-09-03T09:30:00Z"));
+  assert.equal(observation.measurementStatus, "qualitative");
+  assert.equal(Object.prototype.hasOwnProperty.call(observation, "quantity"), false);
+  assert.equal(domain.reconstructOperationalObservations([observation]).length, 1);
+  assert.throws(() => domain.createOperationalObservation({ text: "" }), /DOMAIN_OBSERVATION_TEXT_REQUIRED/);
+});
+
+test("quick record semantics guide required fields without turning qualitative extent into a quantity", () => {
+  const missingDeathQuantity = domain.parseQuickRecord("死亡");
+  assert.equal(missingDeathQuantity.status, "guided");
+  assert.equal(missingDeathQuantity.reason, "quantity_missing");
+  assert.equal(domain.parseQuickRecord("臭腳").needsExtent, true);
+  const readyObservation = domain.parseQuickRecord("臭腳 中範圍");
+  assert.equal(readyObservation.status, "observation");
+  assert.equal(readyObservation.needsExtent, false);
+  assert.equal(readyObservation.observation.extent, "medium");
+  assert.equal(readyObservation.observation.text, "臭腳");
+  const observation = domain.createOperationalObservation({
+    id: "observation-extent-test",
+    text: "臭腳",
+    observationType: "foot_odor",
+    extent: "large",
+    rawText: "臭腳 大範圍",
+    farmId: "red",
+    houseId: "red-1",
+    scopeSelection: "house",
+    scopeConfirmed: true,
+  });
+  assert.equal(observation.extent, "large");
+  assert.equal(observation.rawText, "臭腳 大範圍");
+  assert.equal(Object.prototype.hasOwnProperty.call(observation, "quantity"), false);
+  assert.throws(() => domain.createOperationalObservation({ text: "臭腳", extent: "many" }), /DOMAIN_OBSERVATION_EXTENT_INVALID/);
 });
 
 test("append-only replacement reconstructs final state without deleting original", () => {
