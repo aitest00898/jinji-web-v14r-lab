@@ -334,6 +334,46 @@
       return this.persist(nextState);
     }
 
+    commitLocalOperation({ events = [], pendingReviews = [], masterData = [], auditEntries = [], operation } = {}) {
+      const key = operation?.clientOperationId;
+      if (!key) throw new Error("LAB_OPERATION_ID_REQUIRED");
+      if (this.state.syncedOperationIds.includes(key)) return { ...clone(operation), status: "synced", duplicate: true };
+      const existing = this.state.outbox.find((item) => item.clientOperationId === key);
+      if (existing) return { ...clone(existing), duplicate: true };
+
+      const nextState = clone(this.state);
+      events.forEach((event) => {
+        if (!nextState.events.some((candidate) => candidate.id === event.id)) nextState.events.push(clone(event));
+      });
+      pendingReviews.forEach((review) => {
+        if (!nextState.pendingReviews.some((candidate) => candidate.id === review.id)) nextState.pendingReviews.push(clone(review));
+      });
+      masterData.forEach(({ entityType, entity }) => {
+        const collection = MASTER_DATA_TYPES[entityType];
+        if (!collection || !entity || !entity.id) throw new Error("LAB_MASTER_DATA_INVALID");
+        if (!nextState.masterData[collection].some((item) => item.id === entity.id)) nextState.masterData[collection].push(clone(entity));
+      });
+      auditEntries.forEach((entry) => {
+        if (entry && !nextState.auditEntries.some((candidate) => candidate.id === entry.id)) nextState.auditEntries.push(clone(entry));
+      });
+      if (masterData.length && typeof root?.JinjiDomain?.validateMasterData === "function") {
+        try {
+          root.JinjiDomain.validateMasterData(nextState.masterData, this.masterDataContext);
+        } catch (error) {
+          const relationshipError = new Error("LAB_MASTER_DATA_RELATIONSHIP_INVALID");
+          relationshipError.cause = error;
+          throw relationshipError;
+        }
+      }
+
+      const row = { ...clone(operation), status: "queued", queuedAt: operation.queuedAt || new Date().toISOString() };
+      nextState.outbox.push(row);
+      // One user action has one local persistence boundary. Sync is deliberately
+      // separate so a later sync conflict cannot erase or mislabel this save.
+      this.persist(nextState);
+      return clone(row);
+    }
+
     setSettings(patch = {}) {
       if (!patch || typeof patch !== "object" || Array.isArray(patch)) throw new Error("LAB_SETTINGS_INVALID");
       const nextState = clone(this.state);
