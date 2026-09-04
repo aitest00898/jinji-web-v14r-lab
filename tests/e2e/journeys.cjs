@@ -40,7 +40,7 @@ async function newPage(browser, viewport = { width: 390, height: 844 }) {
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.__journeyEvidence = { context, unexpectedRequests, consoleErrors, pageErrors };
-  await page.goto(`${baseUrl}/index.html?journey=${browserName}-${Date.now()}`, { waitUntil: "networkidle" });
+  await page.goto(`${baseUrl}/index.html?journey=${browserName}-${Date.now()}&test-date=2026-08-31`, { waitUntil: "networkidle" });
   await assertIdentity(page);
   return page;
 }
@@ -72,6 +72,7 @@ async function quickRecord(page, text) {
   await page.locator("#quick-record-input").fill(text);
   await page.locator('[data-action="preview-quick-record"]').click();
   await page.locator('[data-action="commit-lab-event"]').click();
+  await page.locator('[data-action="apply-farm-scope"]').click();
 }
 
 async function runPrimaryJourney(page) {
@@ -135,9 +136,15 @@ async function runPrimaryJourney(page) {
   await page.locator('.bottom-nav [data-nav="more"]').click();
   await page.locator('[data-action="open-sheet"][data-sheet-kind="settings"]').click();
   await page.locator('[data-action="open-settings-detail"][data-settings-key="trend"]').click();
-  await page.locator('[data-threshold-key="baselineDays"]').fill("6");
+  const baselineDays = page.locator('[data-threshold-key="baselineDays"]');
+  await baselineDays.fill("");
+  await page.locator('[data-action="save-trend-thresholds"]').click();
+  assert.match(await page.locator('[data-testid="trend-settings-error"]').innerText(), /未完整填寫/);
+  assert.equal(await baselineDays.inputValue(), "");
+  await baselineDays.fill("6");
   await page.locator('[data-threshold-key="minBaselinePoints"]').fill("6");
   await page.locator('[data-action="save-trend-thresholds"]').click();
+  assert.equal(await page.locator('[data-testid="trend-settings-error"]').count(), 0);
   await closeSheet(page);
   await page.locator('.bottom-nav [data-nav="records"]').click();
   await page.locator('[data-action="records-mode"][data-records-mode="chart"]').click();

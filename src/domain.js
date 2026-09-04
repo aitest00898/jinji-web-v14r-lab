@@ -11,6 +11,7 @@
     "House",
     "Flock",
     "OperationalEvent",
+    "OperationalObservation",
     "PendingReview",
     "Abnormality",
     "CalendarEvent",
@@ -50,6 +51,58 @@
     weigh: "kg",
     other: "筆",
   });
+
+  const QUALITATIVE_OBSERVATION_TERMS = Object.freeze([
+    "咳嗽",
+    "喘",
+    "呼吸急促",
+    "呼吸聲",
+    "臭腳",
+    "異味",
+    "活動力下降",
+    "精神不佳",
+    "採食變差",
+    "採食下降",
+    "食慾下降",
+    "飲水異常",
+    "飲水量偏低",
+    "水線壓力不穩",
+    "溫度偏高",
+    "高溫",
+    "羽毛蓬鬆",
+    "跛行",
+    "拉稀",
+    "糞便異常",
+    "發抖",
+    "嗜睡",
+    "叫聲異常",
+  ]);
+
+  const OBSERVATION_TERM_DEFINITIONS = Object.freeze([
+    { key: "cough", label: "咳嗽", category: "health" },
+    { key: "foot_odor", label: "臭腳", category: "health" },
+    { key: "white_crown", label: "白冠", category: "health" },
+    { key: "stress", label: "緊迫", category: "health" },
+    { key: "respiratory", label: "喘", category: "health" },
+    { key: "respiratory_rate", label: "呼吸急促", category: "health" },
+    { key: "respiratory_sound", label: "呼吸聲", category: "health" },
+    { key: "odor", label: "異味", category: "health" },
+    { key: "activity_down", label: "活動力下降", category: "health" },
+    { key: "poor_spirit", label: "精神不佳", category: "health" },
+    { key: "feed_intake_down", label: "採食變差", category: "health" },
+    { key: "water_abnormal", label: "飲水異常", category: "health" },
+    { key: "temperature_high", label: "溫度偏高", category: "environment" },
+    { key: "lameness", label: "跛行", category: "health" },
+    { key: "diarrhea", label: "拉稀", category: "health" },
+    { key: "feces_abnormal", label: "糞便異常", category: "health" },
+  ]);
+
+  const OBSERVATION_EXTENTS = Object.freeze({
+    "小範圍": "small",
+    "中範圍": "medium",
+    "大範圍": "large",
+  });
+  const OBSERVATION_EXTENT_LABELS = Object.freeze({ small: "小範圍", medium: "中範圍", large: "大範圍" });
 
   const MASTER_DATA_COLLECTIONS = Object.freeze([
     "farms",
@@ -258,7 +311,73 @@
       ...(input.parentEventId ? { parentEventId: input.parentEventId } : {}),
       ...(input.correctionOf ? { correctionOf: input.correctionOf } : {}),
       ...(input.reversalOf ? { reversalOf: input.reversalOf } : {}),
+      ...(input.pendingReviewId ? { pendingReviewId: String(input.pendingReviewId) } : {}),
+      ...(input.rawText ? { rawText: String(input.rawText).slice(0, 240) } : {}),
+      ...(input.scopeSelection ? { scopeSelection: String(input.scopeSelection) } : {}),
+      ...(input.scopeConfirmed ? { scopeConfirmed: true } : {}),
     };
+  }
+
+  function observationText(input) {
+    const text = String(input ?? "").trim();
+    if (!text) throw new Error("DOMAIN_OBSERVATION_TEXT_REQUIRED");
+    if (text.length > 240) throw new Error("DOMAIN_OBSERVATION_TEXT_TOO_LONG");
+    return text;
+  }
+
+  function validateOperationalObservation(observation = {}) {
+    if (!observation || typeof observation !== "object" || Array.isArray(observation)) throw new Error("DOMAIN_OBSERVATION_INVALID");
+    if (!String(observation.id || "").trim()) throw new Error("DOMAIN_OBSERVATION_ID_REQUIRED");
+    observationText(observation.text ?? observation.observationText);
+    if (observation.measurementStatus !== "qualitative") throw new Error("DOMAIN_OBSERVATION_MEASUREMENT_STATUS_INVALID");
+    if (observation.extent !== undefined && !Object.prototype.hasOwnProperty.call(OBSERVATION_EXTENT_LABELS, observation.extent)) {
+      throw new Error("DOMAIN_OBSERVATION_EXTENT_INVALID");
+    }
+    return true;
+  }
+
+  function createOperationalObservation(input = {}, now = new Date()) {
+    const createdAt = input.createdAt || nowIso(now);
+    const text = observationText(input.text ?? input.observationText);
+    const observation = {
+      id: input.id || id("observation"),
+      date: input.date || createdAt.slice(0, 10),
+      time: input.time || createdAt.slice(11, 16),
+      farmId: input.farmId || null,
+      houseId: input.houseId || null,
+      flockId: input.flockId || null,
+      text,
+      category: input.category || "health",
+      measurementStatus: "qualitative",
+      source: input.source || "lab",
+      createdAt,
+      clientOperationId: input.clientOperationId || clientOperationId("observation"),
+      ...(input.observationType ? { observationType: String(input.observationType) } : {}),
+      ...(input.extent ? { extent: String(input.extent) } : {}),
+      ...(input.rawText ? { rawText: String(input.rawText).slice(0, 240) } : {}),
+      ...(input.pendingReviewId ? { pendingReviewId: String(input.pendingReviewId) } : {}),
+      ...(input.scopeSelection ? { scopeSelection: String(input.scopeSelection) } : {}),
+      ...(input.scopeConfirmed ? { scopeConfirmed: true } : {}),
+    };
+    validateOperationalObservation(observation);
+    return observation;
+  }
+
+  function normalizeOperationalObservation(observation) {
+    return createOperationalObservation(observation, observation?.createdAt || new Date());
+  }
+
+  function reconstructOperationalObservations(observations = []) {
+    return (Array.isArray(observations) ? observations : [])
+      .map((observation) => {
+        try {
+          return normalizeOperationalObservation(observation);
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => `${a.date} ${a.time} ${a.id}`.localeCompare(`${b.date} ${b.time} ${b.id}`));
   }
 
   function normalizeEvent(event) {
@@ -312,6 +431,20 @@
     return String(value).replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xff10 + 48));
   }
 
+  function observationIntent(raw) {
+    const definition = OBSERVATION_TERM_DEFINITIONS
+      .slice()
+      .sort((left, right) => right.label.length - left.label.length)
+      .find((candidate) => raw.includes(candidate.label));
+    if (!definition) return null;
+    const extentLabel = Object.keys(OBSERVATION_EXTENTS).find((label) => raw.includes(label));
+    return {
+      ...definition,
+      extent: extentLabel ? OBSERVATION_EXTENTS[extentLabel] : null,
+      extentLabel: extentLabel || null,
+    };
+  }
+
   function parseQuickRecord(rawText) {
     const raw = parseDigits(String(rawText || "")).trim();
     if (!raw) return { status: "pending", reason: "empty", message: "請輸入一筆可辨識的紀錄。" };
@@ -325,10 +458,41 @@
     ];
     const matches = patterns.map((entry) => ({ ...entry, match: raw.match(entry.pattern) })).filter((entry) => entry.match);
     if (matches.length !== 1) {
+      const observation = observationIntent(raw);
+      const hasQualitativeTerm = Boolean(observation) || QUALITATIVE_OBSERVATION_TERMS.some((term) => raw.includes(term));
+      const hasQuantitativeKeyword = /死亡|死雞|死鳥|淘汰|淘雞|飼料|飲水|出雞|出貨/i.test(raw);
+      if (matches.length === 0 && hasQualitativeTerm && !hasQuantitativeKeyword) {
+        return {
+          status: "observation",
+          reason: "qualitative_observation",
+          needsExtent: Boolean(observation && !observation.extent),
+          message: observation && !observation.extent
+            ? "這是現場觀察，沒有精確數字也可以記錄；請下一步選擇小範圍、中範圍或大範圍，不會轉成隻數。"
+            : "這是現場觀察，沒有精確數字也可以記錄；不會轉成隻數或進入死亡統計。",
+          observation: {
+            text: observation?.label || raw,
+            observationType: observation?.key || "free_text",
+            category: observation?.category || "health",
+            ...(observation?.extent ? { extent: observation.extent } : {}),
+            source: "quick_record",
+          },
+          rawPreview: raw.slice(0, 80),
+        };
+      }
+      if (matches.length === 0 && hasQuantitativeKeyword && /死亡|死雞|死鳥/i.test(raw)) {
+        return {
+          status: "guided",
+          reason: "quantity_missing",
+          eventType: "mortality",
+          unit: "隻",
+          message: "死亡紀錄需要精確數量；下一步請輸入死亡幾隻，空白或非正整數不會建立紀錄。",
+          rawPreview: raw.slice(0, 80),
+        };
+      }
       return {
         status: "pending",
-        reason: matches.length > 1 ? "ambiguous_multiple_metrics" : "unrecognized",
-        message: matches.length > 1 ? "一筆文字包含多種數據，請拆開後再確認。" : "無法安全辨識類型與數量，請交由人工確認。",
+        reason: matches.length > 1 ? "ambiguous_multiple_metrics" : hasQuantitativeKeyword ? "quantity_missing" : "unrecognized",
+        message: matches.length > 1 ? "一筆文字包含多種數據，請拆開後再確認。" : hasQuantitativeKeyword ? "這個項目需要精確數量；若目前只能描述現象，請改存為現場觀察。" : "無法判定紀錄類型；請補充數量，或明確選擇保存為現場觀察。",
         rawPreview: raw.slice(0, 80),
       };
     }
@@ -601,13 +765,20 @@
     clientOperationId,
     createOperationalEvent,
     validateOperationalEvent,
+    createOperationalObservation,
+    validateOperationalObservation,
     normalizeEvent,
     reconstructOperationalEvents,
+    normalizeOperationalObservation,
+    reconstructOperationalObservations,
     eventEffect,
     matchesStockScope,
     stockRemovalTotal,
     sumEvents,
     parseQuickRecord,
+    QUALITATIVE_OBSERVATION_TERMS,
+    OBSERVATION_EXTENTS,
+    OBSERVATION_EXTENT_LABELS,
     createCorrectionLedger,
     MASTER_DATA_COLLECTIONS,
     createFarm,

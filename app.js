@@ -25,6 +25,40 @@
 
   const DATA = window.JinjiLabFixture;
 
+  const OPERATIONAL_TIMEZONE = "Asia/Taipei";
+  const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+  function validDateKey(value) {
+    const date = String(value || "");
+    if (!DATE_KEY_PATTERN.test(date)) return false;
+    const parsed = new Date(`${date}T00:00:00Z`);
+    return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+  }
+
+  function currentOperationalDate() {
+    const override = new URLSearchParams(window.location.search).get("test-date");
+    if (validDateKey(override)) return override;
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: OPERATIONAL_TIMEZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  }
+
+  function operationalDateLabel(dateKey) {
+    const [, month, day] = String(dateKey).split("-").map(Number);
+    return `${month} 月 ${day} 日`;
+  }
+
+  function dateKeyObject(dateKey) {
+    return new Date(`${dateKey}T00:00:00Z`);
+  }
+
+  const INITIAL_OPERATIONAL_DATE = currentOperationalDate();
+
   /* V14R Plus r3 linked test events — every chart point is also a normal scoped record. */
   const PLUS_LINKED_TEST_EVENTS = [{"id":"plus-ra-0825-m","date":"2026-08-25","time":"07:35","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0825-f","date":"2026-08-25","time":"09:10","type":"feed","qty":230,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0825-w","date":"2026-08-25","time":"18:20","type":"water","qty":2400,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0826-m","date":"2026-08-26","time":"07:30","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0826-f","date":"2026-08-26","time":"09:05","type":"feed","qty":232,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0826-w","date":"2026-08-26","time":"18:10","type":"water","qty":2380,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0827-m","date":"2026-08-27","time":"07:42","type":"mortality","qty":2,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0827-w","date":"2026-08-27","time":"18:15","type":"water","qty":2360,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0828-m","date":"2026-08-28","time":"07:38","type":"mortality","qty":2,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0828-f","date":"2026-08-28","time":"09:00","type":"feed","qty":236,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0828-w","date":"2026-08-28","time":"18:12","type":"water","qty":2310,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0829-m","date":"2026-08-29","time":"07:44","type":"mortality","qty":3,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0829-w","date":"2026-08-29","time":"18:00","type":"water","qty":2230,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0830-m","date":"2026-08-30","time":"07:50","type":"mortality","qty":4,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0830-f","date":"2026-08-30","time":"09:15","type":"feed","qty":238,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0830-w","date":"2026-08-30","time":"18:05","type":"water","qty":2100,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-rb-0825-f","date":"2026-08-25","time":"09:25","type":"feed","qty":190,"unit":"kg","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0825-w","date":"2026-08-25","time":"18:30","type":"water","qty":1950,"unit":"L","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0827-m","date":"2026-08-27","time":"07:55","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0827-f","date":"2026-08-27","time":"09:20","type":"feed","qty":194,"unit":"kg","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0829-m","date":"2026-08-29","time":"08:02","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0829-w","date":"2026-08-29","time":"18:20","type":"water","qty":1900,"unit":"L","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0831-f","date":"2026-08-31","time":"09:18","type":"feed","qty":198,"unit":"kg","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0831-w","date":"2026-08-31","time":"18:18","type":"water","qty":1930,"unit":"L","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-ba-0825-f","date":"2026-08-25","time":"09:12","type":"feed","qty":202,"unit":"kg","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0825-w","date":"2026-08-25","time":"18:16","type":"water","qty":1880,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0826-m","date":"2026-08-26","time":"07:48","type":"mortality","qty":1,"unit":"隻","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0826-w","date":"2026-08-26","time":"18:11","type":"water","qty":1900,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0829-f","date":"2026-08-29","time":"09:14","type":"feed","qty":208,"unit":"kg","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0829-w","date":"2026-08-29","time":"18:22","type":"water","qty":1910,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0831-w","date":"2026-08-31","time":"18:15","type":"water","qty":1940,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-sa-0825-f","date":"2026-08-25","time":"09:35","type":"feed","qty":118,"unit":"kg","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0825-w","date":"2026-08-25","time":"18:10","type":"water","qty":2080,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0827-w","date":"2026-08-27","time":"18:14","type":"water","qty":2010,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0828-f","date":"2026-08-28","time":"09:32","type":"feed","qty":120,"unit":"kg","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0828-w","date":"2026-08-28","time":"18:08","type":"water","qty":1950,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0829-w","date":"2026-08-29","time":"18:05","type":"water","qty":1900,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0831-f","date":"2026-08-31","time":"09:28","type":"feed","qty":116,"unit":"kg","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0831-w","date":"2026-08-31","time":"06:30","type":"water","qty":1680,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sb-0825-f","date":"2026-08-25","time":"09:42","type":"feed","qty":106,"unit":"kg","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0825-w","date":"2026-08-25","time":"18:25","type":"water","qty":1800,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0827-w","date":"2026-08-27","time":"18:26","type":"water","qty":1760,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0828-w","date":"2026-08-28","time":"18:24","type":"water","qty":1720,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0829-f","date":"2026-08-29","time":"09:38","type":"feed","qty":104,"unit":"kg","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0829-w","date":"2026-08-29","time":"13:55","type":"water","qty":1480,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0830-w","date":"2026-08-30","time":"18:24","type":"water","qty":1710,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0831-w","date":"2026-08-31","time":"18:21","type":"water","qty":1770,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-na-0825-f","date":"2026-08-25","time":"09:50","type":"feed","qty":72,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0825-w","date":"2026-08-25","time":"18:35","type":"water","qty":980,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0826-f","date":"2026-08-26","time":"09:52","type":"feed","qty":82,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0826-w","date":"2026-08-26","time":"18:34","type":"water","qty":1080,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0827-f","date":"2026-08-27","time":"09:51","type":"feed","qty":92,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0827-w","date":"2026-08-27","time":"18:33","type":"water","qty":1170,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0828-f","date":"2026-08-28","time":"09:49","type":"feed","qty":102,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0828-w","date":"2026-08-28","time":"18:31","type":"water","qty":1280,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0829-f","date":"2026-08-29","time":"09:46","type":"feed","qty":112,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0829-w","date":"2026-08-29","time":"18:28","type":"water","qty":1390,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0830-w","date":"2026-08-30","time":"18:27","type":"water","qty":1480,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0831-f","date":"2026-08-31","time":"09:44","type":"feed","qty":128,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0831-w","date":"2026-08-31","time":"18:26","type":"water","qty":1560,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"}];
   /* The fixture is immutable at runtime; linked events are part of the read-only Lab baseline. */
@@ -106,8 +140,10 @@
     return {
       farms: composeLabFarms(),
       pending: [...LAB_FIXTURE.pending, ...(overlay.pendingReviews || [])],
+      pendingResolutions: [...(overlay.pendingResolutions || [])],
       abnormalities: [...LAB_FIXTURE.abnormalities, ...(overlay.abnormalities || [])],
       events: [...LAB_FIXTURE.events, ...(overlay.events || [])],
+      observations: [...(LAB_FIXTURE.observations || []), ...(overlay.observations || [])],
     };
   }
 
@@ -117,6 +153,10 @@
 
   function effectiveLabEvents() {
     return window.JinjiDomain.reconstructOperationalEvents(labData().events);
+  }
+
+  function effectiveLabObservations() {
+    return window.JinjiDomain.reconstructOperationalObservations(labData().observations);
   }
 
   function eventMatchesScope(event, scope) {
@@ -163,10 +203,12 @@
     recordsFarmFilter: "all",
     desktopFarmMenuOpen: false,
     aiPreviewKey: "overview",
-    calendarYear: 2026,
-    calendarMonth: 9,
-    selectedCalendarDate: "2026-09-03",
+    calendarYear: Number(INITIAL_OPERATIONAL_DATE.slice(0, 4)),
+    calendarMonth: Number(INITIAL_OPERATIONAL_DATE.slice(5, 7)),
+    selectedCalendarDate: INITIAL_OPERATIONAL_DATE,
     settingsNotice: "",
+    settingsError: "",
+    settingsDraft: null,
     developerNotice: "",
     previousFocus: null,
     previousFocusMeta: null,
@@ -174,6 +216,13 @@
     quickRecordDraft: "",
     quickRecordNotice: "",
     quickRecordError: "",
+    quickRecordStep: null,
+    quickRecordSeed: null,
+    quickRecordExtent: null,
+    quickRecordQuantityDraft: "",
+    quickRecordScopePrompt: null,
+    quickRecordScopeConfirmed: false,
+    pendingApproval: null,
     correctionNotice: "",
     resumeAfterFarmSelection: null,
     masterDataAuthorized: false,
@@ -202,6 +251,18 @@
     feedDropPct: 15,
     waterDropPct: 10,
     waterRisePct: 25,
+  });
+  const TREND_THRESHOLD_RULES = Object.freeze({
+    baselineDays: { label: "比較前幾日", min: 2, max: 6, integer: true },
+    minBaselinePoints: { label: "至少需要幾個有效資料點", min: 2, max: 6, integer: true },
+    mortalityMin: { label: "死亡單日最低數量", min: 0, integer: true },
+    mortalityDelta: { label: "死亡至少高於基線", min: 0, integer: true },
+    mortalityRatio: { label: "死亡至少達基線倍數", min: 1 },
+    cullMin: { label: "淘汰單日最低數量", min: 0, integer: true },
+    cullDelta: { label: "淘汰至少高於基線", min: 0, integer: true },
+    feedDropPct: { label: "飼料下降提醒", min: 0, max: 90 },
+    waterDropPct: { label: "飲水下降提醒", min: 0, max: 90 },
+    waterRisePct: { label: "飲水上升提醒", min: 0, max: 300 },
   });
 
   const volatileLocal = new Map();
@@ -249,6 +310,20 @@
     const clean = { ...TREND_THRESHOLD_DEFAULTS, ...next };
     safeLocalSet(TREND_SETTINGS_KEY, JSON.stringify(clean));
     return trendThresholds();
+  }
+
+  function validateTrendThresholdInput(next) {
+    for (const [key, rule] of Object.entries(TREND_THRESHOLD_RULES)) {
+      const value = next[key];
+      if (!Number.isFinite(value)) return `「${rule.label}」必須填寫有效數字；未完整填寫不會儲存。`;
+      if (rule.integer && !Number.isInteger(value)) return `「${rule.label}」必須是整數。`;
+      if (value < rule.min || (rule.max !== undefined && value > rule.max)) {
+        const range = rule.max === undefined ? `不得小於 ${rule.min}` : `必須介於 ${rule.min}～${rule.max}`;
+        return `「${rule.label}」${range}。`;
+      }
+    }
+    if (next.minBaselinePoints > next.baselineDays) return "「至少需要幾個有效資料點」不可大於「比較前幾日」。";
+    return "";
   }
 
   function mortalityTrendStats() {
@@ -443,17 +518,32 @@
   function scopedEvents(type = null, todayOnly = false) {
     return effectiveLabEvents().filter((event) =>
       (!type || event.type === type) &&
-      (!todayOnly || event.date === "2026-08-31") &&
+      (!todayOnly || event.date === PLUS_AS_OF) &&
       matchesContext(event)
     );
   }
 
   function scopedPending() {
-    return labData().pending.filter(matchesContext);
+    const resolvedIds = new Set(labData().pendingResolutions.map((resolution) => resolution.pendingReviewId).filter(Boolean));
+    return labData().pending.filter((item) => !resolvedIds.has(item.id)).filter(matchesContext);
+  }
+
+  function resolvedPending() {
+    const data = labData();
+    const resolvedIds = new Set(data.pendingResolutions.map((resolution) => resolution.pendingReviewId).filter(Boolean));
+    return data.pending.filter((item) => resolvedIds.has(item.id)).filter(matchesContext);
+  }
+
+  function pendingResolutionFor(pendingReviewId) {
+    return labData().pendingResolutions.find((resolution) => resolution.pendingReviewId === pendingReviewId) || null;
   }
 
   function scopedAbnormalities({ activeOnly = false } = {}) {
     return labData().abnormalities.filter((item) => (!activeOnly || item.status === "active") && matchesContext(item));
+  }
+
+  function scopedObservations() {
+    return effectiveLabObservations().filter(matchesContext);
   }
 
   function scopedMortality() {
@@ -461,7 +551,7 @@
     // append-only event set; runtime events remain appended after the fixture.
     const activeEventIds = new Set(effectiveLabEvents().map((event) => event.id));
     return labData().events.filter((event) =>
-      activeEventIds.has(event.id) && event.type === "mortality" && event.date === "2026-08-31" && matchesContext(event)
+      activeEventIds.has(event.id) && event.type === "mortality" && event.date === PLUS_AS_OF && matchesContext(event)
     ).map((event) => {
       const farm = farmById(event.farmId);
       const house = houseById(farm, event.houseId);
@@ -522,6 +612,11 @@
     const house = item.houseId ? houseById(farm, item.houseId) : null;
     const flock = house && item.flockId ? flockById(house, item.flockId) : null;
     return [farm.name, house?.name, flock?.code].filter(Boolean).join(" / ");
+  }
+
+  function observationLabel(item) {
+    const extent = item?.extent ? (window.JinjiDomain.OBSERVATION_EXTENT_LABELS?.[item.extent] || item.extent) : "";
+    return [item?.text, extent].filter(Boolean).join("｜");
   }
 
   function pendingContextName(item) {
@@ -710,7 +805,7 @@
   }
 
 
-  const PLUS_AS_OF = "2026-08-31";
+  const PLUS_AS_OF = INITIAL_OPERATIONAL_DATE;
 
 
   const CALENDAR_FLOCK_META = Object.freeze({
@@ -789,6 +884,11 @@
       farmId:item.farmId, houseId:item.houseId, flockId:item.flockId,
       title:`異常：${item.title}`, detail:`${item.time} · ${item.category} · ${item.state}${item.temp ? ` · ${item.temp}°C` : ""}`, context:contextName(item), sourceAbnormalId:item.id,
     }));
+    effectiveLabObservations().forEach((item) => items.push({
+      id:`calendar-observation-${item.id}`, date:item.date, kind:"observation", tone:"info", label:"觀察",
+      farmId:item.farmId, houseId:item.houseId, flockId:item.flockId,
+      title:`現場觀察：${observationLabel(item)}`, detail:`${item.time} · 沒有精確數量，不納入死亡／在養統計`, context:contextName(item), sourceObservationId:item.id,
+    }));
     return items;
   }
   function scopedCalendarItems() { return calendarBaseItems().filter(calendarContextMatches); }
@@ -801,7 +901,7 @@
     return `${year} 年 ${month} 月 ${day} 日（${weekdays[d.getDay()]}）`;
   }
   function calendarCompactRows(items) {
-    const order=["chick_in","weigh","planned_ship","shipment","abnormal","mortality","cull","feed","water"];
+    const order=["chick_in","weigh","planned_ship","shipment","abnormal","observation","mortality","cull","feed","water"];
     const rows=[];
     order.forEach((kind) => {
       const group=items.filter((item)=>item.kind===kind);
@@ -822,13 +922,12 @@
   function calendarCellMarkup(dateKey, day) {
     const items=calendarItemsOn(dateKey);
     const rows=calendarCompactRows(items);
-    const today=new Date();
-    const todayKey=calendarDateKey(today.getFullYear(),today.getMonth()+1,today.getDate());
+    const todayKey=PLUS_AS_OF;
     const selected=state.selectedCalendarDate===dateKey;
     return `<button type="button" class="calendar-cell ${selected?"selected":""} ${todayKey===dateKey?"today":""}" data-action="calendar-select-date" data-date="${dateKey}" aria-label="${dateKey}，${items.length} 項資料"><span class="calendar-day-head"><span class="calendar-day-number">${day}</span>${items.length?`<span class="calendar-day-count">${items.length} 項</span>`:""}</span><span class="calendar-badges">${rows.slice(0,4).map((row)=>`<span class="calendar-badge ${row.tone}">${escapeHtml(row.label)}</span>`).join("")}${rows.length>4?`<span class="calendar-more">＋${rows.length-4} 項</span>`:""}</span></button>`;
   }
   function calendarDetailMarkup(dateKey) {
-    const items=calendarItemsOn(dateKey).sort((a,b)=>({chick_in:0,weigh:1,planned_ship:2,shipment:3,abnormal:4,mortality:5,cull:6,feed:7,water:8}[a.kind]??9)-({chick_in:0,weigh:1,planned_ship:2,shipment:3,abnormal:4,mortality:5,cull:6,feed:7,water:8}[b.kind]??9));
+    const items=calendarItemsOn(dateKey).sort((a,b)=>({chick_in:0,weigh:1,planned_ship:2,shipment:3,abnormal:4,observation:5,mortality:6,cull:7,feed:8,water:9}[a.kind]??10)-({chick_in:0,weigh:1,planned_ship:2,shipment:3,abnormal:4,observation:5,mortality:6,cull:7,feed:8,water:9}[b.kind]??10));
     return `<section class="calendar-detail-panel" aria-live="polite"><div class="calendar-detail-head"><div><h2>${calendarSelectedLabel(dateKey)}</h2><p>${escapeHtml(contextLabel())}</p></div><span class="scope-chip">${items.length} 項</span></div><div class="calendar-detail-list">${items.length?items.map((item)=>`<article class="calendar-detail-item ${item.tone}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.context)}</span><small>${escapeHtml(item.detail)}</small></article>`).join(""):`<div class="empty-tab"><strong>這一天沒有資料</strong><p>目前工作範圍在這一天沒有排程、紀錄或異常。</p></div>`}</div></section>`;
   }
   function renderCalendar() {
@@ -840,7 +939,7 @@
     for(let day=1;day<=days;day++) { const key=calendarDateKey(year,month,day); cells.push(calendarCellMarkup(key,day)); }
     while(cells.length%7) cells.push(`<div class="calendar-blank" aria-hidden="true"></div>`);
     const context = desktopWideMode() ? desktopContextToolbar() : contextBar();
-    return `<section class="${desktopWideMode()?"desktop-v2-page":"page"} calendar-page" data-page="calendar">${context}<div class="calendar-toolbar"><div class="calendar-title-block"><p class="kicker">營運月曆</p><h1>${calendarMonthLabel(year,month)}</h1><p>日期格只顯示摘要；點日期後，下方會展開雞場、雞舍、批次與數量明細。</p></div><div class="calendar-month-controls"><button type="button" class="calendar-month-button icon-only" data-action="calendar-prev-month" aria-label="上一個月">‹</button><button type="button" class="calendar-month-button" data-action="calendar-this-month">本月</button><button type="button" class="calendar-month-button icon-only" data-action="calendar-next-month" aria-label="下一個月">›</button></div></div><div class="calendar-shell"><div class="calendar-weekdays" aria-hidden="true">${["日","一","二","三","四","五","六"].map((d)=>`<span>${d}</span>`).join("")}</div><div class="calendar-grid">${cells.join("")}</div></div><div class="calendar-legend"><span class="milestone"><i></i>入雛／預計出雞</span><span class="weigh"><i></i>磅雞</span><span class="alert"><i></i>死亡／淘汰／異常</span><span class="info"><i></i>飼料／飲水</span></div><p class="calendar-prototype-note">測試說明：磅雞排程由各批次「預計出雞日前 ${CALENDAR_WEIGH_LEAD_DAYS} 天」自動推導，只用於驗證月曆連動；入雛公母數量為與各批次入雛總數相符的連動測試資料。</p>${calendarDetailMarkup(state.selectedCalendarDate)}</section>`;
+    return `<section class="${desktopWideMode()?"desktop-v2-page":"page"} calendar-page" data-page="calendar">${context}<div class="calendar-toolbar"><div class="calendar-title-block"><p class="kicker">營運月曆</p><h1>${calendarMonthLabel(year,month)}</h1><p>日期格只顯示摘要；點日期後，下方會展開雞場、雞舍、批次與數量明細。</p></div><div class="calendar-month-controls"><button type="button" class="calendar-month-button icon-only" data-action="calendar-prev-month" aria-label="上一個月">‹</button><button type="button" class="calendar-month-button" data-action="calendar-this-month">本月</button><button type="button" class="calendar-month-button icon-only" data-action="calendar-next-month" aria-label="下一個月">›</button></div></div><div class="calendar-shell"><div class="calendar-weekdays" aria-hidden="true">${["日","一","二","三","四","五","六"].map((d)=>`<span>${d}</span>`).join("")}</div><div class="calendar-grid">${cells.join("")}</div></div><div class="calendar-legend"><span class="milestone"><i></i>入雛／預計出雞</span><span class="weigh"><i></i>磅雞</span><span class="alert"><i></i>死亡／淘汰／異常</span><span class="info"><i></i>飼料／飲水／現場觀察</span></div><p class="calendar-prototype-note">測試說明：磅雞排程由各批次「預計出雞日前 ${CALENDAR_WEIGH_LEAD_DAYS} 天」自動推導，只用於驗證月曆連動；入雛公母數量為與各批次入雛總數相符的連動測試資料。</p>${calendarDetailMarkup(state.selectedCalendarDate)}</section>`;
   }
   function calendarMoveMonth(delta) {
     const date=new Date(state.calendarYear,state.calendarMonth-1+delta,1);
@@ -897,25 +996,25 @@
   }
 
   function plusDateRange(days = 7) {
-    const end = new Date(`${PLUS_AS_OF}T00:00:00`);
+    const end = dateKeyObject(PLUS_AS_OF);
     return Array.from({ length: days }, (_, index) => {
       const date = new Date(end);
-      date.setDate(end.getDate() - (days - 1 - index));
+      date.setUTCDate(end.getUTCDate() - (days - 1 - index));
       return date.toISOString().slice(0, 10);
     });
   }
 
   function plusDateRows() {
     const days = [];
-    const end = new Date(`${PLUS_AS_OF}T00:00:00`);
+    const end = dateKeyObject(PLUS_AS_OF);
     for (let offset = 6; offset >= 0; offset -= 1) {
       const date = new Date(end);
-      date.setDate(end.getDate() - offset);
+      date.setUTCDate(end.getUTCDate() - offset);
       const key = date.toISOString().slice(0, 10);
       const events = scopedEvents().filter((event) => event.date === key);
       days.push({
         date: key,
-        label: `${date.getMonth() + 1}/${date.getDate()}`,
+        label: `${date.getUTCMonth() + 1}/${date.getUTCDate()}`,
         mortality: events.filter((event) => event.type === "mortality").reduce((sum, event) => sum + event.qty, 0),
         cull: events.filter((event) => event.type === "cull").reduce((sum, event) => sum + event.qty, 0),
         feed: events.filter((event) => event.type === "feed").reduce((sum, event) => sum + event.qty, 0),
@@ -968,7 +1067,7 @@
   }
 
   function daysBetween(a, b) {
-    return Math.round((new Date(`${b}T00:00:00`) - new Date(`${a}T00:00:00`)) / 86400000);
+    return Math.round((dateKeyObject(b) - dateKeyObject(a)) / 86400000);
   }
 
   function plusShipChart() {
@@ -1026,9 +1125,8 @@
     if (activeAbnormal.length) actions.push(`<button type="button" class="action-card alert" data-action="open-sheet" data-sheet-kind="abnormal"><span class="action-icon">${icon("warning")}</span><span class="action-copy"><strong>${activeAbnormal.length} 筆異常需要留意</strong><span>${escapeHtml(activeAbnormal.slice(0, 2).map((item) => `${contextName(item)} · ${item.title}`).join("；"))}${resolvedAbnormal ? `；另 ${resolvedAbnormal} 筆已結案` : ""}</span></span><span class="action-count">${activeAbnormal.length}</span><span class="action-arrow">›</span></button>`);
     return `<section class="page today-page" data-page="today">
       ${contextBar()}
-      ${state.quickRecordNotice ? `<div class="lab-write-notice" role="status">${escapeHtml(state.quickRecordNotice)}</div>` : ""}
       ${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}
-      <div class="today-date"><span>資料截至 8 月 31 日</span><strong>今日</strong></div>
+      <div class="today-date"><span>資料截至 ${escapeHtml(operationalDateLabel(PLUS_AS_OF))}</span><strong>今日</strong></div>
       <div class="desktop-overview-grid">
         <section class="digest" aria-labelledby="digest-title"><div class="digest-head"><p class="kicker">今日摘要</p><span class="digest-mark">${icon("digest")}</span></div><h2 id="digest-title">${digestCopy()}</h2><p>摘要只依目前工作範圍中的測試資料整理，不會自行增加數字。</p></section>
         <section class="hero-metric" aria-label="目前在養"><div><p class="kicker">目前在養 · ${escapeHtml(contextShortLabel())}</p><strong data-testid="stock-value">${number(contextStock())}</strong><p>${escapeHtml(stockDetail(currentContext()))}</p></div><div class="hero-side"><span class="hero-icon">${icon("flock")}</span><span class="metric-label">${contextCountLabel()}</span><button type="button" class="ghost-light" data-action="open-sheet" data-sheet-kind="flocks">查看批次</button></div></section>
@@ -1106,6 +1204,16 @@
 
   function recordsAnalysisAbnormalities() {
     return labData().abnormalities.filter(recordsAnalysisMatches);
+  }
+
+  function recordsAnalysisObservations() {
+    return effectiveLabObservations().filter(recordsAnalysisMatches);
+  }
+
+  function recordActionAttributes(record) {
+    if (record.kind === "event") return `data-action="open-event" data-event-id="${escapeHtml(record.id)}"`;
+    if (record.kind === "abnormal") return `data-action="open-abnormal" data-abnormal-id="${escapeHtml(record.id)}"`;
+    return `data-action="open-observation" data-observation-id="${escapeHtml(record.id)}"`;
   }
 
   function recordsAnalysisLabel() {
@@ -1254,8 +1362,9 @@
   function renderRecords() {
     const eventRows = recordsAnalysisEvents().map((event) => ({ kind: "event", id: event.id, sort: `${event.date} ${event.time}`, title: `${eventLabel(event.type)} ${number(event.qty)} ${event.unit}`, detail: `${contextName(event)} · ${event.date} ${event.time}`, tone: ["mortality","cull"].includes(event.type) ? "alert" : "good", state: "有效" }));
     const abnormalRows = recordsAnalysisAbnormalities().map((item) => ({ kind: "abnormal", id: item.id, sort: `${item.date} ${item.time}`, title: `異常：${item.title}`, detail: `${contextName(item)} · ${item.category} · ${item.date} ${item.time}`, tone: item.status === "active" ? "warn" : "good", state: item.state }));
-    const rows = [...eventRows, ...abnormalRows].sort((a, b) => b.sort.localeCompare(a.sort));
-    const listView = `<section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>紀錄時間軸</h3><p>死亡、淘汰、飼料、飲水、出雞與異常都跟著目前範圍切換。</p></div></div><div class="list-stack">${rows.length ? rows.map((record) => `<button type="button" class="list-row" data-action="${record.kind === "event" ? "open-event" : "open-abnormal"}" ${record.kind === "event" ? `data-event-id="${escapeHtml(record.id)}"` : `data-abnormal-id="${escapeHtml(record.id)}"`}><span><strong>${escapeHtml(record.title)}</strong><span>${escapeHtml(record.detail)}</span></span><span class="row-end"><span class="status-chip ${record.tone}">${escapeHtml(record.state)}</span><span class="row-arrow">›</span></span></button>`).join("") : `<div class="empty-tab"><strong>這個範圍沒有紀錄</strong><p>測試版不會用推算值補齊。</p></div>`}</div></section>`;
+    const observationRows = recordsAnalysisObservations().map((item) => ({ kind: "observation", id: item.id, sort: `${item.date} ${item.time}`, title: `現場觀察：${observationLabel(item)}`, detail: `${contextName(item)} · ${item.date} ${item.time} · 不含精確數量`, tone: "info", state: "已保存" }));
+    const rows = [...eventRows, ...abnormalRows, ...observationRows].sort((a, b) => b.sort.localeCompare(a.sort));
+    const listView = `<section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>紀錄時間軸</h3><p>死亡、淘汰、飼料、飲水、出雞、現場觀察與異常都跟著目前範圍切換。</p></div></div><div class="list-stack">${rows.length ? rows.map((record) => `<button type="button" class="list-row" ${recordActionAttributes(record)}><span><strong>${escapeHtml(record.title)}</strong><span>${escapeHtml(record.detail)}</span></span><span class="row-end"><span class="status-chip ${record.tone}">${escapeHtml(record.state)}</span><span class="row-arrow">›</span></span></button>`).join("") : `<div class="empty-tab"><strong>這個範圍沒有紀錄</strong><p>測試版不會用推算值補齊。</p></div>`}</div></section>`;
     return `<section class="page" data-page="records">
       ${contextBar()}
       ${pageIntro("", "紀錄", "查看目前工作範圍內的營運紀錄與趨勢。")}
@@ -1321,7 +1430,7 @@
     }
     if (key === "records") {
       const recent = desktopRecentRows(6);
-      return `<div class="ai-preview-result"><p class="kicker">查找近期紀錄</p><h2>目前範圍最近 ${recent.length} 筆</h2><div class="ai-result-list">${recent.map((row) => `<button type="button" class="sheet-item" data-action="${row.kind === "event" ? "open-event" : "open-abnormal"}" ${row.kind === "event" ? `data-event-id="${row.id}"` : `data-abnormal-id="${row.id}"`}><span><strong>${escapeHtml(row.title)}</strong><span>${escapeHtml(row.detail)}</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>沒有近期紀錄</strong></div>`}</div></div>`;
+      return `<div class="ai-preview-result"><p class="kicker">查找近期紀錄</p><h2>目前範圍最近 ${recent.length} 筆</h2><div class="ai-result-list">${recent.map((row) => `<button type="button" class="sheet-item" ${recordActionAttributes(row)}><span><strong>${escapeHtml(row.title)}</strong><span>${escapeHtml(row.detail)}</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>沒有近期紀錄</strong></div>`}</div></div>`;
     }
     return `<div class="ai-preview-result"><p class="kicker">今日重點</p><h2>${escapeHtml(contextShortLabel())}</h2><div class="ai-overview-metrics"><div><span>目前在養</span><strong>${number(contextStock())}</strong></div><div><span>今日死亡</span><strong>${number(stats.today)}</strong></div><div><span>待確認</span><strong>${number(pending.length)}</strong></div><div><span>異常追蹤</span><strong>${number(abnormal.length)}</strong></div></div><p>AI 正式版可把這些資料整理成白話摘要、指出值得優先查看的原始紀錄；但不直接修改正式資料。</p></div>`;
   }
@@ -1469,7 +1578,14 @@
 
   function pendingSheet() {
     const rows = scopedPending();
-    return sheetShell(`${rows.length} 筆需要人工確認`, htmlContextLabel(), `<div class="sheet-item-list">${rows.length ? rows.map((item) => `<button type="button" class="sheet-item" data-action="open-pending-item" data-pending-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(pendingContextName(item))} · ${escapeHtml(item.kind)}</span></span><span class="sheet-item-end">›</span></button>`).join("") : `<div class="empty-tab"><strong>這個範圍沒有待確認資料</strong></div>`}</div><div class="readonly-note">測試版只展示操作，不會寫入正式資料。</div>`, "pending");
+    const history = resolvedPending();
+    const activeMarkup = rows.length
+      ? rows.map((item) => `<button type="button" class="sheet-item" data-action="open-pending-item" data-pending-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(pendingContextName(item))} · ${escapeHtml(item.kind)}</span></span><span class="sheet-item-end">›</span></button>`).join("")
+      : `<div class="empty-tab"><strong>這個範圍沒有待確認資料</strong></div>`;
+    const historyMarkup = history.length
+      ? `<div class="detail-block"><h3>已完成審核</h3><div class="sheet-item-list">${history.map((item) => `<button type="button" class="sheet-item" data-action="open-pending-item" data-pending-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(pendingContextName(item))} · 已建立正式紀錄</span></span><span class="sheet-item-end"><span class="status-chip good">已完成</span> ›</span></button>`).join("")}</div></div>`
+      : "";
+    return sheetShell(`${rows.length} 筆需要人工確認`, htmlContextLabel(), `<div class="sheet-item-list">${activeMarkup}</div>${historyMarkup}<div class="readonly-note">原始輸入與待確認資料會保留；審核完成後只新增正式紀錄、Audit 與 outbox，不覆寫原始內容。</div>`, "pending");
   }
 
   function upcomingSheet() {
@@ -1511,7 +1627,30 @@
 
   function pendingItemSheet(id) {
     const item = labData().pending.find((candidate) => candidate.id === id) || labData().pending[0];
-    return sheetShell(escapeHtml(item.title), escapeHtml(item.kind), `<div class="detail-hero"><small>${escapeHtml(item.kind)}</small><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(pendingContextName(item))}</span></div><div class="detail-block"><h3>說明</h3><p>${escapeHtml(item.detail)}</p></div><div class="detail-block"><h3>測試版說明</h3><p>這裡只展示處理流程，不會修改正式資料。</p></div><button type="button" class="sheet-primary" data-action="go-records">前往紀錄</button>`, "pending-item");
+    if (!item) return sheetShell("找不到待確認資料", "待辦", `<div class="empty-tab"><strong>這筆待確認資料已不存在</strong></div>`, "pending-item");
+    const resolution = pendingResolutionFor(item.id);
+    const resolutionMarkup = resolution
+      ? `<div class="detail-block"><h3>審核結果</h3><p>已建立${resolution.resultType === "event" ? "數字事件" : "現場觀察"}：${escapeHtml(resolution.resultId || "—")}</p><small>${escapeHtml(resolution.resolvedAt || "")}</small>${resolution.resultType === "event" ? `<button type="button" class="sheet-secondary" data-action="open-event" data-event-id="${escapeHtml(resolution.resultId)}">查看正式紀錄</button>` : `<button type="button" class="sheet-secondary" data-action="open-observation" data-observation-id="${escapeHtml(resolution.resultId)}">查看現場觀察</button>`}</div>`
+      : `<button type="button" class="sheet-primary" data-action="start-pending-approval" data-pending-id="${escapeHtml(item.id)}">審核並建立正式紀錄</button>`;
+    return sheetShell(escapeHtml(item.title), escapeHtml(item.kind), `<div class="detail-hero"><small>${resolution ? "已完成審核" : "待人工確認"}</small><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(pendingContextName(item))}</span></div><div class="detail-block"><h3>說明</h3><p>${escapeHtml(item.detail || "尚未提供說明")}</p></div><div class="detail-block"><h3>處理原因</h3><p>${escapeHtml(item.reason || item.detail || "需要人工補足資料")}</p></div>${item.rawText ? `<div class="detail-block"><h3>原始輸入</h3><p>${escapeHtml(item.rawText)}</p></div>` : ""}<div class="detail-block"><h3>來源與時間</h3><p>${escapeHtml(item.source || "未標示來源")} · ${escapeHtml(item.createdAt || "未標示時間")}</p></div>${resolutionMarkup}<div class="detail-block"><h3>處理原則</h3><p>原始輸入只讀保留；人工補足資料後，才以同一個原子操作新增正式紀錄、Audit 與本機 outbox。</p></div>`, "pending-item");
+  }
+
+  function pendingApprovalSheet(id) {
+    const item = labData().pending.find((candidate) => candidate.id === id) || labData().pending[0];
+    if (!item) return sheetShell("找不到待確認資料", "審核", `<div class="empty-tab"><strong>這筆待確認資料已不存在</strong></div>`, "pending-approval");
+    const draft = state.pendingApproval || { pendingId: item.id, mode: "observation", eventType: "mortality", quantity: "", observationType: "咳嗽", extent: null };
+    const eventTypes = [["mortality", "死亡"], ["cull", "淘汰"], ["feed", "飼料"], ["water", "飲水"], ["shipment", "出雞"]];
+    const observationTypes = [["咳嗽", "咳嗽"], ["臭腳", "臭腳"], ["白冠", "白冠"], ["緊迫", "緊迫"]];
+    const modeButtons = [["event", "建立數字紀錄"], ["observation", "建立現場觀察"]].map(([mode, label]) => `<button type="button" class="records-view-chip ${draft.mode === mode ? "active" : ""}" data-action="pending-approval-mode" data-mode="${mode}">${label}</button>`).join("");
+    const eventMarkup = `<div class="quick-record-guided"><strong>補足數字</strong><div class="quick-record-chip-grid">${eventTypes.map(([type, label]) => `<button type="button" class="quick-record-chip ${draft.eventType === type ? "active" : ""}" data-action="pending-event-type" data-event-type="${type}">${label}</button>`).join("")}</div><label class="quick-record-label" for="pending-quantity">數量</label><input id="pending-quantity" class="quick-record-input quick-record-number-input" type="text" inputmode="decimal" value="${escapeHtml(draft.quantity || "")}" placeholder="請輸入數量"></div>`;
+    const observationMarkup = `<div class="quick-record-guided"><strong>補足現場觀察</strong><div class="quick-record-chip-grid">${observationTypes.map(([value, label]) => `<button type="button" class="quick-record-chip ${draft.observationType === value ? "active" : ""}" data-action="pending-observation-type" data-observation-type="${value}">${label}</button>`).join("")}</div><span>觀察範圍是質性資料，不換算成隻數。</span><div class="quick-record-extent-grid">${[["small", "小範圍"], ["medium", "中範圍"], ["large", "大範圍"]].map(([value, label]) => `<button type="button" class="quick-record-extent ${draft.extent === value ? "active" : ""}" data-action="pending-observation-extent" data-extent="${value}">${label}</button>`).join("")}</div></div>`;
+    return sheetShell("審核待確認資料", escapeHtml(pendingContextName(item)), `<div class="detail-block"><h3>原始輸入</h3><p data-testid="pending-approval-raw">${escapeHtml(item.rawText || "未提供原始文字")}</p><small>${escapeHtml(item.source || "未標示來源")} · ${escapeHtml(item.createdAt || "未標示時間")}</small></div><div class="records-view-chips" role="tablist" aria-label="審核建立方式">${modeButtons}</div>${draft.mode === "event" ? eventMarkup : observationMarkup}${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="readonly-note">送出後會在同一個本機原子操作中建立正式${draft.mode === "event" ? "數字事件" : "質性觀察"}、審核結果、Audit 與 outbox；原始 Pending 不會被刪除。</div><button type="button" class="sheet-primary" data-action="approve-pending-review" data-pending-id="${escapeHtml(item.id)}">確認並建立正式紀錄</button><button type="button" class="sheet-secondary" data-action="open-pending-item" data-pending-id="${escapeHtml(item.id)}">返回待確認明細</button>`, "pending-approval");
+  }
+
+  function observationItemSheet(id) {
+    const item = effectiveLabObservations().find((candidate) => candidate.id === id) || effectiveLabObservations()[0];
+    if (!item) return sheetShell("找不到觀察", "現場觀察", `<div class="empty-tab"><strong>這筆觀察已不存在</strong></div>`, "observation-item");
+    return sheetShell("現場觀察", `${escapeHtml(item.date)} ${escapeHtml(item.time)}`, `<div class="detail-hero"><small>質性資料 · 不納入數量統計</small><strong>${escapeHtml(observationLabel(item))}</strong><span>${escapeHtml(contextName(item))}</span></div><div class="detail-block"><h3>位置</h3><p>${escapeHtml(contextName(item))}</p></div><div class="detail-block"><h3>資料邊界</h3><p>這筆是現場觀察，沒有精確數量；不會被計入死亡、淘汰、出雞或目前在養。</p></div>${item.rawText ? `<div class="detail-block"><h3>原始輸入</h3><p>${escapeHtml(item.rawText)}</p></div>` : ""}<div class="readonly-note">來源：${escapeHtml(item.source || "fixture")} · 原文保留於觀察紀錄與 Audit；如需量化，請另建立有明確數量的事件。</div><button type="button" class="sheet-primary" data-action="go-records">前往紀錄</button>`, "observation-item");
   }
 
   function abnormalItemSheet(id) {
@@ -1829,26 +1968,109 @@
     return sheetShell("快速行動", htmlContextLabel(), `<div class="option-list">${recordArea}<button type="button" class="option-row" data-action="go-ai"><span><strong>✦ 問 AI</strong><span>${simulatedAiAvailable() ? "帶入目前工作範圍；AI 維持唯讀" : "AI 暫不可用；點入查看降級說明"}</span></span><span class="option-check">${icon("arrow")}</span></button></div>`, "quick-actions");
   }
 
+  function quickRecordInputStatus(rawText) {
+    const raw = String(rawText || "").trim();
+    if (!raw) return { tone: "info", text: "輸入後會先檢查這是可量化事件，還是現場觀察。" };
+    const parsed = window.JinjiDomain.parseQuickRecord(raw);
+    if (parsed.status === "event") {
+      return { tone: "good", text: `已辨識為可量化事件：${eventLabel(parsed.event.type)} ${number(parsed.event.quantity)} ${parsed.event.unit}。` };
+    }
+    if (parsed.status === "observation") {
+      return {
+        tone: "info",
+        text: parsed.needsExtent
+          ? "這是現場觀察；下一步請選小範圍、中範圍或大範圍，不會轉成隻數。"
+          : "這是現場觀察；沒有精確數字也可以記錄，不會轉成隻數或進入死亡統計。",
+      };
+    }
+    if (parsed.status === "guided" && parsed.reason === "quantity_missing") {
+      return { tone: "warn", text: "死亡紀錄需要正整數；可按「死亡」後輸入隻數，空白、負數或小數不會建立紀錄。" };
+    }
+    if (parsed.reason === "quantity_missing") {
+      return { tone: "warn", text: "這個項目需要精確數量；目前不會默默建立不完整的正式紀錄。" };
+    }
+    if (parsed.reason === "ambiguous_multiple_metrics") {
+      return { tone: "warn", text: "一筆內容包含多個數據，請拆開；無法判定時會送人工確認。" };
+    }
+    if (parsed.reason === "too_long") {
+      return { tone: "warn", text: "內容超過 240 字，請拆成較短的一筆紀錄。" };
+    }
+    return { tone: "warn", text: "目前無法判定類型；送出後會先保留原始文字，交由人工確認。" };
+  }
+
+  const QUICK_RECORD_CHIPS = Object.freeze([
+    { key: "mortality", label: "死亡", text: "死亡" },
+    { key: "cough", label: "咳嗽", text: "咳嗽" },
+    { key: "foot-odor", label: "臭腳", text: "臭腳" },
+    { key: "white-crown", label: "白冠", text: "白冠" },
+    { key: "stress", label: "緊迫", text: "緊迫" },
+  ]);
+
+  function quickRecordContextLabel() {
+    const context = currentContext();
+    if (context.farm.id === "all") return "尚未選擇雞場";
+    if (!context.house) return `${context.farm.name} · 整場範圍（尚未指定雞舍）`;
+    if (!context.flock) return `${context.farm.name} · ${context.house.name} · 本舍，不指定批次`;
+    return `${context.farm.name} · ${context.house.name} · ${context.flock.code}`;
+  }
+
+  function resetQuickRecordFlow() {
+    state.quickRecordDraft = "";
+    state.quickRecordError = "";
+    state.quickRecordStep = null;
+    state.quickRecordSeed = null;
+    state.quickRecordExtent = null;
+    state.quickRecordQuantityDraft = "";
+    state.quickRecordScopePrompt = null;
+    state.quickRecordScopeConfirmed = false;
+  }
+
   function quickRecordSheet() {
     const context = currentContext();
     const targetName = [context.farm.name, context.house?.name, context.flock?.code].filter(Boolean).join("・");
     const quickRecordTitle = `${escapeHtml(targetName)}＋快速記錄`;
     if (state.context.farmId === "all") return sheetShell(quickRecordTitle, "全部在養為唯讀", `<div class="empty-tab"><strong>請先選一個雞場</strong><p>選好後會自動回到快速記錄，不需要重新開啟。</p></div><button type="button" class="sheet-primary" data-action="open-context-for-quick-record">選擇雞場</button>`, "quick-record");
-    return sheetShell(quickRecordTitle, `目前記錄位置：${htmlContextLabel()}`, `<label class="quick-record-label" for="quick-record-input">要記什麼？</label><textarea id="quick-record-input" class="quick-record-input" rows="4" placeholder="例如：死亡5，咳嗽，臭腳">${escapeHtml(state.quickRecordDraft)}</textarea><p class="quick-record-note">Lab Write 只寫入此瀏覽器的 local overlay／IndexedDB，不連正式後端；輸入會先經過安全解析與人工確認。</p><button type="button" class="sheet-primary" data-action="preview-quick-record">檢查並預覽</button>`, "quick-record");
+    const inputStatus = quickRecordInputStatus(state.quickRecordDraft);
+    const chips = QUICK_RECORD_CHIPS.map((chip) => `<button type="button" class="quick-record-chip ${state.quickRecordSeed?.key === chip.key ? "active" : ""}" data-action="quick-chip" data-quick-kind="${chip.key}" data-testid="quick-record-chip-${chip.key}">${chip.label}</button>`).join("");
+    const quantityStep = state.quickRecordStep === "quantity"
+      ? `<div class="quick-record-guided" data-testid="quick-record-quantity-step"><strong>死亡幾隻？</strong><span>死亡只能記錄正整數；沒有數字或不是正整數就不會建立紀錄。</span><label class="quick-record-label" for="quick-record-quantity">死亡隻數</label><input id="quick-record-quantity" class="quick-record-input quick-record-number-input" type="text" inputmode="numeric" autocomplete="off" value="${escapeHtml(state.quickRecordQuantityDraft || "")}" placeholder="例如：5">${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<button type="button" class="sheet-primary" data-action="apply-quick-quantity">確認隻數</button></div>`
+      : "";
+    const extentStep = state.quickRecordStep === "extent"
+      ? `<div class="quick-record-guided" data-testid="quick-record-extent-step"><strong>${escapeHtml(state.quickRecordSeed?.text || "現場觀察")}範圍</strong><span>範圍是質性描述，不會換算成數量；請選擇最接近現場的程度。</span><div class="quick-record-extent-grid">${[["small", "小範圍"], ["medium", "中範圍"], ["large", "大範圍"]].map(([value, label]) => `<button type="button" class="quick-record-extent ${state.quickRecordExtent === value ? "active" : ""}" data-action="quick-extent" data-extent="${value}">${label}</button>`).join("")}</div></div>`
+      : "";
+    const contextNote = context.house && !context.flock ? "目前已指定雞舍；不會自動選擇批次，這筆可保留在本舍。" : "";
+    return sheetShell(quickRecordTitle, `目前記錄位置：${escapeHtml(quickRecordContextLabel())}`, `<div class="quick-record-chip-block"><strong>快速記錄</strong><span>先選一個常用項目，系統會在下一步要求必要資料。</span><div class="quick-record-chip-grid">${chips}</div></div><label class="quick-record-label" for="quick-record-input">補充文字（可選）</label><textarea id="quick-record-input" class="quick-record-input" rows="3" placeholder="例如：死亡5，或寫下其他需要人工確認的情況">${escapeHtml(state.quickRecordDraft)}</textarea><div class="quick-record-input-status ${inputStatus.tone}" data-testid="quick-record-input-status" role="status" aria-live="polite">${escapeHtml(inputStatus.text)}</div>${quantityStep}${extentStep}${contextNote ? `<p class="quick-record-note">${escapeHtml(contextNote)}</p>` : ""}<p class="quick-record-note">死亡、淘汰與出雞等數字事件會進入統計；咳嗽、臭腳、白冠、緊迫等只能描述規模的現場觀察，會以質性資料保存。無法判定時會先送人工確認，不會假裝完成。</p><button type="button" class="sheet-primary" data-action="preview-quick-record">檢查並預覽</button>`, "quick-record");
   }
 
   function quickRecordPreviewSheet() {
     const parsed = window.JinjiDomain.parseQuickRecord(state.quickRecordDraft);
     if (parsed.status === "event") {
       const event = parsed.event;
-      return sheetShell("紀錄預覽", htmlContextLabel(), `<div class="detail-hero"><small>可寫入 Lab</small><strong>${eventLabel(event.type)} ${number(event.quantity)} ${escapeHtml(event.unit)}</strong><span>${event.note ? `備註：${escapeHtml(event.note)}` : "已辨識類型與數量；這筆會加入目前雞場的事件時間軸。"}</span></div><div class="detail-block"><h3>明確 Context</h3><p>${htmlContextLabel()}</p></div><div class="readonly-note">確認後只建立一筆 OperationalEvent，並同步 Today、紀錄、月曆、圖表、趨勢與變更紀錄。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-lab-event">寫入 Lab 紀錄</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+      return sheetShell("紀錄預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>可寫入 Lab</small><strong>${eventLabel(event.type)} ${number(event.quantity)} ${escapeHtml(event.unit)}</strong><span>${event.note ? `備註：${escapeHtml(event.note)}` : "已辨識類型與數量；這筆會加入目前雞場的事件時間軸。"}</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div><div class="readonly-note">確認後只建立一筆 OperationalEvent，並同步 Today、紀錄、月曆、圖表、趨勢與變更紀錄。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-lab-event">寫入 Lab 紀錄</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
     }
-    return sheetShell("紀錄預覽", htmlContextLabel(), `<div class="detail-hero"><small>待人工確認</small><strong>${escapeHtml(state.quickRecordDraft || "（沒有內容）")}</strong><span>${escapeHtml(parsed.message)}</span></div><div class="readonly-note">無法安全辨識時不建立事件；可把這筆保留到 Pending Review，之後由人工補齊。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-pending-review">送人工確認</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+    if (parsed.status === "observation") {
+      const extent = parsed.observation?.extent || state.quickRecordExtent;
+      const observationLabel = [parsed.observation?.text || state.quickRecordDraft, extent ? window.JinjiDomain.OBSERVATION_EXTENT_LABELS?.[extent] : null].filter(Boolean).join("｜");
+      const ready = !parsed.needsExtent || Boolean(extent);
+      return sheetShell("觀察預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>現場觀察 · 不納入數量統計</small><strong>${escapeHtml(observationLabel)}</strong><span>沒有精確數字也可以記錄；這筆會保留原文與觀察範圍，不會轉成死亡、淘汰或在養數量。</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div>${!ready ? `<div class="lab-write-notice error" role="alert">請先選擇小範圍、中範圍或大範圍。</div>` : ""}<div class="readonly-note">確認後建立一筆現場觀察，並同步紀錄、月曆、Audit 與本機 outbox。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions">${ready ? `<button type="button" class="sheet-primary" data-action="commit-observation">保存觀察紀錄</button>` : ""}<button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+    }
+    return sheetShell("紀錄預覽", htmlContextLabel(), `<div class="detail-hero"><small>待人工確認 · 尚未建立正式紀錄</small><strong>${escapeHtml(state.quickRecordDraft || "（沒有內容）")}</strong><span>${escapeHtml(parsed.message)}</span></div><div class="readonly-note">資料不完整或語意不明時，先保留原始輸入與 Context；人工確認後才會建立正式的數字事件或質性觀察。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-pending-review">送人工確認</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+  }
+
+  function quickRecordScopeSheet() {
+    const context = currentContext();
+    const houses = context.farm?.houses || [];
+    const actionLabel = state.quickRecordScopePrompt?.kind === "observation" ? "保存觀察" : "寫入紀錄";
+    const houseRows = houses.length
+      ? houses.map((house) => `<button type="button" class="option-row" data-action="select-house-for-quick-record" data-house-id="${escapeHtml(house.id)}"><span><strong>${escapeHtml(house.name)}</strong><span>指定這個雞舍；批次保持未選取</span></span><span class="option-check">›</span></button>`).join("")
+      : `<div class="empty-tab"><strong>這個雞場目前沒有可選雞舍</strong><p>請先完成雞舍主檔，或取消本次記錄。</p></div>`;
+    return sheetShell("確認記錄範圍", `目前：${escapeHtml(quickRecordContextLabel())}`, `<div class="detail-hero"><small>尚未指定雞舍</small><strong>${escapeHtml(context.farm.name)}</strong><span>這筆${actionLabel}前需要明確決定要套用整場，或指定一個雞舍。</span></div><div class="option-list"><button type="button" class="option-row selected" data-action="apply-farm-scope"><span><strong>套用整場</strong><span>這筆資料不屬於單一雞舍，保留為場級紀錄。</span></span><span class="option-check">✓</span></button><div class="quick-record-scope-divider">或選擇雞舍</div>${houseRows}</div><button type="button" class="sheet-secondary" data-action="cancel-quick-record-scope">取消</button>`, "quick-record-scope");
   }
 
   function labEventFromDraft() {
     const parsed = window.JinjiDomain.parseQuickRecord(state.quickRecordDraft);
     if (parsed.status !== "event") return { parsed, event: null };
+    const scopeSelection = state.quickRecordScopeConfirmed ? "farm" : state.context.houseId ? "house" : "unconfirmed";
     const event = window.JinjiDomain.createOperationalEvent({
       ...parsed.event,
       date: PLUS_AS_OF,
@@ -1856,28 +2078,98 @@
       farmId: state.context.farmId,
       houseId: state.context.houseId,
       flockId: state.context.flockId,
+      rawText: state.quickRecordDraft,
+      scopeSelection,
+      scopeConfirmed: scopeSelection !== "unconfirmed",
     });
     return { parsed, event };
   }
 
+  function labObservationFromDraft() {
+    const parsed = window.JinjiDomain.parseQuickRecord(state.quickRecordDraft);
+    const rawText = String(state.quickRecordDraft || "").trim();
+    const extent = parsed.observation?.extent || state.quickRecordExtent;
+    const text = parsed.observation?.text || rawText;
+    if (!parsed || parsed.status !== "observation" || parsed.needsExtent && !extent || !rawText || rawText.length > 240) return { parsed, observation: null };
+    const scopeSelection = state.quickRecordScopeConfirmed ? "farm" : state.context.houseId ? "house" : "unconfirmed";
+    try {
+      const observation = window.JinjiDomain.createOperationalObservation({
+        text,
+        category: parsed.observation?.category || "health",
+        observationType: parsed.observation?.observationType || "free_text",
+        ...(extent ? { extent } : {}),
+        rawText,
+        date: PLUS_AS_OF,
+        time: "09:30",
+        farmId: state.context.farmId,
+        houseId: state.context.houseId,
+        flockId: state.context.flockId,
+        source: "quick_record",
+        scopeSelection,
+        scopeConfirmed: scopeSelection !== "unconfirmed",
+      });
+      return { parsed, observation };
+    } catch (_) {
+      return { parsed, observation: null };
+    }
+  }
+
   function commitLabEvent() {
     if (state.context.farmId === "all") return openContextPicker("quick-record");
+    if (!state.context.houseId && !state.quickRecordScopeConfirmed) {
+      state.quickRecordScopePrompt = { kind: "event" };
+      return openSheet({ kind: "quick-record-scope" });
+    }
     const { parsed, event } = labEventFromDraft();
     if (parsed.status !== "event" || !event) return openSheet({ kind: "quick-record-preview" });
-    const audit = window.JinjiDomain.createAuditEntry({ entityId: event.id, operation: "create", source: "quick_record", newEventIds: [event.id] });
+    const audit = window.JinjiDomain.createAuditEntry({ entityId: event.id, operation: "create", source: "quick_record", newEventIds: [event.id], metadata: { scopeSelection: event.scopeSelection, scopeConfirmed: event.scopeConfirmed, rawText: event.rawText } });
     try {
       const { sync } = commitLabLocalOperation({
         events: [event],
         auditEntries: [audit],
-        operation: { clientOperationId: event.clientOperationId, type: "create_event", eventId: event.id, source: "quick_record" },
+        operation: { clientOperationId: event.clientOperationId, type: "create_event", eventId: event.id, source: "quick_record", scopeSelection: event.scopeSelection, rawText: event.rawText },
       });
       state.quickRecordNotice = operationNotice(`已寫入 Lab：${eventLabel(event.type)} ${number(event.quantity)} ${event.unit} · ${contextLabel()}`, sync);
     } catch (error) {
       state.quickRecordError = masterDataErrorMessage(error);
       return openSheet({ kind: "quick-record-preview" });
     }
-    state.quickRecordDraft = "";
-    state.quickRecordError = "";
+    resetQuickRecordFlow();
+    state.calendarYear = Number(PLUS_AS_OF.slice(0, 4));
+    state.calendarMonth = Number(PLUS_AS_OF.slice(5, 7));
+    state.selectedCalendarDate = PLUS_AS_OF;
+    state.sheet = null;
+    render();
+  }
+
+  function commitObservation() {
+    if (state.context.farmId === "all") return openContextPicker("quick-record");
+    if (!state.context.houseId && !state.quickRecordScopeConfirmed) {
+      state.quickRecordScopePrompt = { kind: "observation" };
+      return openSheet({ kind: "quick-record-scope" });
+    }
+    const { parsed, observation } = labObservationFromDraft();
+    if (!observation) return openSheet({ kind: "quick-record-preview" });
+    const audit = window.JinjiDomain.createAuditEntry({
+      entityType: "OperationalObservation",
+      entityId: observation.id,
+      operation: "create",
+      source: "quick_record",
+      newEventIds: [observation.id],
+      metadata: { measurementStatus: "qualitative", parserReason: parsed.reason || "explicit_observation", extent: observation.extent || null, scopeSelection: observation.scopeSelection, scopeConfirmed: observation.scopeConfirmed, rawText: observation.rawText },
+    });
+    try {
+      const { sync } = commitLabLocalOperation({
+        observations: [observation],
+        auditEntries: [audit],
+        operation: { clientOperationId: observation.clientOperationId, type: "create_observation", observationId: observation.id, source: "quick_record", scopeSelection: observation.scopeSelection, rawText: observation.rawText },
+      });
+      state.quickRecordNotice = operationNotice(`已保存現場觀察：${observation.text}${observation.extent ? `（${window.JinjiDomain.OBSERVATION_EXTENT_LABELS?.[observation.extent] || observation.extent}）` : ""} · ${contextLabel()}`, sync);
+    } catch (error) {
+      state.quickRecordError = masterDataErrorMessage(error);
+      return openSheet({ kind: "quick-record-preview" });
+    }
+    resetQuickRecordFlow();
     state.calendarYear = Number(PLUS_AS_OF.slice(0, 4));
     state.calendarMonth = Number(PLUS_AS_OF.slice(5, 7));
     state.selectedCalendarDate = PLUS_AS_OF;
@@ -1887,9 +2179,10 @@
 
   function commitCorrection(eventId) {
     const original = effectiveLabEvents().find((event) => event.id === eventId);
-    const nextQuantity = Number(document.getElementById("correction-qty")?.value);
-    if (!original || !Number.isFinite(nextQuantity) || nextQuantity < 0) {
-      state.correctionNotice = "請輸入有效的零或正數。";
+    const rawQuantity = String(document.getElementById("correction-qty")?.value ?? "").trim();
+    const nextQuantity = Number(rawQuantity);
+    if (!original || !rawQuantity || !Number.isFinite(nextQuantity) || nextQuantity < 0) {
+      state.correctionNotice = rawQuantity ? "請輸入有效的零或正數。" : "請填寫修正後數量；若要改成零，請明確輸入 0。";
       return openSheet({ kind: "correction", id: eventId });
     }
     const ledger = window.JinjiDomain.createCorrectionLedger(original, {
@@ -1915,7 +2208,8 @@
   }
 
   function savePendingReviewFromDraft() {
-    const { parsed } = labEventFromDraft();
+    const parsed = window.JinjiDomain.parseQuickRecord(state.quickRecordDraft);
+    if (state.context.farmId === "all") return openContextPicker("quick-record");
     const review = {
       id: window.JinjiDomain.id("pending"),
       title: "快速記錄待人工確認",
@@ -1926,19 +2220,156 @@
       flockId: state.context.flockId,
       rawText: String(state.quickRecordDraft || "").slice(0, 240),
       source: "quick_record",
+      reason: parsed.reason || "unrecognized",
+      createdAt: new Date().toISOString(),
     };
     try {
       const { sync } = commitLabLocalOperation({
         pendingReviews: [review],
-        operation: { clientOperationId: window.JinjiDomain.clientOperationId("pending"), type: "create_pending_review", pendingId: review.id, source: "quick_record" },
+        operation: { clientOperationId: window.JinjiDomain.clientOperationId("pending"), type: "create_pending_review", pendingId: review.id, source: "quick_record", rawText: review.rawText, reason: review.reason },
       });
       state.quickRecordNotice = operationNotice("這筆內容已保留到 Pending Review，沒有建立不確定的正式事件。", sync);
     } catch (error) {
       state.quickRecordError = masterDataErrorMessage(error);
       return openSheet({ kind: "quick-record-preview" });
     }
-    state.quickRecordDraft = "";
+    resetQuickRecordFlow();
+    state.sheet = null;
+    render();
+  }
+
+  function pendingApprovalDraft() {
+    const draft = { ...(state.pendingApproval || {}) };
+    const quantity = document.getElementById("pending-quantity");
+    if (quantity) draft.quantity = quantity.value;
+    state.pendingApproval = draft;
+    return draft;
+  }
+
+  function approvePendingReview(id) {
+    const item = labData().pending.find((candidate) => candidate.id === id);
+    if (!item) return openSheet({ kind: "pending" });
+    if (pendingResolutionFor(item.id)) return openSheet({ kind: "pending-item", id: item.id });
+    const draft = pendingApprovalDraft();
+    const rawText = String(item.rawText || "").slice(0, 240);
+    const farmId = item.farmId || (state.context.farmId === "all" ? null : state.context.farmId);
+    const houseId = item.houseId || null;
+    const flockId = item.flockId || null;
+    const scopeSelection = flockId ? "flock" : houseId ? "house" : "farm";
+    const now = new Date();
+    let result = null;
+    let resultType = draft.mode;
+    if (draft.mode === "event") {
+      const rawQuantity = String(draft.quantity || "").trim().replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xff10 + 48));
+      const quantity = Number(rawQuantity);
+      if (!rawQuantity || !Number.isFinite(quantity) || quantity <= 0 || (["mortality", "cull", "shipment"].includes(draft.eventType) && !Number.isInteger(quantity))) {
+        state.quickRecordError = "數量必須大於 0；死亡、淘汰與出雞還必須是正整數。";
+        return openSheet({ kind: "pending-approval", id: item.id });
+      }
+      try {
+        result = window.JinjiDomain.createOperationalEvent({
+          id: window.JinjiDomain.id("event"),
+          type: draft.eventType || "mortality",
+          quantity,
+          unit: ["feed", "water"].includes(draft.eventType) ? (draft.eventType === "feed" ? "kg" : "L") : "隻",
+          date: PLUS_AS_OF,
+          time: "09:30",
+          farmId,
+          houseId,
+          flockId,
+          source: "pending_review",
+          pendingReviewId: item.id,
+          rawText,
+          scopeSelection,
+          scopeConfirmed: true,
+          createdAt: now.toISOString(),
+          clientOperationId: window.JinjiDomain.clientOperationId("pending-approval"),
+        }, now);
+      } catch (error) {
+        state.quickRecordError = masterDataErrorMessage(error);
+        return openSheet({ kind: "pending-approval", id: item.id });
+      }
+    } else {
+      const observationType = String(draft.observationType || "").trim();
+      const extent = draft.extent;
+      if (!observationType || !window.JinjiDomain.OBSERVATION_EXTENT_LABELS?.[extent]) {
+        state.quickRecordError = "請選擇觀察項目與小範圍、中範圍或大範圍。";
+        return openSheet({ kind: "pending-approval", id: item.id });
+      }
+      try {
+        result = window.JinjiDomain.createOperationalObservation({
+          id: window.JinjiDomain.id("observation"),
+          text: observationType,
+          observationType,
+          extent,
+          rawText,
+          date: PLUS_AS_OF,
+          time: "09:30",
+          farmId,
+          houseId,
+          flockId,
+          source: "pending_review",
+          pendingReviewId: item.id,
+          scopeSelection,
+          scopeConfirmed: true,
+          createdAt: now.toISOString(),
+          clientOperationId: window.JinjiDomain.clientOperationId("pending-approval"),
+        }, now);
+      } catch (error) {
+        state.quickRecordError = masterDataErrorMessage(error);
+        return openSheet({ kind: "pending-approval", id: item.id });
+      }
+    }
+    const resolution = {
+      id: window.JinjiDomain.id("pending-resolution"),
+      pendingReviewId: item.id,
+      status: "approved",
+      resultType,
+      resultId: result.id,
+      source: "pending_review",
+      originalRawText: rawText,
+      resolvedAt: now.toISOString(),
+    };
+    const audit = window.JinjiDomain.createAuditEntry({
+      entityType: resultType === "event" ? "OperationalEvent" : "OperationalObservation",
+      entityId: result.id,
+      operation: "approve_pending_review",
+      source: "pending_review",
+      newEventIds: [result.id],
+      metadata: {
+        pendingReviewId: item.id,
+        rawText,
+        resultType,
+        resultId: result.id,
+        scopeSelection,
+        sourcePendingReview: true,
+      },
+    }, now);
+    try {
+      const { sync } = commitLabLocalOperation({
+        ...(resultType === "event" ? { events: [result] } : { observations: [result] }),
+        pendingResolutions: [resolution],
+        auditEntries: [audit],
+        operation: {
+          clientOperationId: result.clientOperationId,
+          type: "approve_pending_review",
+          pendingReviewId: item.id,
+          resultType,
+          resultId: result.id,
+          source: "pending_review",
+          rawText,
+        },
+      });
+      state.quickRecordNotice = operationNotice(`已完成人工確認：已建立${resultType === "event" ? "數字事件" : "現場觀察"}。`, sync);
+    } catch (error) {
+      state.quickRecordError = masterDataErrorMessage(error);
+      return openSheet({ kind: "pending-approval", id: item.id });
+    }
+    state.pendingApproval = null;
     state.quickRecordError = "";
+    state.calendarYear = Number(PLUS_AS_OF.slice(0, 4));
+    state.calendarMonth = Number(PLUS_AS_OF.slice(5, 7));
+    state.selectedCalendarDate = PLUS_AS_OF;
     state.sheet = null;
     render();
   }
@@ -1973,7 +2404,7 @@
   function auditSheet() {
     const entries = labOverlay().auditEntries || [];
     if (!entries.length) return sheetShell("變更紀錄", "修改、取消與操作歷程", `<div class="empty-tab"><strong>目前沒有新增變更紀錄</strong><p>這個測試版尚未新增 Lab 事件。正式版仍應以追加紀錄方式保留修改與取消歷程。</p></div>`, "audit");
-    return sheetShell("變更紀錄", `本機追加 ${entries.length} 筆`, `<div class="sheet-item-list">${entries.slice().reverse().map((entry) => { const old = entry.oldEvent; const oldLabel = old ? `${eventLabel(old.type)} ${number(old.quantity ?? old.qty)} ${old.unit || ""}` : entry.entityType === "CaretakerAssignment" ? "照顧者指派" : entry.entityType === "FarmFinanceIdentity" ? "Finance identity 建立" : "主檔建立"; const operationLabel = entry.operation === "replacement" ? "修正紀錄" : entry.operation === "assign" ? "指派" : entry.operation === "create" ? "建立" : entry.operation; return `<div class="sheet-item static"><span><strong>${escapeHtml(operationLabel)} · ${escapeHtml(oldLabel)}</strong><span>${escapeHtml(entry.entityType || "紀錄")} · entity ${escapeHtml(entry.entityId || "—")} · ${escapeHtml(entry.source || "lab")}</span></span><span class="dev-time">${escapeHtml(String(entry.timestamp || "").slice(11, 19))}</span></div>`; }).join("")}</div><div class="readonly-note">變更紀錄只保留事件與主檔治理 metadata；原資料不被覆寫或刪除。</div>`, "audit");
+    return sheetShell("變更紀錄", `本機追加 ${entries.length} 筆`, `<div class="sheet-item-list">${entries.slice().reverse().map((entry) => { const old = entry.oldEvent; const oldLabel = old ? `${eventLabel(old.type)} ${number(old.quantity ?? old.qty)} ${old.unit || ""}` : entry.entityType === "OperationalObservation" ? "現場觀察" : entry.entityType === "CaretakerAssignment" ? "照顧者指派" : entry.entityType === "FarmFinanceIdentity" ? "Finance identity 建立" : "主檔建立"; const operationLabel = entry.operation === "replacement" ? "修正紀錄" : entry.operation === "assign" ? "指派" : entry.operation === "create" ? "建立" : entry.operation; return `<div class="sheet-item static"><span><strong>${escapeHtml(operationLabel)} · ${escapeHtml(oldLabel)}</strong><span>${escapeHtml(entry.entityType || "紀錄")} · entity ${escapeHtml(entry.entityId || "—")} · ${escapeHtml(entry.source || "lab")}</span></span><span class="dev-time">${escapeHtml(String(entry.timestamp || "").slice(11, 19))}</span></div>`; }).join("")}</div><div class="readonly-note">變更紀錄只保留事件、觀察與主檔治理 metadata；原資料不被覆寫或刪除。</div>`, "audit");
   }
 
   function settingsSheet() {
@@ -1985,7 +2416,11 @@
   function settingsDetailSheet(key) {
     if (key === "trend") {
       const t = trendThresholds();
-      const field = (name, label, value, suffix, effect, example, step="1") => `<label class="threshold-field"><span class="threshold-field-copy"><strong>${label}</strong><span class="threshold-effect"><b>效果：</b>${effect}</span><span class="threshold-example"><b>範例：</b>${example}</span></span><span class="threshold-control"><input type="number" inputmode="decimal" min="0" step="${step}" value="${value}" data-threshold-key="${name}" aria-label="${label}"><em>${suffix}</em></span></label>`;
+      const draft = state.settingsDraft || {};
+      const field = (name, label, value, suffix, effect, example, step="1") => {
+        const fieldValue = Object.prototype.hasOwnProperty.call(draft, name) ? draft[name] : value;
+        return `<label class="threshold-field"><span class="threshold-field-copy"><strong>${label}</strong><span class="threshold-effect"><b>效果：</b>${effect}</span><span class="threshold-example"><b>範例：</b>${example}</span></span><span class="threshold-control"><input type="number" inputmode="decimal" min="0" step="${step}" value="${escapeHtml(fieldValue)}" data-threshold-key="${name}" aria-label="${label}"><em>${suffix}</em></span></label>`;
+      };
       return sheetShell("趨勢提醒", "每個門檻都說明作用與範例；只做目前範圍的自我歷史比較", `<div class="threshold-settings">
         <section><h3>比較基線</h3><p class="threshold-section-note">先決定「拿多少近期資料當正常參考」，再判斷今天是否偏離。</p>
           ${field("baselineDays","比較前幾日",t.baselineDays,"日","決定每一天要回頭看幾個日曆日，並用其中有紀錄的數值中位數當近期基線。天數少會較敏感；天數多會較穩定。",`目前 ${t.baselineDays} 日：判斷 8/31 時，會查看 8/28～8/30 的近期紀錄。`)}
@@ -2005,7 +2440,7 @@
           ${field("waterDropPct","飲水下降提醒",t.waterDropPct,"%","當日飲水量較近期基線下降超過指定百分比時提醒，用來協助發現水線、設備或採食飲水變化。",`設 ${t.waterDropPct}%：若近期基線是 1,800 L，低於 ${(1800*(1-t.waterDropPct/100)).toFixed(0)} L 才會觸發下降提醒。`)}
           ${field("waterRisePct","飲水上升提醒",t.waterRisePct,"%","當日飲水量較近期基線上升超過指定百分比時提醒，可協助核對高溫、日齡變化或漏水。",`設 ${t.waterRisePct}%：若近期基線是 1,800 L，高於 ${(1800*(1+t.waterRisePct/100)).toFixed(0)} L 才會觸發上升提醒。`)}
         </section>
-      </div><div class="threshold-safety"><strong>這些是資料趨勢門檻，不是獸醫警戒值。</strong><span>只比較同一工作範圍的近期紀錄；資料不足就不判定。修改後會影響「紀錄 → 趨勢圖」的提醒結果。</span></div>${state.settingsNotice ? `<div class="dev-save-note">${escapeHtml(state.settingsNotice)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-trend-thresholds">儲存本機設定</button><button type="button" class="sheet-secondary" data-action="reset-trend-thresholds">恢復預設值</button></div>`, "settings-detail");
+      </div><div class="threshold-safety"><strong>這些是資料趨勢門檻，不是獸醫警戒值。</strong><span>只比較同一工作範圍的近期紀錄；資料不足就不判定。修改後會影響「紀錄 → 趨勢圖」的提醒結果。</span></div>${state.settingsError ? `<div class="lab-write-notice error" data-testid="trend-settings-error" role="alert">${escapeHtml(state.settingsError)}</div>` : ""}${state.settingsNotice ? `<div class="dev-save-note">${escapeHtml(state.settingsNotice)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-trend-thresholds">儲存本機設定</button><button type="button" class="sheet-secondary" data-action="reset-trend-thresholds">恢復預設值</button></div>`, "settings-detail");
     }
     const details = {
       master: ["雞場與雞舍管理", "正式版的新增、停用與指派需先通過管理者驗證；本測試版可在 PREPROD LAB 管理者確認後寫入本機 runtime overlay，不修改 fixture。"],
@@ -2154,6 +2589,9 @@
     if (state.sheet.kind === "quick-actions") return quickActionsSheet();
     if (state.sheet.kind === "quick-record") return quickRecordSheet();
     if (state.sheet.kind === "quick-record-preview") return quickRecordPreviewSheet();
+    if (state.sheet.kind === "quick-record-scope") return quickRecordScopeSheet();
+    if (state.sheet.kind === "pending-approval") return pendingApprovalSheet(state.sheet.id);
+    if (state.sheet.kind === "observation-item") return observationItemSheet(state.sheet.id);
     if (state.sheet.kind === "correction") return correctionSheet(state.sheet.id);
     if (state.sheet.kind === "insights") return insightsSheet();
     if (state.sheet.kind === "system") return systemSheet();
@@ -2200,7 +2638,8 @@
   function desktopRecentRows(limit=7) {
     const events = scopedEvents().map((event) => ({ kind:"event", id:event.id, sort:`${event.date} ${event.time}`, title:`${eventLabel(event.type)} ${number(event.qty)} ${event.unit}`, detail:`${contextName(event)} · ${event.date.slice(5).replace('-', '/')} ${event.time}` }));
     const abnormal = scopedAbnormalities().map((item) => ({ kind:"abnormal", id:item.id, sort:`${item.date} ${item.time}`, title:`異常：${item.title}`, detail:`${contextName(item)} · ${item.state}` }));
-    return [...events,...abnormal].sort((a,b)=>b.sort.localeCompare(a.sort)).slice(0,limit);
+    const observations = scopedObservations().map((item) => ({ kind:"observation", id:item.id, sort:`${item.date} ${item.time}`, title:`現場觀察：${item.text}`, detail:`${contextName(item)} · ${item.date.slice(5).replace('-', '/')} ${item.time} · 不含精確數量` }));
+    return [...events,...abnormal,...observations].sort((a,b)=>b.sort.localeCompare(a.sort)).slice(0,limit);
   }
 
   function desktopToday() {
@@ -2226,7 +2665,7 @@
       <div class="desktop-workbench">
         <aside class="desktop-pane desktop-priority-pane"><div class="desktop-pane-head"><div><h2>今日決策</h2><p>只放需要立即判斷的事項</p></div><span class="scope-chip">${actions.length} 項</span></div><div class="desktop-pane-body"><section class="digest"><div class="digest-head"><p class="kicker">摘要</p><span class="digest-mark">${icon("digest")}</span></div><h2>${digestCopy()}</h2><p>只依目前範圍測試資料整理。</p></section><div class="action-list">${actions.length ? actions.join("") : `<div class="desktop-empty"><strong>目前沒有急迫事項</strong>這個範圍沒有待確認、近期出雞或追蹤中異常。</div>`}</div><div class="desktop-section-split"></div><div class="quick-summary"><button type="button" class="summary-tile alert" data-action="open-sheet" data-sheet-kind="mortality"><span class="tile-label">死亡</span><strong>${number(mortality)}</strong><small>今日</small></button><button type="button" class="summary-tile good" data-action="open-sheet" data-sheet-kind="cull"><span class="tile-label">淘汰</span><strong>${number(cull)}</strong><small>今日</small></button></div></div></aside>
         <main class="desktop-pane desktop-analysis-pane"><div class="desktop-pane-head"><div><h2>營運趨勢</h2><p>圖表是桌面工作區主體，可直接切換比較</p></div><span class="status-chip good">即時計算</span></div><div class="desktop-pane-body">${plusChartsSection()}</div></main>
-        <aside class="desktop-pane desktop-live-pane"><div class="desktop-pane-head"><div><h2>場次與最新動態</h2><p>不用離開首頁即可掌握分布</p></div></div><div class="desktop-pane-body"><div><strong style="font-size:11px">雞場概況</strong><div class="desktop-live-list">${farms.map(f=>{const p=labData().pending.filter(x=>x.farmId===f.id).length; const a=labData().abnormalities.filter(x=>x.farmId===f.id && x.status==="active").length; return `<button type="button" class="desktop-live-row" data-action="desktop-set-farm" data-farm-id="${escapeHtml(f.id)}"><span><strong>${escapeHtml(f.name)}</strong><span>待確認 ${p} · 異常 ${a}</span></span><span><b>${number(f.stock)}</b><small>在養</small></span></button>`}).join("")}</div></div><div class="desktop-section-split"></div><div><strong style="font-size:11px">最新紀錄</strong><div class="desktop-live-list">${recent.map(r=>`<button type="button" class="desktop-live-row" data-action="${r.kind==="event"?"open-event":"open-abnormal"}" ${r.kind==="event"?`data-event-id="${escapeHtml(r.id)}"`:`data-abnormal-id="${escapeHtml(r.id)}"`}><span><strong>${escapeHtml(r.title)}</strong><span>${escapeHtml(r.detail)}</span></span><span>›</span></button>`).join("") || `<div class="desktop-empty">沒有近期紀錄。</div>`}</div></div></div></aside>
+        <aside class="desktop-pane desktop-live-pane"><div class="desktop-pane-head"><div><h2>場次與最新動態</h2><p>不用離開首頁即可掌握分布</p></div></div><div class="desktop-pane-body"><div><strong style="font-size:11px">雞場概況</strong><div class="desktop-live-list">${farms.map(f=>{const p=labData().pending.filter(x=>x.farmId===f.id).length; const a=labData().abnormalities.filter(x=>x.farmId===f.id && x.status==="active").length; return `<button type="button" class="desktop-live-row" data-action="desktop-set-farm" data-farm-id="${escapeHtml(f.id)}"><span><strong>${escapeHtml(f.name)}</strong><span>待確認 ${p} · 異常 ${a}</span></span><span><b>${number(f.stock)}</b><small>在養</small></span></button>`}).join("")}</div></div><div class="desktop-section-split"></div><div><strong style="font-size:11px">最新紀錄</strong><div class="desktop-live-list">${recent.map(r=>`<button type="button" class="desktop-live-row" ${recordActionAttributes(r)}><span><strong>${escapeHtml(r.title)}</strong><span>${escapeHtml(r.detail)}</span></span><span>›</span></button>`).join("") || `<div class="desktop-empty">沒有近期紀錄。</div>`}</div></div></div></aside>
       </div>
     </section>`;
   }
@@ -2240,7 +2679,7 @@
     return `<section class="desktop-v2-page" data-page="records">${desktopContextToolbar()}<div class="desktop-records-grid">
       <aside class="desktop-pane"><div class="desktop-pane-head"><div><h2>數據項目</h2><p>選擇後中間圖表立即更新</p></div></div><div class="desktop-metric-rail">${Object.entries(RECORD_METRICS).map(([key,c])=>`<button type="button" class="${metric===key?"active":""}" data-action="records-metric" data-records-metric="${key}"><span>${c.label}</span><b>${key===metric?`${number(latest.value)} ${c.unit}`:""}</b></button>`).join("")}</div></aside>
       <main class="desktop-pane desktop-records-chart"><div class="desktop-pane-head"><div><h2>${cfg.label}趨勢</h2><p>最近 7 天 · ${escapeHtml(contextShortLabel())}</p></div><span class="status-chip good">同一份紀錄資料</span></div>${recordsTrendChart(metric)}</main>
-      <aside class="desktop-pane desktop-records-right"><div class="desktop-pane-head"><div><h2>事件時間軸</h2><p>圖表與明細同時可見</p></div><span class="scope-chip">${rows.length} 筆</span></div><div class="desktop-records-timeline"><div class="list-stack">${rows.map(r=>`<button type="button" class="list-row" data-action="${r.kind==="event"?"open-event":"open-abnormal"}" ${r.kind==="event"?`data-event-id="${r.id}"`:`data-abnormal-id="${r.id}"`}><span><strong>${escapeHtml(r.title)}</strong><span>${escapeHtml(r.detail)}</span></span><span class="row-arrow">›</span></button>`).join("") || `<div class="desktop-empty"><strong>沒有紀錄</strong>目前範圍沒有可顯示資料。</div>`}</div></div></aside>
+      <aside class="desktop-pane desktop-records-right"><div class="desktop-pane-head"><div><h2>紀錄時間軸</h2><p>圖表與明細同時可見</p></div><span class="scope-chip">${rows.length} 筆</span></div><div class="desktop-records-timeline"><div class="list-stack">${rows.map(r=>`<button type="button" class="list-row" ${recordActionAttributes(r)}><span><strong>${escapeHtml(r.title)}</strong><span>${escapeHtml(r.detail)}</span></span><span class="row-arrow">›</span></button>`).join("") || `<div class="desktop-empty"><strong>沒有紀錄</strong>目前範圍沒有可顯示資料。</div>`}</div></div></aside>
     </div></section>`;
   }
 
@@ -2408,6 +2847,8 @@
     state.contextDraft = null;
     state.resumeAfterFarmSelection = null;
     state.masterDataConfirmation = null;
+    state.settingsError = "";
+    state.settingsDraft = null;
     state.previousFocus = null;
     state.previousFocusMeta = null;
     render();
@@ -2438,7 +2879,8 @@
     const header = desktop
       ? `<header class="topbar desktop-topbar"><div class="desktop-topbar-copy"><span class="desktop-page-kicker">目前頁面</span><strong>${currentPageTitle()}</strong><small>${escapeHtml(contextLabel())}</small></div>${desktopQuick}</header>`
       : `<header class="topbar"><div class="brand-lockup mobile-brand"><span class="brand-symbol">🐔</span><span class="brand-copy"><strong>金雞管理中心</strong><span>營運管理 · V14R Plus r4</span></span></div><span class="topbar-status">Plus r4${modeStatus}</span></header>`;
-    app.innerHTML = `<div class="app-shell">${desktop ? desktopNavMarkup() : ""}<div class="workspace-shell">${header}<main class="page-shell">${pageMarkup()}</main></div>${desktop ? "" : mobileQuick}${navMarkup()}${renderSheet()}</div>`;
+    const globalLabNotice = state.quickRecordNotice ? `<div class="lab-write-notice" role="status">${escapeHtml(state.quickRecordNotice)}</div>` : "";
+    app.innerHTML = `<div class="app-shell">${desktop ? desktopNavMarkup() : ""}<div class="workspace-shell">${header}${globalLabNotice}<main class="page-shell">${pageMarkup()}</main></div>${desktop ? "" : mobileQuick}${navMarkup()}${renderSheet()}</div>`;
     if (state.sheet) lockBody(); else unlockBody();
   }
 
@@ -2450,6 +2892,8 @@
       state.sheet = null;
       state.contextDraft = null;
       state.masterDataConfirmation = null;
+      state.settingsError = "";
+      state.settingsDraft = null;
       render();
       return;
     }
@@ -2511,7 +2955,7 @@
     if (action === "calendar-select-date") { state.selectedCalendarDate = actionElement.dataset.date; return render(); }
     if (action === "calendar-prev-month") { calendarMoveMonth(-1); return render(); }
     if (action === "calendar-next-month") { calendarMoveMonth(1); return render(); }
-    if (action === "calendar-this-month") { const now = new Date(); state.calendarYear = now.getFullYear(); state.calendarMonth = now.getMonth() + 1; const key = calendarDateKey(state.calendarYear,state.calendarMonth,now.getDate()); state.selectedCalendarDate = key; return render(); }
+    if (action === "calendar-this-month") { const [year, month, day] = PLUS_AS_OF.split("-").map(Number); state.calendarYear = year; state.calendarMonth = month; state.selectedCalendarDate = calendarDateKey(year, month, day); return render(); }
     if (action === "go-finance") { state.page = "finance"; state.financeTab = "overview"; state.sheet = null; return render(); }
     if (action === "go-ai") { state.page = "ai"; state.sheet = null; return render(); }
     if (action === "ai-preview") { state.aiPreviewKey = actionElement.dataset.aiPreview || "overview"; return render(); }
@@ -2523,8 +2967,44 @@
     if (action === "chart-tab") { state.chartTab = actionElement.dataset.chartTab || "stock"; return render(); }
     if (action === "open-flock") return openSheet({ kind: "flock", id: actionElement.dataset.flockId });
     if (action === "open-pending-item") return openSheet({ kind: "pending-item", id: actionElement.dataset.pendingId });
+    if (action === "start-pending-approval") {
+      const pendingId = actionElement.dataset.pendingId;
+      state.pendingApproval = { pendingId, mode: "observation", eventType: "mortality", quantity: "", observationType: "咳嗽", extent: null };
+      state.quickRecordError = "";
+      return openSheet({ kind: "pending-approval", id: pendingId });
+    }
+    if (action === "pending-approval-mode") {
+      const draft = pendingApprovalDraft();
+      draft.mode = actionElement.dataset.mode === "event" ? "event" : "observation";
+      state.pendingApproval = draft;
+      state.quickRecordError = "";
+      return openSheet({ kind: "pending-approval", id: draft.pendingId || state.sheet?.id });
+    }
+    if (action === "pending-event-type") {
+      const draft = pendingApprovalDraft();
+      draft.eventType = actionElement.dataset.eventType || "mortality";
+      state.pendingApproval = draft;
+      state.quickRecordError = "";
+      return openSheet({ kind: "pending-approval", id: draft.pendingId || state.sheet?.id });
+    }
+    if (action === "pending-observation-type") {
+      const draft = pendingApprovalDraft();
+      draft.observationType = actionElement.dataset.observationType || "咳嗽";
+      state.pendingApproval = draft;
+      state.quickRecordError = "";
+      return openSheet({ kind: "pending-approval", id: draft.pendingId || state.sheet?.id });
+    }
+    if (action === "pending-observation-extent") {
+      const draft = pendingApprovalDraft();
+      draft.extent = actionElement.dataset.extent || null;
+      state.pendingApproval = draft;
+      state.quickRecordError = "";
+      return openSheet({ kind: "pending-approval", id: draft.pendingId || state.sheet?.id });
+    }
+    if (action === "approve-pending-review") return approvePendingReview(actionElement.dataset.pendingId);
     if (action === "open-abnormal") return openSheet({ kind: "abnormal-item", id: actionElement.dataset.abnormalId });
     if (action === "open-event") return openSheet({ kind: "event-item", id: actionElement.dataset.eventId });
+    if (action === "open-observation") return openSheet({ kind: "observation-item", id: actionElement.dataset.observationId });
     if (action === "open-farm-detail") return openSheet({ kind: "farm-detail", farmId: actionElement.dataset.farmId });
     if (action === "open-house-detail") return openSheet({ kind: "house-detail", farmId: actionElement.dataset.farmId, houseId: actionElement.dataset.houseId });
     if (action === "open-finance-farm") return openSheet({ kind: "finance-farm", farmId: actionElement.dataset.farmId });
@@ -2548,18 +3028,87 @@
     }
     if (action === "start-quick-record-farm") {
       state.context = { farmId: actionElement.dataset.farmId, houseId: null, flockId: null };
-      state.quickRecordDraft = "";
-      state.quickRecordError = "";
+      resetQuickRecordFlow();
       return openSheet({ kind: "quick-record" });
     }
     if (action === "open-quick-record") return openSheet({ kind: "quick-record" });
+    if (action === "quick-chip") {
+      const chip = QUICK_RECORD_CHIPS.find((candidate) => candidate.key === actionElement.dataset.quickKind);
+      if (!chip) return openSheet({ kind: "quick-record" });
+      state.quickRecordDraft = chip.text;
+      state.quickRecordSeed = chip;
+      state.quickRecordExtent = null;
+      state.quickRecordQuantityDraft = "";
+      state.quickRecordError = "";
+      state.quickRecordStep = chip.key === "mortality" ? "quantity" : "extent";
+      return openSheet({ kind: "quick-record" });
+    }
+    if (action === "apply-quick-quantity") {
+      const raw = String(document.getElementById("quick-record-quantity")?.value ?? "").trim();
+      const normalized = raw.replace(/[０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xff10 + 48));
+      state.quickRecordQuantityDraft = raw;
+      if (!/^[1-9]\d*$/.test(normalized)) {
+        state.quickRecordError = "死亡隻數必須是大於 0 的正整數；空白、負數與小數都不會建立紀錄。";
+        return openSheet({ kind: "quick-record" });
+      }
+      state.quickRecordDraft = `死亡${normalized}`;
+      state.quickRecordStep = null;
+      state.quickRecordSeed = null;
+      state.quickRecordQuantityDraft = "";
+      state.quickRecordError = "";
+      return openSheet({ kind: "quick-record-preview" });
+    }
+    if (action === "quick-extent") {
+      const extent = actionElement.dataset.extent;
+      if (!window.JinjiDomain.OBSERVATION_EXTENT_LABELS?.[extent]) return openSheet({ kind: "quick-record" });
+      state.quickRecordExtent = extent;
+      state.quickRecordDraft = state.quickRecordSeed?.text || state.quickRecordDraft;
+      state.quickRecordStep = null;
+      state.quickRecordError = "";
+      return openSheet({ kind: "quick-record-preview" });
+    }
     if (action === "preview-quick-record") {
       state.quickRecordDraft = document.getElementById("quick-record-input")?.value.trim() || "";
+      state.quickRecordError = "";
+      const parsed = window.JinjiDomain.parseQuickRecord(state.quickRecordDraft);
+      if (parsed.status === "guided" && parsed.reason === "quantity_missing") {
+        state.quickRecordStep = "quantity";
+        state.quickRecordSeed = { key: "mortality", label: "死亡", text: "死亡" };
+        state.quickRecordQuantityDraft = "";
+        return openSheet({ kind: "quick-record" });
+      }
+      if (parsed.status === "observation" && parsed.needsExtent) {
+        state.quickRecordStep = "extent";
+        state.quickRecordSeed = { key: parsed.observation?.observationType || "observation", label: parsed.observation?.text || state.quickRecordDraft, text: parsed.observation?.text || state.quickRecordDraft };
+        state.quickRecordExtent = null;
+        return openSheet({ kind: "quick-record" });
+      }
+      state.quickRecordStep = null;
+      state.quickRecordSeed = null;
       return openSheet({ kind: "quick-record-preview" });
     }
     if (action === "back-quick-record") return openSheet({ kind: "quick-record" });
     if (action === "commit-lab-event") return commitLabEvent();
+    if (action === "commit-observation" || action === "save-qualitative-observation") return commitObservation();
     if (action === "save-pending-review") return savePendingReviewFromDraft();
+    if (action === "apply-farm-scope") {
+      state.quickRecordScopeConfirmed = true;
+      const kind = state.quickRecordScopePrompt?.kind;
+      if (kind === "observation") return commitObservation();
+      return commitLabEvent();
+    }
+    if (action === "select-house-for-quick-record") {
+      state.context = { farmId: state.context.farmId, houseId: actionElement.dataset.houseId || null, flockId: null };
+      state.quickRecordScopePrompt = null;
+      state.quickRecordScopeConfirmed = false;
+      return openSheet({ kind: "quick-record-preview" });
+    }
+    if (action === "cancel-quick-record-scope") {
+      state.quickRecordScopePrompt = null;
+      state.quickRecordScopeConfirmed = false;
+      state.sheet = null;
+      return render();
+    }
     if (action === "open-correction") return openSheet({ kind: "correction", id: actionElement.dataset.eventId });
     if (action === "commit-correction") return commitCorrection(actionElement.dataset.eventId);
     if (action === "set-lab-mode") {
@@ -2580,13 +3129,29 @@
     }
     if (action === "save-trend-thresholds") {
       const next = {};
-      document.querySelectorAll("[data-threshold-key]").forEach((input) => { next[input.dataset.thresholdKey] = Number(input.value); });
+      const draft = {};
+      document.querySelectorAll("[data-threshold-key]").forEach((input) => {
+        const raw = String(input.value ?? "").trim();
+        draft[input.dataset.thresholdKey] = raw;
+        next[input.dataset.thresholdKey] = raw ? Number(raw) : Number.NaN;
+      });
+      const validationError = validateTrendThresholdInput(next);
+      if (validationError) {
+        state.settingsDraft = draft;
+        state.settingsError = validationError;
+        state.settingsNotice = "";
+        return openSheet({ kind: "settings-detail", key: "trend" });
+      }
       saveTrendThresholds(next);
+      state.settingsDraft = null;
+      state.settingsError = "";
       state.settingsNotice = "趨勢提醒門檻已儲存在此瀏覽器";
       return openSheet({ kind: "settings-detail", key: "trend" });
     }
     if (action === "reset-trend-thresholds") {
       safeLocalSet(TREND_SETTINGS_KEY, JSON.stringify(TREND_THRESHOLD_DEFAULTS));
+      state.settingsDraft = null;
+      state.settingsError = "";
       state.settingsNotice = "已恢復預設趨勢門檻";
       return openSheet({ kind: "settings-detail", key: "trend" });
     }
@@ -2637,6 +3202,16 @@
     }
   }
 
+  function handleInput(event) {
+    const target = event.target;
+    if (!target || target.id !== "quick-record-input") return;
+    const status = document.querySelector('[data-testid="quick-record-input-status"]');
+    if (!status) return;
+    const next = quickRecordInputStatus(target.value);
+    status.className = `quick-record-input-status ${next.tone}`;
+    status.textContent = next.text;
+  }
+
 
   function chartTooltipElement() {
     let tooltip = document.getElementById("chart-query-tooltip");
@@ -2680,6 +3255,7 @@
     if (hadFarmMenu && !event.target.closest(".desktop-farm-dropdown-wrap") && !component) render();
   });
   document.addEventListener("change", handleChange);
+  document.addEventListener("input", handleInput);
   document.addEventListener("pointerover", (event) => {
     const target = event.target.closest("[data-chart-tip]");
     if (target && event.pointerType !== "touch") showChartTooltip(target, event);

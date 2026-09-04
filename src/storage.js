@@ -32,7 +32,9 @@
       version: 1,
       revision: 0,
       events: [],
+      observations: [],
       pendingReviews: [],
+      pendingResolutions: [],
       abnormalities: [],
       auditEntries: [],
       outbox: [],
@@ -65,6 +67,7 @@
     const objectRow = (row) => Boolean(row && typeof row === "object" && !Array.isArray(row));
     const requiredArrays = ["events", "pendingReviews", "abnormalities", "auditEntries", "outbox"];
     if (!requiredArrays.every((key) => Array.isArray(value[key]) && value[key].every(objectRow))) return false;
+    if (value.pendingResolutions !== undefined && (!Array.isArray(value.pendingResolutions) || !value.pendingResolutions.every(objectRow))) return false;
     if (value.syncedOperationIds !== undefined && !Array.isArray(value.syncedOperationIds)) return false;
     if (value.settings !== undefined && (!value.settings || typeof value.settings !== "object" || Array.isArray(value.settings))) return false;
     if (value.masterData !== undefined) {
@@ -150,6 +153,19 @@
     return eventTypes.includes(String(row.type || "other")) && Number.isFinite(quantity) && quantity >= 0;
   }
 
+  function validPersistedObservation(row) {
+    if (!row || typeof row !== "object" || Array.isArray(row) || !String(row.id || "").trim()) return false;
+    if (typeof root?.JinjiDomain?.validateOperationalObservation === "function") {
+      try {
+        root.JinjiDomain.validateOperationalObservation(row);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+    return String(row.text || row.observationText || "").trim().length > 0;
+  }
+
   function storageConflict(expectedRevision, actualRevision) {
     const error = new Error("LAB_STORAGE_CONFLICT");
     error.expectedRevision = expectedRevision;
@@ -175,6 +191,15 @@
       this.state.events = this.state.events.filter((row) => {
         const valid = validPersistedEvent(row);
         if (!valid) eventRowsWereSanitized = true;
+        return valid;
+      });
+      let observationRowsWereSanitized = false;
+      const storedObservations = stored && typeof stored === "object" && !Array.isArray(stored) ? stored.observations : undefined;
+      if (storedObservations !== undefined && !Array.isArray(storedObservations)) observationRowsWereSanitized = true;
+      const observations = Array.isArray(this.state.observations) ? this.state.observations : [];
+      this.state.observations = observations.filter((row) => {
+        const valid = validPersistedObservation(row);
+        if (!valid) observationRowsWereSanitized = true;
         return valid;
       });
       let masterDataWasSanitized = false;
@@ -207,7 +232,7 @@
       const mode = readJson(KEYS.mode);
       if (typeof mode === "string" && MODES.includes(mode)) this.state.mode = mode;
       this.idbPromise = this.openIndexedDb();
-      if (masterDataWasSanitized || eventRowsWereSanitized) {
+      if (masterDataWasSanitized || eventRowsWereSanitized || observationRowsWereSanitized) {
         // Self-heal only invalid runtime rows while preserving all valid runtime state.
         try {
           this.persist(this.state);
@@ -287,6 +312,13 @@
       return this.persist(nextState);
     }
 
+    appendObservation(observation, auditEntry = null) {
+      const nextState = clone(this.state);
+      if (!nextState.observations.some((item) => item.id === observation.id)) nextState.observations.push(clone(observation));
+      if (auditEntry) nextState.auditEntries.push(clone(auditEntry));
+      return this.persist(nextState);
+    }
+
     appendEvents(events = [], auditEntries = []) {
       const nextState = clone(this.state);
       events.forEach((event) => {
@@ -334,7 +366,7 @@
       return this.persist(nextState);
     }
 
-    commitLocalOperation({ events = [], pendingReviews = [], masterData = [], auditEntries = [], operation } = {}) {
+    commitLocalOperation({ events = [], observations = [], pendingReviews = [], pendingResolutions = [], masterData = [], auditEntries = [], operation } = {}) {
       const key = operation?.clientOperationId;
       if (!key) throw new Error("LAB_OPERATION_ID_REQUIRED");
       if (this.state.syncedOperationIds.includes(key)) return { ...clone(operation), status: "synced", duplicate: true };
@@ -345,8 +377,14 @@
       events.forEach((event) => {
         if (!nextState.events.some((candidate) => candidate.id === event.id)) nextState.events.push(clone(event));
       });
+      observations.forEach((observation) => {
+        if (!nextState.observations.some((candidate) => candidate.id === observation.id)) nextState.observations.push(clone(observation));
+      });
       pendingReviews.forEach((review) => {
         if (!nextState.pendingReviews.some((candidate) => candidate.id === review.id)) nextState.pendingReviews.push(clone(review));
+      });
+      pendingResolutions.forEach((resolution) => {
+        if (!nextState.pendingResolutions.some((candidate) => candidate.id === resolution.id)) nextState.pendingResolutions.push(clone(resolution));
       });
       masterData.forEach(({ entityType, entity }) => {
         const collection = MASTER_DATA_TYPES[entityType];
