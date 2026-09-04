@@ -128,9 +128,7 @@
   }
 
   function removalTotal(events, scope) {
-    return events
-      .filter((event) => eventMatchesScope(event, scope))
-      .reduce((sum, event) => sum + (["mortality", "cull", "shipment"].includes(event.type) ? Number(event.quantity || event.qty || 0) : 0), 0);
+    return window.JinjiDomain.stockRemovalTotal(events, scope);
   }
 
   function runtimeStockDelta(scope) {
@@ -175,6 +173,7 @@
     scrollY: 0,
     quickRecordDraft: "",
     quickRecordNotice: "",
+    quickRecordError: "",
     correctionNotice: "",
     resumeAfterFarmSelection: null,
     masterDataAuthorized: false,
@@ -1028,6 +1027,7 @@
     return `<section class="page today-page" data-page="today">
       ${contextBar()}
       ${state.quickRecordNotice ? `<div class="lab-write-notice" role="status">${escapeHtml(state.quickRecordNotice)}</div>` : ""}
+      ${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}
       <div class="today-date"><span>資料截至 8 月 31 日</span><strong>今日</strong></div>
       <div class="desktop-overview-grid">
         <section class="digest" aria-labelledby="digest-title"><div class="digest-head"><p class="kicker">今日摘要</p><span class="digest-mark">${icon("digest")}</span></div><h2 id="digest-title">${digestCopy()}</h2><p>摘要只依目前工作範圍中的測試資料整理，不會自行增加數字。</p></section>
@@ -1532,7 +1532,7 @@
   function correctionSheet(id) {
     const item = effectiveLabEvents().find((event) => event.id === id);
     if (!item) return sheetShell("找不到事件", "變更紀錄", `<div class="empty-tab"><strong>這筆事件已不存在</strong></div>`, "correction");
-    return sheetShell("修正紀錄", `${escapeHtml(contextName(item))} · ${escapeHtml(item.date)} ${escapeHtml(item.time)}`, `<div class="detail-hero"><small>原紀錄保留</small><strong>${eventLabel(item.type)} ${number(item.qty)} ${escapeHtml(item.unit)}</strong><span>原紀錄會保留，系統會新增一筆修正紀錄。</span></div><label class="quick-record-label" for="correction-qty">修正後數量</label><input id="correction-qty" class="quick-record-input" type="number" min="0" step="1" value="${Number(item.qty || item.quantity || 0)}" inputmode="numeric"><p class="quick-record-note">送出後會保留原紀錄、修正關聯與時間戳，並可由變更紀錄重建目前狀態。</p>${state.correctionNotice ? `<div class="dev-save-note">${escapeHtml(state.correctionNotice)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-correction" data-event-id="${escapeHtml(item.id)}">新增修正紀錄</button><button type="button" class="sheet-secondary" data-action="close-sheet">取消</button></div>`, "correction");
+    return sheetShell("修正紀錄", `${escapeHtml(contextName(item))} · ${escapeHtml(item.date)} ${escapeHtml(item.time)}`, `<div class="detail-hero"><small>原紀錄保留</small><strong>${eventLabel(item.type)} ${number(item.qty)} ${escapeHtml(item.unit)}</strong><span>原紀錄會保留，系統會新增一筆修正紀錄。</span></div><label class="quick-record-label" for="correction-qty">修正後數量</label><input id="correction-qty" class="quick-record-input" type="number" min="0" step="1" value="${Number(item.qty || item.quantity || 0)}" inputmode="numeric"><p class="quick-record-note">送出後會保留原紀錄、修正關聯與時間戳，並可由變更紀錄重建目前狀態。</p>${state.correctionNotice ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.correctionNotice)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-correction" data-event-id="${escapeHtml(item.id)}">新增修正紀錄</button><button type="button" class="sheet-secondary" data-action="close-sheet">取消</button></div>`, "correction");
   }
 
   function farmDetailSheet(farmId) {
@@ -1625,6 +1625,8 @@
       MASTER_DATA_FLOCK_STATE_INVALID: "批次狀態只支援進行中或已出雞。",
       MASTER_DATA_FLOCK_STATUS_INVALID: "批次狀態與顯示名稱不一致。",
       LAB_MASTER_DATA_RELATIONSHIP_INVALID: "主檔關係驗證失敗，尚未寫入任何資料。",
+      LAB_STORAGE_WRITE_FAILED: "本機儲存失敗，尚未確認寫入；請保留內容後再試。",
+      LAB_STORAGE_CONFLICT: "另一個頁面先更新了 Lab，尚未確認寫入；請重新載入後再試。",
     };
     return messages[error?.message] || "主檔資料格式不完整，請檢查後再試。";
   }
@@ -1812,9 +1814,9 @@
     const parsed = window.JinjiDomain.parseQuickRecord(state.quickRecordDraft);
     if (parsed.status === "event") {
       const event = parsed.event;
-      return sheetShell("紀錄預覽", htmlContextLabel(), `<div class="detail-hero"><small>可寫入 Lab</small><strong>${eventLabel(event.type)} ${number(event.quantity)} ${escapeHtml(event.unit)}</strong><span>${event.note ? `備註：${escapeHtml(event.note)}` : "已辨識類型與數量；這筆會加入目前雞場的事件時間軸。"}</span></div><div class="detail-block"><h3>明確 Context</h3><p>${htmlContextLabel()}</p></div><div class="readonly-note">確認後只建立一筆 OperationalEvent，並同步 Today、紀錄、月曆、圖表、趨勢與變更紀錄。</div><div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-lab-event">寫入 Lab 紀錄</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+      return sheetShell("紀錄預覽", htmlContextLabel(), `<div class="detail-hero"><small>可寫入 Lab</small><strong>${eventLabel(event.type)} ${number(event.quantity)} ${escapeHtml(event.unit)}</strong><span>${event.note ? `備註：${escapeHtml(event.note)}` : "已辨識類型與數量；這筆會加入目前雞場的事件時間軸。"}</span></div><div class="detail-block"><h3>明確 Context</h3><p>${htmlContextLabel()}</p></div><div class="readonly-note">確認後只建立一筆 OperationalEvent，並同步 Today、紀錄、月曆、圖表、趨勢與變更紀錄。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-lab-event">寫入 Lab 紀錄</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
     }
-    return sheetShell("紀錄預覽", htmlContextLabel(), `<div class="detail-hero"><small>待人工確認</small><strong>${escapeHtml(state.quickRecordDraft || "（沒有內容）")}</strong><span>${escapeHtml(parsed.message)}</span></div><div class="readonly-note">無法安全辨識時不建立事件；可把這筆保留到 Pending Review，之後由人工補齊。</div><div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-pending-review">送人工確認</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+    return sheetShell("紀錄預覽", htmlContextLabel(), `<div class="detail-hero"><small>待人工確認</small><strong>${escapeHtml(state.quickRecordDraft || "（沒有內容）")}</strong><span>${escapeHtml(parsed.message)}</span></div><div class="readonly-note">無法安全辨識時不建立事件；可把這筆保留到 Pending Review，之後由人工補齊。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-pending-review">送人工確認</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
   }
 
   function labEventFromDraft() {
@@ -1836,10 +1838,16 @@
     const { parsed, event } = labEventFromDraft();
     if (parsed.status !== "event" || !event) return openSheet({ kind: "quick-record-preview" });
     const audit = window.JinjiDomain.createAuditEntry({ entityId: event.id, operation: "create", source: "quick_record", newEventIds: [event.id] });
-    LAB_STORE.appendEvent(event, audit);
-    LAB_STORE.queueOperation({ clientOperationId: event.clientOperationId, type: "create_event", eventId: event.id, source: "quick_record" });
-    if (LAB_STORE.snapshot().mode === "ONLINE") LAB_STORE.sync({ backendAvailable: true });
+    try {
+      LAB_STORE.appendEvent(event, audit);
+      LAB_STORE.queueOperation({ clientOperationId: event.clientOperationId, type: "create_event", eventId: event.id, source: "quick_record" });
+      if (LAB_STORE.snapshot().mode === "ONLINE") LAB_STORE.sync({ backendAvailable: true });
+    } catch (error) {
+      state.quickRecordError = masterDataErrorMessage(error);
+      return openSheet({ kind: "quick-record-preview" });
+    }
     state.quickRecordDraft = "";
+    state.quickRecordError = "";
     state.quickRecordNotice = `已寫入 Lab：${eventLabel(event.type)} ${number(event.quantity)} ${event.unit} · ${contextLabel()}`;
     state.calendarYear = Number(PLUS_AS_OF.slice(0, 4));
     state.calendarMonth = Number(PLUS_AS_OF.slice(5, 7));
@@ -1860,10 +1868,16 @@
       replacements: [{ quantity: nextQuantity, qty: nextQuantity, value: nextQuantity }],
       source: "lab_correction",
     });
-    LAB_STORE.appendEvents([ledger.reversal, ...ledger.replacements], [ledger.audit]);
-    LAB_STORE.queueOperation({ clientOperationId: ledger.audit.id, type: "correct_event", eventId: original.id, replacementEventIds: ledger.audit.newEventIds, source: "lab_correction" });
-    if (LAB_STORE.snapshot().mode === "ONLINE") LAB_STORE.sync({ backendAvailable: true });
+    try {
+      LAB_STORE.appendEvents([ledger.reversal, ...ledger.replacements], [ledger.audit]);
+      LAB_STORE.queueOperation({ clientOperationId: ledger.audit.id, type: "correct_event", eventId: original.id, replacementEventIds: ledger.audit.newEventIds, source: "lab_correction" });
+      if (LAB_STORE.snapshot().mode === "ONLINE") LAB_STORE.sync({ backendAvailable: true });
+    } catch (error) {
+      state.correctionNotice = masterDataErrorMessage(error);
+      return openSheet({ kind: "correction", id: eventId });
+    }
     state.correctionNotice = "";
+    state.quickRecordError = "";
     state.quickRecordNotice = `已新增修正紀錄：${eventLabel(original.type)} ${number(nextQuantity)} ${original.unit}；原紀錄仍保留於變更紀錄。`;
     state.sheet = null;
     render();
@@ -1882,9 +1896,15 @@
       rawText: String(state.quickRecordDraft || "").slice(0, 240),
       source: "quick_record",
     };
-    LAB_STORE.appendPending(review);
-    LAB_STORE.queueOperation({ clientOperationId: window.JinjiDomain.clientOperationId("pending"), type: "create_pending_review", pendingId: review.id, source: "quick_record" });
+    try {
+      LAB_STORE.appendPending(review);
+      LAB_STORE.queueOperation({ clientOperationId: window.JinjiDomain.clientOperationId("pending"), type: "create_pending_review", pendingId: review.id, source: "quick_record" });
+    } catch (error) {
+      state.quickRecordError = masterDataErrorMessage(error);
+      return openSheet({ kind: "quick-record-preview" });
+    }
     state.quickRecordDraft = "";
+    state.quickRecordError = "";
     state.quickRecordNotice = "這筆內容已保留到 Pending Review，沒有建立不確定的正式事件。";
     state.sheet = null;
     render();
@@ -1955,7 +1975,7 @@
       </div><div class="threshold-safety"><strong>這些是資料趨勢門檻，不是獸醫警戒值。</strong><span>只比較同一工作範圍的近期紀錄；資料不足就不判定。修改後會影響「紀錄 → 趨勢圖」的提醒結果。</span></div>${state.settingsNotice ? `<div class="dev-save-note">${escapeHtml(state.settingsNotice)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-trend-thresholds">儲存本機設定</button><button type="button" class="sheet-secondary" data-action="reset-trend-thresholds">恢復預設值</button></div>`, "settings-detail");
     }
     const details = {
-      master: ["雞場與雞舍管理", "正式版的新增、停用與指派需先通過管理者驗證；本測試版維持唯讀，不提供假寫入。"],
+      master: ["雞場與雞舍管理", "正式版的新增、停用與指派需先通過管理者驗證；本測試版可在 PREPROD LAB 管理者確認後寫入本機 runtime overlay，不修改 fixture。"],
       line: ["LINE 群組", "正式版可管理群組與通知；此測試版沒有連線 LINE，因此只保留資訊架構入口。"],
       display: ["顯示與操作", "桌面版採左側導覽、大字體與寬螢幕工作台；移動版維持底部導覽與觸控優先操作。"],
     };
@@ -2496,6 +2516,7 @@
     if (action === "start-quick-record-farm") {
       state.context = { farmId: actionElement.dataset.farmId, houseId: null, flockId: null };
       state.quickRecordDraft = "";
+      state.quickRecordError = "";
       return openSheet({ kind: "quick-record" });
     }
     if (action === "open-quick-record") return openSheet({ kind: "quick-record" });

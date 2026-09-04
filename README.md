@@ -5,7 +5,7 @@
 ## Lab 邊界
 
 - V7 reference 是 UI source of truth：`data-app-id="jinji-web-v14r-lab"`、`data-build-marker="jinji-v14r-plus-r4-desktop-v7-mobile-nav"`。
-- baseline fixture 保留 5 個雞場、9 個雞舍、7 個批次、6 個進行中批次、`AUDIT-HISTORY-OLD`，以及原有在養、事件、待人工確認、異常與財務數字。
+- baseline fixture 保留 8 個雞場、15 個雞舍、13 個批次、12 個進行中批次、55,294 隻目前在養、`AUDIT-HISTORY-OLD`，以及原有在養、事件、待人工確認、異常與財務數字。
 - `OperationalEvent` 是 Today、紀錄、月曆、圖表、趨勢與 Audit 的共同來源；V7 的 linked test events 皆可追溯到雞場／雞舍／批次。
 - Quick Record 是真正的 Lab Write，只寫本機 overlay／IndexedDB；fixture 不會被 destructive mutate，Developer → AI／Cloudflare 降級方案可 Reset fixture。
 - 可在 Developer 區切換 `ONLINE`、`AI_DOWN`、`BACKEND_TEMP_DOWN`、`BACKEND_LONG_DOWN`，觀察 AI unavailable、local outbox、冪等 mock sync 與 Pending Review conflict flow。

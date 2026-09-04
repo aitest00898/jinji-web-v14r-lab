@@ -219,10 +219,23 @@
     return value;
   }
 
+  function eventQuantityInput(input = {}) {
+    return input.quantity ?? input.qty ?? input.value;
+  }
+
+  function validateOperationalEvent(event = {}) {
+    if (!event || typeof event !== "object" || Array.isArray(event)) throw new Error("DOMAIN_EVENT_INVALID");
+    if (!String(event.id || "").trim()) throw new Error("DOMAIN_EVENT_ID_REQUIRED");
+    assertEventType(String(event.type || "other"));
+    if (eventQuantityInput(event) === undefined) throw new Error("DOMAIN_EVENT_QUANTITY_REQUIRED");
+    numericQuantity(eventQuantityInput(event));
+    return true;
+  }
+
   function createOperationalEvent(input = {}, now = new Date()) {
     const type = String(input.type || "other");
     assertEventType(type);
-    const quantity = numericQuantity(input.quantity ?? input.value ?? 0);
+    const quantity = numericQuantity(eventQuantityInput(input) ?? 0);
     const createdAt = input.createdAt || nowIso(now);
     const date = input.date || createdAt.slice(0, 10);
     const time = input.time || createdAt.slice(11, 16);
@@ -257,11 +270,35 @@
   }
 
   function reconstructOperationalEvents(events = []) {
-    const rows = events.map(normalizeEvent);
+    const rows = (Array.isArray(events) ? events : [])
+      .map((event) => {
+        try {
+          return normalizeEvent(event);
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter(Boolean);
     const reversed = new Set(rows.filter((event) => event.reversalOf).map((event) => event.reversalOf));
     return rows
       .filter((event) => !event.reversalOf && !reversed.has(event.id) && event.status !== "void")
       .sort((a, b) => `${a.date} ${a.time} ${a.id}`.localeCompare(`${b.date} ${b.time} ${b.id}`));
+  }
+
+  function matchesStockScope(event, scope) {
+    if (!scope || scope.farmId === "all") return true;
+    if (!event || event.farmId !== scope.farmId) return false;
+    if (scope.flockId) return event.flockId === scope.flockId;
+    if (scope.houseId) return event.houseId === scope.houseId;
+    return true;
+  }
+
+  function stockRemovalTotal(events = [], scope = {}) {
+    return reconstructOperationalEvents(events)
+      .filter((event) => matchesStockScope(event, scope))
+      .reduce((sum, event) => sum + (["mortality", "cull", "shipment"].includes(event.type)
+        ? Number(event.quantity ?? event.qty ?? event.value ?? 0)
+        : 0), 0);
   }
 
   function sumEvents(events = [], options = {}) {
@@ -409,8 +446,6 @@
     const ship = validMasterDate(input.ship ?? input.plannedShipment, "planned_shipment");
     if (ship < chickIn) throw new Error("MASTER_DATA_SHIPMENT_BEFORE_CHICK_IN");
     const initial = nonnegativeInteger(input.initial ?? input.initialQuantity, "initial", { positive: true });
-    const stock = input.stock === undefined ? initial : nonnegativeInteger(input.stock, "stock");
-    if (stock > initial) throw new Error("MASTER_DATA_STOCK_EXCEEDS_INITIAL");
     const hasMale = input.male !== undefined && input.male !== "";
     const hasFemale = input.female !== undefined && input.female !== "";
     if (hasMale !== hasFemale) throw new Error("MASTER_DATA_SEX_PAIR_REQUIRED");
@@ -426,6 +461,11 @@
     const status = input.status || (state === "closed" ? "已出雞" : "進行中");
     const expectedStatus = state === "closed" ? "已出雞" : "進行中";
     if (status !== expectedStatus) throw new Error("MASTER_DATA_FLOCK_STATUS_INVALID");
+    const stock = input.stock === undefined
+      ? (state === "closed" ? 0 : initial)
+      : nonnegativeInteger(input.stock, "stock");
+    if (stock > initial) throw new Error("MASTER_DATA_STOCK_EXCEEDS_INITIAL");
+    if (state === "closed" && stock !== 0) throw new Error("MASTER_DATA_CLOSED_FLOCK_STOCK_INVALID");
     return {
       id: input.id || id("flock"),
       houseId,
@@ -466,7 +506,7 @@
     };
   }
 
-  function validateMasterData(masterData = {}) {
+  function validateMasterData(masterData = {}, context = {}) {
     const rows = {};
     MASTER_DATA_COLLECTIONS.forEach((key) => {
       rows[key] = Array.isArray(masterData[key]) ? masterData[key] : [];
@@ -489,8 +529,14 @@
     uniqueIds("flocks");
     uniqueIds("caretakerAssignments");
     uniqueIds("financeIdentities");
-    const farmIds = new Set(rows.farms.map((farm) => farm.id));
-    const houseIds = new Set(rows.houses.map((house) => house.id));
+    const contextRows = {};
+    MASTER_DATA_COLLECTIONS.forEach((key) => {
+      contextRows[key] = Array.isArray(context?.[key]) ? context[key] : [];
+      const contextIds = new Set(contextRows[key].map((row) => row?.id).filter(Boolean));
+      rows[key].forEach((row) => expect(!contextIds.has(row.id), `overlay ${key} duplicates authoritative ${row.id}`));
+    });
+    const farmIds = new Set([...contextRows.farms, ...rows.farms].map((farm) => farm?.id).filter(Boolean));
+    const houseIds = new Set([...contextRows.houses, ...rows.houses].map((house) => house?.id).filter(Boolean));
     rows.houses.forEach((house) => expect(farmIds.has(house.farmId), `house farm ${house.id}`));
     rows.flocks.forEach((flock) => {
       expect(houseIds.has(flock.houseId), `flock house ${flock.id}`);
@@ -554,9 +600,12 @@
     id,
     clientOperationId,
     createOperationalEvent,
+    validateOperationalEvent,
     normalizeEvent,
     reconstructOperationalEvents,
     eventEffect,
+    matchesStockScope,
+    stockRemovalTotal,
     sumEvents,
     parseQuickRecord,
     createCorrectionLedger,
