@@ -786,6 +786,7 @@
     OBSERVATION_EXTENTS,
     OBSERVATION_EXTENT_LABELS,
     RECORDING_TAXONOMY,
+    recordingTaxonomyContractSnapshot: taxonomy?.recordingTaxonomyContractSnapshot,
     validateCanonicalRecording: taxonomy?.validateCanonicalRecording,
     deriveCanonicalFields: taxonomy?.deriveCanonicalFields,
     stockEffectForCanonicalRecord: taxonomy?.stockEffectForCanonicalRecord,
