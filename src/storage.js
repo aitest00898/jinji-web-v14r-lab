@@ -33,6 +33,7 @@
       revision: 0,
       events: [],
       observations: [],
+      actions: [],
       pendingReviews: [],
       pendingResolutions: [],
       abnormalities: [],
@@ -166,6 +167,18 @@
     return String(row.text || row.observationText || "").trim().length > 0;
   }
 
+  function validPersistedAction(row) {
+    if (!row || typeof row !== "object" || Array.isArray(row) || !String(row.id || "").trim()) return false;
+    if (row.taxonomyId && typeof root?.JinjiDomain?.validateCanonicalRecording === "function") {
+      try {
+        root.JinjiDomain.validateCanonicalRecording(row);
+      } catch (_) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   function storageConflict(expectedRevision, actualRevision) {
     const error = new Error("LAB_STORAGE_CONFLICT");
     error.expectedRevision = expectedRevision;
@@ -202,6 +215,15 @@
         if (!valid) observationRowsWereSanitized = true;
         return valid;
       });
+      let actionRowsWereSanitized = false;
+      const storedActions = stored && typeof stored === "object" && !Array.isArray(stored) ? stored.actions : undefined;
+      if (storedActions !== undefined && !Array.isArray(storedActions)) actionRowsWereSanitized = true;
+      const actions = Array.isArray(this.state.actions) ? this.state.actions : [];
+      this.state.actions = actions.filter((row) => {
+        const valid = validPersistedAction(row);
+        if (!valid) actionRowsWereSanitized = true;
+        return valid;
+      });
       let masterDataWasSanitized = false;
       const storedMasterData = stored && typeof stored === "object" && !Array.isArray(stored) ? stored.masterData : undefined;
       if (storedMasterData !== undefined && (!storedMasterData || typeof storedMasterData !== "object" || Array.isArray(storedMasterData))) {
@@ -232,7 +254,7 @@
       const mode = readJson(KEYS.mode);
       if (typeof mode === "string" && MODES.includes(mode)) this.state.mode = mode;
       this.idbPromise = this.openIndexedDb();
-      if (masterDataWasSanitized || eventRowsWereSanitized || observationRowsWereSanitized) {
+      if (masterDataWasSanitized || eventRowsWereSanitized || observationRowsWereSanitized || actionRowsWereSanitized) {
         // Self-heal only invalid runtime rows while preserving all valid runtime state.
         try {
           this.persist(this.state);
@@ -319,6 +341,22 @@
       return this.persist(nextState);
     }
 
+    appendAction(action, auditEntry = null) {
+      const nextState = clone(this.state);
+      if (!nextState.actions.some((item) => item.id === action.id)) nextState.actions.push(clone(action));
+      if (auditEntry) nextState.auditEntries.push(clone(auditEntry));
+      return this.persist(nextState);
+    }
+
+    appendActions(actions = [], auditEntries = []) {
+      const nextState = clone(this.state);
+      actions.forEach((action) => {
+        if (!nextState.actions.some((candidate) => candidate.id === action.id)) nextState.actions.push(clone(action));
+      });
+      auditEntries.forEach((entry) => nextState.auditEntries.push(clone(entry)));
+      return this.persist(nextState);
+    }
+
     appendEvents(events = [], auditEntries = []) {
       const nextState = clone(this.state);
       events.forEach((event) => {
@@ -366,7 +404,7 @@
       return this.persist(nextState);
     }
 
-    commitLocalOperation({ events = [], observations = [], pendingReviews = [], pendingResolutions = [], masterData = [], auditEntries = [], operation } = {}) {
+    commitLocalOperation({ events = [], observations = [], actions = [], pendingReviews = [], pendingResolutions = [], masterData = [], auditEntries = [], operation } = {}) {
       const key = operation?.clientOperationId;
       if (!key) throw new Error("LAB_OPERATION_ID_REQUIRED");
       if (this.state.syncedOperationIds.includes(key)) return { ...clone(operation), status: "synced", duplicate: true };
@@ -379,6 +417,9 @@
       });
       observations.forEach((observation) => {
         if (!nextState.observations.some((candidate) => candidate.id === observation.id)) nextState.observations.push(clone(observation));
+      });
+      actions.forEach((action) => {
+        if (!nextState.actions.some((candidate) => candidate.id === action.id)) nextState.actions.push(clone(action));
       });
       pendingReviews.forEach((review) => {
         if (!nextState.pendingReviews.some((candidate) => candidate.id === review.id)) nextState.pendingReviews.push(clone(review));

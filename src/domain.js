@@ -1,9 +1,15 @@
 (function attachJinjiDomain(root, factory) {
-  const api = factory();
+  let taxonomy = root?.JinjiRecordingTaxonomy;
+  if (!taxonomy && typeof module !== "undefined" && module.exports && typeof require === "function") {
+    taxonomy = require("./recording-taxonomy.js");
+  }
+  const api = factory(taxonomy);
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (root) root.JinjiDomain = api;
-})(typeof window === "object" ? window : (typeof globalThis === "object" ? globalThis : null), () => {
+})(typeof window === "object" ? window : (typeof globalThis === "object" ? globalThis : null), (taxonomy) => {
   "use strict";
+
+  const RECORDING_TAXONOMY = taxonomy?.RECORDING_TAXONOMY || Object.freeze([]);
 
   const MODEL_NAMES = Object.freeze([
     "Organization",
@@ -779,6 +785,10 @@
     QUALITATIVE_OBSERVATION_TERMS,
     OBSERVATION_EXTENTS,
     OBSERVATION_EXTENT_LABELS,
+    RECORDING_TAXONOMY,
+    validateCanonicalRecording: taxonomy?.validateCanonicalRecording,
+    deriveCanonicalFields: taxonomy?.deriveCanonicalFields,
+    stockEffectForCanonicalRecord: taxonomy?.stockEffectForCanonicalRecord,
     createCorrectionLedger,
     MASTER_DATA_COLLECTIONS,
     createFarm,
