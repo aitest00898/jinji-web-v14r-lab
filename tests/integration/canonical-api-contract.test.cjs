@@ -1,5 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const taxonomy = require("../../src/recording-taxonomy.js");
 const commandApi = require("../../src/record-command.js");
 const { CanonicalApiError, createClient } = require("../../src/canonical-api.js");
@@ -116,4 +118,17 @@ test("create, correction, and reversal share the same error normalizer", async (
     });
     assert.equal(calls.at(-1), expectedPath);
   }
+});
+
+test("Web canonical recording scope uses master-data reads without fixture fallback", () => {
+  const appSource = fs.readFileSync(path.join(__dirname, "../../app.js"), "utf8");
+  assert.match(appSource, /CANONICAL_API\.listFarms\(\)/u);
+  assert.match(appSource, /CANONICAL_API\.listHouses\(farm\.id\)/u);
+  assert.match(appSource, /CANONICAL_API\.listFlocks\(farm\.id\)/u);
+  assert.match(appSource, /canonicalScopeCatalog\.housesByFarm/u);
+  assert.match(appSource, /無法載入正式工作範圍/u);
+  assert.match(appSource, /canonicalRecordingEnabled\(\) \? canonicalFarmById\(record\.farmId\) : farmById/u);
+  assert.match(appSource, /recordingScopeFarms\(\)/u);
+  assert.match(appSource, /clearSelection: true/u);
+  assert.match(appSource, /state\.guidedRecord = null/u);
 });

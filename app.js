@@ -247,7 +247,137 @@
     webAuthSubmitting: false,
   };
 
+  // Canonical master data is a separate, memory-only recording scope catalog.
+  // Dashboard and Finance continue to use the clearly-labelled Lab fixture;
+  // no canonical read is ever silently replaced by fixture data.
+  const canonicalScopeCatalog = {
+    environment: null,
+    farms: [],
+    housesByFarm: Object.create(null),
+    flocksByFarm: Object.create(null),
+    loading: false,
+    error: "",
+  };
+  let canonicalScopeLoadId = 0;
+
   const app = document.getElementById("app");
+
+  function canonicalRecordingEnabled() {
+    return Boolean(CANONICAL_API_ENABLED && CANONICAL_API?.isAuthenticated?.());
+  }
+
+  function resetCanonicalScopeCatalog() {
+    canonicalScopeCatalog.environment = CANONICAL_API?.environment || null;
+    canonicalScopeCatalog.farms = [];
+    canonicalScopeCatalog.housesByFarm = Object.create(null);
+    canonicalScopeCatalog.flocksByFarm = Object.create(null);
+    canonicalScopeCatalog.loading = false;
+    canonicalScopeCatalog.error = "";
+  }
+
+  function canonicalFlockDisplay(flock) {
+    return {
+      ...flock,
+      code: flock.batchCode,
+      chickIn: flock.chickInDate || "",
+      initial: flock.initialCount,
+      ship: flock.expectedShipmentDate || flock.actualShipmentDate || "",
+      state: flock.status,
+      stock: null,
+    };
+  }
+
+  function canonicalFarmDisplay(farm) {
+    const houses = (canonicalScopeCatalog.housesByFarm[farm.id] || []).map((house) => ({
+      ...house,
+      flocks: (canonicalScopeCatalog.flocksByFarm[farm.id] || [])
+        .filter((flock) => flock.houseId === house.id)
+        .map(canonicalFlockDisplay),
+    }));
+    return {
+      ...farm,
+      subtitle: farm.siteName || `${farm.environment === "test" ? "Test" : "Production"} scope · canonical master data`,
+      houses,
+      stock: null,
+    };
+  }
+
+  function canonicalFarmById(id) {
+    const farm = canonicalScopeCatalog.farms.find((candidate) => candidate.id === id);
+    return farm ? canonicalFarmDisplay(farm) : null;
+  }
+
+  function recordingScopeFarms() {
+    return canonicalRecordingEnabled() ? canonicalScopeCatalog.farms.map(canonicalFarmDisplay) : allProductionFarms();
+  }
+
+  function recordingScopeFarmById(id) {
+    return canonicalRecordingEnabled() ? canonicalFarmById(id) : allProductionFarms().find((farm) => farm.id === id) || null;
+  }
+
+  function canonicalScopeSelectionReady(guided) {
+    if (!canonicalRecordingEnabled()) return true;
+    const requirements = window.JinjiGuidedRecording.scopeRequirements(guided);
+    const farm = canonicalFarmById(guided?.scope?.farmId);
+    const house = farm?.houses?.find((candidate) => candidate.id === guided?.scope?.houseId) || null;
+    const flock = house?.flocks?.find((candidate) => candidate.id === guided?.scope?.flockId) || null;
+    return Boolean(farm && (!requirements.houseRequired || house) && (!requirements.flockRequired || flock) && (guided?.scope?.houseId ? house : true) && (guided?.scope?.flockId ? flock : true));
+  }
+
+  async function refreshCanonicalScopeCatalog({ clearSelection = false } = {}) {
+    if (!canonicalRecordingEnabled()) {
+      resetCanonicalScopeCatalog();
+      return;
+    }
+    if (clearSelection) {
+      state.context = { farmId: "all", houseId: null, flockId: null };
+      state.guidedRecord = null;
+      if (state.sheet?.kind === "guided-record") state.sheet = null;
+    }
+    const environment = CANONICAL_API.environment;
+    const loadId = ++canonicalScopeLoadId;
+    resetCanonicalScopeCatalog();
+    canonicalScopeCatalog.environment = environment;
+    canonicalScopeCatalog.loading = true;
+    render();
+    try {
+      const farms = await CANONICAL_API.listFarms();
+      if (loadId !== canonicalScopeLoadId || !canonicalRecordingEnabled() || CANONICAL_API.environment !== environment) return;
+      const housesByFarm = Object.create(null);
+      const flocksByFarm = Object.create(null);
+      await Promise.all(farms.map(async (farm) => {
+        const [houses, flocks] = await Promise.all([
+          CANONICAL_API.listHouses(farm.id),
+          CANONICAL_API.listFlocks(farm.id),
+        ]);
+        const houseIds = new Set(houses.map((house) => house.id));
+        if (houses.some((house) => house.farmId !== farm.id || (house.farmEnvironment !== undefined && house.farmEnvironment !== environment))) {
+          throw new window.JinjiCanonicalApi.CanonicalApiError("CANONICAL_MASTER_DATA_INVALID", "Canonical house scope does not match the selected environment.");
+        }
+        if (flocks.some((flock) => flock.farmId !== farm.id || !houseIds.has(flock.houseId))) {
+          throw new window.JinjiCanonicalApi.CanonicalApiError("CANONICAL_MASTER_DATA_INVALID", "Canonical flock scope does not match the selected house.");
+        }
+        housesByFarm[farm.id] = houses;
+        flocksByFarm[farm.id] = flocks;
+      }));
+      if (loadId !== canonicalScopeLoadId || !canonicalRecordingEnabled() || CANONICAL_API.environment !== environment) return;
+      canonicalScopeCatalog.environment = environment;
+      canonicalScopeCatalog.farms = farms;
+      canonicalScopeCatalog.housesByFarm = housesByFarm;
+      canonicalScopeCatalog.flocksByFarm = flocksByFarm;
+      canonicalScopeCatalog.error = "";
+    } catch (error) {
+      if (loadId === canonicalScopeLoadId && canonicalRecordingEnabled() && CANONICAL_API.environment === environment) {
+        canonicalScopeCatalog.error = "無法載入正式工作範圍";
+        state.canonicalApiError = error?.code === "CANONICAL_MASTER_DATA_INVALID" ? "正式工作範圍資料無效，已停止載入。" : "正式工作範圍暫時無法載入。";
+      }
+    } finally {
+      if (loadId === canonicalScopeLoadId && CANONICAL_API.environment === environment) {
+        canonicalScopeCatalog.loading = false;
+        render();
+      }
+    }
+  }
 
   function webApiEnvironmentLabel() {
     if (!CANONICAL_API) return "本機 Lab";
@@ -280,6 +410,7 @@
       state.webAuthError = "";
       state.canonicalApiError = "";
       state.page = INITIAL_MANAGEMENT_ENTRY ? "today" : "record-portal";
+      await refreshCanonicalScopeCatalog();
     } catch (error) {
       state.webAuthError = canonicalApiErrorMessage(error, "login");
     } finally {
@@ -294,6 +425,8 @@
     state.webAuthError = "";
     state.canonicalApiError = "";
     state.canonicalApiNotice = "";
+    resetCanonicalScopeCatalog();
+    state.context = { farmId: "all", houseId: null, flockId: null };
     state.sheet = null;
     state.guidedRecord = null;
     state.page = "record-portal";
@@ -503,7 +636,9 @@
   }
 
   function currentContext() {
-    const farm = farmById(state.context.farmId);
+    const farm = canonicalRecordingEnabled() && state.context.farmId !== "all"
+      ? (canonicalFarmById(state.context.farmId) || { id: state.context.farmId, name: "正式雞場未載入", subtitle: "canonical master data unavailable", houses: [] })
+      : farmById(state.context.farmId);
     const house = farm.id === "all" ? null : houseById(farm, state.context.houseId);
     const flock = house ? flockById(house, state.context.flockId) : null;
     return { farm, house, flock };
@@ -1699,6 +1834,12 @@
   }
 
   function contextSheet() {
+    if (canonicalRecordingEnabled()) {
+      if (canonicalScopeCatalog.loading) return sheetShell("選擇雞場", "正在載入正式工作範圍。", `<div class="empty-tab"><strong>讀取中…</strong><p>只會顯示目前 ${escapeHtml(webApiEnvironmentLabel())} 的 canonical 主檔。</p></div>`, "context");
+      if (canonicalScopeCatalog.error) return sheetShell("選擇雞場", "正式工作範圍未載入。", `<div class="lab-write-notice error" role="alert">無法載入正式工作範圍</div><div class="readonly-note">未取得正式主檔前不會顯示本機 fixture，也不會建立任何紀錄。</div>`, "context");
+      const farmOptions = recordingScopeFarms().map((option) => `<button type="button" class="option-row ${state.context.farmId === option.id ? "selected" : ""}" data-action="select-farm-direct" data-farm-id="${escapeHtml(option.id)}"><span><strong>${escapeHtml(option.name)}</strong><span>${escapeHtml(option.subtitle || `${webApiEnvironmentLabel()} · canonical master data`)}</span></span><span class="option-check">${state.context.farmId === option.id ? icon("check") : icon("arrow")}</span></button>`).join("");
+      return sheetShell("選擇雞場", "正式工作範圍 · 選好雞場後可在頁面上切換雞舍與批次。", `<div class="option-list">${farmOptions || `<div class="empty-tab"><strong>目前 scope 沒有可選雞場</strong></div>`}</div>`, "context");
+    }
     const farmOptions = labData().farms.map((option) => `<button type="button" class="option-row ${state.context.farmId === option.id ? "selected" : ""}" data-action="select-farm-direct" data-farm-id="${escapeHtml(option.id)}"><span><strong>${escapeHtml(option.name)}</strong><span>${option.id === "all" ? "全域唯讀總覽" : `${option.id === "history" ? "歷史查詢" : escapeHtml(option.subtitle || "Lab 新增雞場")} · 在養隻數 ${number(displayedFarmStock(option))}`}</span></span><span class="option-check">${state.context.farmId === option.id ? icon("check") : icon("arrow")}</span></button>`).join("");
     return sheetShell("選擇雞場", "選好雞場後，雞舍與批次可直接在頁面上用按鈕切換。", `<div class="option-list">${farmOptions}</div>`, "context");
   }
@@ -2952,7 +3093,7 @@
   }
 
   function guidedScopeFarm() {
-    return allProductionFarms().find((farm) => farm.id === guidedState()?.scope?.farmId) || null;
+    return recordingScopeFarmById(guidedState()?.scope?.farmId) || null;
   }
 
   function guidedScopeHouse() {
@@ -2983,11 +3124,20 @@
     const requirements = window.JinjiGuidedRecording.scopeRequirements(guided);
     const farm = guidedScopeFarm();
     const house = guidedScopeHouse();
-    const farmOptions = allProductionFarms().filter((item) => item.id !== "history").map((item) => guidedOption(item.id, item.name, item.id === guided.scope.farmId)).join("");
+    const canonical = canonicalRecordingEnabled();
+    const farmOptions = recordingScopeFarms().filter((item) => item.id !== "history").map((item) => guidedOption(item.id, item.name, item.id === guided.scope.farmId)).join("");
     const houseOptions = farm?.houses?.map((item) => guidedOption(item.id, item.name, item.id === guided.scope.houseId)).join("") || "";
     const flockOptions = house?.flocks?.map((item) => guidedOption(item.id, item.code, item.id === guided.scope.flockId)).join("") || "";
     const farmOnly = !guided.scope.houseId;
-    return `<div class="guided-step" data-testid="guided-scope-step"><div class="sheet-step"><span>第 3 步／4</span><strong>先決定資料位置</strong></div><div class="guided-question"><p class="kicker">${escapeHtml(definition?.label || "記錄")}</p><h3>這筆資料發生在哪裡？</h3><p>雞舍與批次分開選；不會因為選了雞舍就偷偷選取批次。</p></div><div class="guided-form-stack"><label class="guided-field"><span>雞場 <b>必要</b></span><select data-action="guided-scope-farm" aria-label="選擇雞場"><option value="">請選擇雞場</option>${farmOptions}</select></label><label class="guided-field"><span>雞舍 ${requirements.houseRequired ? "<b>必要</b>" : "<em>可選</em>"}</span><select data-action="guided-scope-house" aria-label="選擇雞舍" ${farm ? "" : "disabled"}><option value="">${farm ? (requirements.houseRequired ? "請選擇雞舍" : "整場（不指定雞舍）") : "先選雞場"}</option>${houseOptions}</select></label><label class="guided-field"><span>批次 ${requirements.flockRequired ? "<b>必要</b>" : "<em>可選</em>"}</span><select data-action="guided-scope-flock" aria-label="選擇批次" ${house ? "" : "disabled"}><option value="">${house ? (requirements.flockRequired ? "請選擇批次" : "不指定批次") : "先選雞舍"}</option>${flockOptions}</select></label>${farmOnly && requirements.wholeFarmAllowed ? `<label class="guided-confirm-row"><input type="checkbox" data-action="guided-whole-farm" ${guided.scope.wholeFarmConfirmed ? "checked" : ""}><span><strong>確認這是整場資料</strong><small>未指定雞舍時，必須明確確認範圍；不會默默套用整場。</small></span></label>` : ""}</div>${state.guidedRecord.error ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.guidedRecord.error)}</div>` : ""}<div class="readonly-note">目前範圍：${escapeHtml(guidedScopeLabel())}。${requirements.houseRequired ? "此分類需要雞舍。" : "若不指定雞舍，請明確確認整場。"}</div><div class="guided-actions"><button type="button" class="sheet-primary" data-action="guided-scope-next">下一步</button><button type="button" class="sheet-secondary" data-action="guided-cancel">取消</button></div></div>`;
+    const scopeStatus = canonical && canonicalScopeCatalog.loading
+      ? `<div class="readonly-note" data-testid="canonical-scope-status">正在載入 ${escapeHtml(webApiEnvironmentLabel())} 正式工作範圍…</div>`
+      : canonical && canonicalScopeCatalog.error
+        ? `<div class="lab-write-notice error" role="alert" data-testid="canonical-scope-status">無法載入正式工作範圍</div><div class="readonly-note">未取得正式主檔前不會顯示本機 fixture，也不會送出紀錄。</div>`
+        : canonical
+          ? `<div class="readonly-note" data-testid="canonical-scope-status">來源：${escapeHtml(webApiEnvironmentLabel())} canonical master data</div>`
+          : "";
+    const scopeUnavailable = canonical && (canonicalScopeCatalog.loading || canonicalScopeCatalog.error);
+    return `<div class="guided-step" data-testid="guided-scope-step"><div class="sheet-step"><span>第 3 步／4</span><strong>先決定資料位置</strong></div><div class="guided-question"><p class="kicker">${escapeHtml(definition?.label || "記錄")}</p><h3>這筆資料發生在哪裡？</h3><p>雞舍與批次分開選；不會因為選了雞舍就偷偷選取批次。</p></div>${scopeStatus}<div class="guided-form-stack"><label class="guided-field"><span>雞場 <b>必要</b></span><select data-action="guided-scope-farm" aria-label="選擇雞場" ${scopeUnavailable ? "disabled" : ""}><option value="">${scopeUnavailable ? "正式範圍尚未就緒" : "請選擇雞場"}</option>${farmOptions}</select></label><label class="guided-field"><span>雞舍 ${requirements.houseRequired ? "<b>必要</b>" : "<em>可選</em>"}</span><select data-action="guided-scope-house" aria-label="選擇雞舍" ${farm && !scopeUnavailable ? "" : "disabled"}><option value="">${farm ? (requirements.houseRequired ? "請選擇雞舍" : "整場（不指定雞舍）") : "先選雞場"}</option>${houseOptions}</select></label><label class="guided-field"><span>批次 ${requirements.flockRequired ? "<b>必要</b>" : "<em>可選</em>"}</span><select data-action="guided-scope-flock" aria-label="選擇批次" ${house && !scopeUnavailable ? "" : "disabled"}><option value="">${house ? (requirements.flockRequired ? "請選擇批次" : "不指定批次") : "先選雞舍"}</option>${flockOptions}</select></label>${farmOnly && requirements.wholeFarmAllowed ? `<label class="guided-confirm-row"><input type="checkbox" data-action="guided-whole-farm" ${guided.scope.wholeFarmConfirmed ? "checked" : ""} ${scopeUnavailable ? "disabled" : ""}><span><strong>確認這是整場資料</strong><small>未指定雞舍時，必須明確確認範圍；不會默默套用整場。</small></span></label>` : ""}</div>${state.guidedRecord.error ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.guidedRecord.error)}</div>` : ""}<div class="readonly-note">目前範圍：${escapeHtml(guidedScopeLabel())}。${requirements.houseRequired ? "此分類需要雞舍。" : "若不指定雞舍，請明確確認整場。"}</div><div class="guided-actions"><button type="button" class="sheet-primary" data-action="guided-scope-next" ${scopeUnavailable ? "disabled" : ""}>下一步</button><button type="button" class="sheet-secondary" data-action="guided-cancel">取消</button></div></div>`;
   }
 
   function guidedSelectOptions(field, current, guided) {
@@ -3035,7 +3185,7 @@
   function guidedRecordFieldRows(record) {
     const hidden = new Set(["id", "taxonomyId", "family", "type", "subtype", "occurredAt", "createdAt", "sourceChannel", "rawText", "clientOperationId", "confirmedBy", "scopeSelection", "scopeConfirmed", "farmId", "houseId", "flockId"]);
     const labels = { occurredAt: "發生時間", totalCount: "推導總數", averageWeight: "推導平均重量", ageDays: "推導日齡", reminderDueAt: "提醒日期", submittedAt: "送驗時間" };
-    const farm = farmById(record.farmId);
+    const farm = canonicalRecordingEnabled() ? canonicalFarmById(record.farmId) : farmById(record.farmId);
     const house = record.houseId ? farm?.houses?.find((item) => item.id === record.houseId) : null;
     const flock = record.flockId ? house?.flocks?.find((item) => item.id === record.flockId) : null;
     const scopeRows = [
@@ -3141,6 +3291,10 @@
   function commitGuidedRecord() {
     const guided = guidedState();
     if (!guided) return;
+    if (!canonicalScopeSelectionReady(guided)) {
+      guided.error = "請先選擇目前 scope 中有效的雞場、雞舍與批次；正式主檔不完整時不會送出。";
+      return openSheet({ kind: "guided-record" });
+    }
     let record;
     try {
       record = window.JinjiGuidedRecording.buildRecord(guided, {
@@ -3257,7 +3411,7 @@
     const house = context.house;
     const houses = farm.id === "all" ? [] : farm.houses;
     const flocks = house ? house.flocks : [];
-    const menu = state.desktopFarmMenuOpen ? `<div class="desktop-farm-dropdown" role="menu" aria-label="選擇雞場">${labData().farms.map((item) => `<button type="button" role="menuitem" class="desktop-farm-option ${item.id === farm.id ? "active" : ""}" data-action="desktop-select-farm-dropdown" data-farm-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.id === "all" ? "全域唯讀總覽" : item.subtitle)}</small></span><em>${item.id === farm.id ? "✓" : ""}</em></button>`).join("")}</div>` : "";
+    const menu = state.desktopFarmMenuOpen ? `<div class="desktop-farm-dropdown" role="menu" aria-label="選擇雞場">${(canonicalRecordingEnabled() ? recordingScopeFarms() : labData().farms).map((item) => `<button type="button" role="menuitem" class="desktop-farm-option ${item.id === farm.id ? "active" : ""}" data-action="desktop-select-farm-dropdown" data-farm-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.id === "all" ? "全域唯讀總覽" : item.subtitle)}</small></span><em>${item.id === farm.id ? "✓" : ""}</em></button>`).join("")}</div>` : "";
     return `<section class="desktop-v2-contextbar" aria-label="桌面工作範圍">
       <div class="desktop-farm-dropdown-wrap"><button type="button" class="desktop-farm-trigger" data-action="toggle-desktop-farm-menu" aria-haspopup="menu" aria-expanded="${state.desktopFarmMenuOpen}"><span class="context-icon">${icon("pin")}</span><span class="desktop-farm-title"><small>目前雞場</small><strong>${escapeHtml(farm.name)}</strong><span>${escapeHtml(farm.id === "all" ? "全域唯讀總覽" : farm.subtitle)}</span></span><span class="desktop-farm-chevron" aria-hidden="true">⌄</span></button>${menu}</div>
       <div class="desktop-context-trail">
@@ -3600,6 +3754,7 @@
       const scope = guided.scope;
       if (!scope.farmId) guided.error = "請先選擇雞場。";
       else if (scope.flockId && !scope.houseId) guided.error = "批次必須隸屬於已選擇的雞舍；系統不會自動猜測。";
+      else if (canonicalRecordingEnabled() && !canonicalScopeSelectionReady(guided)) guided.error = "所選位置不在目前正式 scope，請重新選擇；不會改用本機 fixture。";
       else if (requirements.houseRequired && !scope.houseId) guided.error = "這個分類需要指定雞舍。";
       else if (requirements.flockRequired && !scope.flockId) guided.error = "這個分類需要指定批次。";
       else if (!scope.houseId && requirements.wholeFarmAllowed && !scope.wholeFarmConfirmed) guided.error = "未指定雞舍時，請明確確認這是整場資料。";
@@ -3939,6 +4094,7 @@
       try {
         CANONICAL_API.setEnvironment(event.target.value, { explicitChoice: true });
         state.canonicalApiError = "";
+        void refreshCanonicalScopeCatalog({ clearSelection: true });
       } catch (error) {
         state.canonicalApiError = canonicalApiErrorMessage(error);
       }

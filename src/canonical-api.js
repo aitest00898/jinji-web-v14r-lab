@@ -119,6 +119,39 @@
     return { command };
   }
 
+  function masterDataError(message, payload = null) {
+    return new CanonicalApiError("CANONICAL_MASTER_DATA_INVALID", message, { payload });
+  }
+
+  function masterDataRows(payload, collection, environment, parentFarmId = null) {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload) || !Array.isArray(payload[collection])) {
+      throw masterDataError(`Canonical ${collection} response must contain an array.`, payload);
+    }
+    const seen = new Set();
+    return payload[collection].map((row) => {
+      if (!row || typeof row !== "object" || Array.isArray(row)) throw masterDataError(`Canonical ${collection} row is invalid.`, payload);
+      const id = typeof row.id === "string" ? row.id.trim() : "";
+      if (!id || seen.has(id)) throw masterDataError(`Canonical ${collection} contains a missing or duplicate id.`, payload);
+      seen.add(id);
+      if (collection === "farms") {
+        if (typeof row.name !== "string" || !row.name.trim() || row.environment !== environment) {
+          throw masterDataError("Canonical farm environment or name is invalid.", payload);
+        }
+      }
+      if (collection === "houses") {
+        if (typeof row.name !== "string" || !row.name.trim() || row.farmId !== parentFarmId || (row.farmEnvironment !== undefined && row.farmEnvironment !== environment)) {
+          throw masterDataError("Canonical house parent or environment is invalid.", payload);
+        }
+      }
+      if (collection === "flocks") {
+        if (row.farmId !== parentFarmId || typeof row.houseId !== "string" || !row.houseId.trim() || typeof row.batchCode !== "string" || !row.batchCode.trim()) {
+          throw masterDataError("Canonical flock parent or batch code is invalid.", payload);
+        }
+      }
+      return { ...row, id };
+    });
+  }
+
   const ERROR_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/u;
   const DEFAULT_API_ERROR_MESSAGE = "Canonical API rejected the request.";
 
@@ -267,6 +300,22 @@
       return environment;
     }
 
+    async function listFarms() {
+      return masterDataRows(await request("/api/farms", { method: "GET" }), "farms", environment);
+    }
+
+    async function listHouses(farmId) {
+      const normalizedFarmId = typeof farmId === "string" ? farmId.trim() : "";
+      if (!normalizedFarmId) throw new CanonicalApiError("CANONICAL_MASTER_DATA_FARM_REQUIRED", "A farm is required before loading houses.");
+      return masterDataRows(await request("/api/houses", { method: "GET", query: { farmId: normalizedFarmId } }), "houses", environment, normalizedFarmId);
+    }
+
+    async function listFlocks(farmId) {
+      const normalizedFarmId = typeof farmId === "string" ? farmId.trim() : "";
+      if (!normalizedFarmId) throw new CanonicalApiError("CANONICAL_MASTER_DATA_FARM_REQUIRED", "A farm is required before loading flocks.");
+      return masterDataRows(await request("/api/flocks", { method: "GET", query: { farmId: normalizedFarmId } }), "flocks", environment, normalizedFarmId);
+    }
+
     return Object.freeze({
       enabled,
       base,
@@ -282,6 +331,9 @@
       logout,
       session,
       setEnvironment,
+      listFarms,
+      listHouses,
+      listFlocks,
       createRecord: (command) => request("/api/records", { method: "POST", body: commandBody(command) }),
       correctRecord: (id, command) => request(`/api/records/${encodeURIComponent(String(id))}/correct`, { method: "POST", body: commandBody(command) }),
       reverseRecord: (id, command) => request(`/api/records/${encodeURIComponent(String(id))}/reverse`, { method: "POST", body: commandBody(command) }),
@@ -294,5 +346,5 @@
     });
   }
 
-  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH });
+  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, masterDataRows });
 });

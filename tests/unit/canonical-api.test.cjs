@@ -265,3 +265,62 @@ test("Pages runtime is allowlisted and unknown hosted origins fail closed", () =
   assert.equal(unknown.state().runtimeMode, "unsupported_host");
   assert.equal(unknown.isConfigured(), false);
 });
+
+test("canonical master-data reads use the authenticated read boundary and preserve scope", async () => {
+  const calls = [];
+  const client = createClient({
+    base: "https://worker.example.test",
+    environment: "test",
+    testAdmin: true,
+    fetchImpl: async (url, init) => {
+      const parsed = new URL(url);
+      calls.push({ url: parsed, init });
+      if (parsed.pathname === "/api/farms") return response({ farms: [{ id: "farm-test", name: "金雞測試場", environment: "test" }] });
+      if (parsed.pathname === "/api/houses") return response({ houses: [{ id: "house-test", farmId: "farm-test", name: "測試1舍", farmEnvironment: "test" }] });
+      return response({ flocks: [{ id: "flock-test", farmId: "farm-test", houseId: "house-test", batchCode: "TEST-BATCH-001" }] });
+    },
+  });
+
+  const farms = await client.listFarms();
+  const houses = await client.listHouses("farm-test");
+  const flocks = await client.listFlocks("farm-test");
+  assert.equal(farms[0].name, "金雞測試場");
+  assert.equal(houses[0].farmId, "farm-test");
+  assert.equal(flocks[0].houseId, "house-test");
+  assert.deepEqual(calls.map(({ url }) => `${url.pathname}?${url.searchParams.toString()}`), [
+    "/api/farms?environment=test",
+    "/api/houses?environment=test&farmId=farm-test",
+    "/api/flocks?environment=test&farmId=farm-test",
+  ]);
+  for (const { init } of calls) {
+    assert.equal(init.method, "GET");
+    assert.equal(init.credentials, "omit");
+    assert.equal(init.headers.accept, "application/json");
+  }
+});
+
+test("canonical master-data reads fail closed on duplicate, wrong-parent, and wrong-environment rows", async () => {
+  const invalidPayloads = [
+    { farms: [{ id: "farm-test", name: "金雞測試場", environment: "test" }, { id: "farm-test", name: "重複", environment: "test" }] },
+    { houses: [{ id: "house-test", farmId: "other-farm", name: "測試1舍", farmEnvironment: "test" }] },
+    { flocks: [{ id: "flock-test", farmId: "other-farm", houseId: "house-test", batchCode: "TEST-BATCH-001" }] },
+    { farms: [{ id: "farm-production", name: "Production", environment: "production" }] },
+  ];
+  for (const [index, payload] of invalidPayloads.entries()) {
+    const client = createClient({
+      base: "https://worker.example.test",
+      environment: "test",
+      testAdmin: true,
+      fetchImpl: async () => response(payload),
+    });
+    const operation = index === 0 || index === 3
+      ? () => client.listFarms()
+      : index === 1
+        ? () => client.listHouses("farm-test")
+        : () => client.listFlocks("farm-test");
+    await assert.rejects(operation, (error) => error instanceof CanonicalApiError && error.code === "CANONICAL_MASTER_DATA_INVALID");
+  }
+  const client = createClient({ base: "https://worker.example.test", testAdmin: true, fetchImpl: async () => response({}) });
+  await assert.rejects(() => client.listHouses(""), (error) => error.code === "CANONICAL_MASTER_DATA_FARM_REQUIRED");
+  await assert.rejects(() => client.listFlocks(null), (error) => error.code === "CANONICAL_MASTER_DATA_FARM_REQUIRED");
+});
