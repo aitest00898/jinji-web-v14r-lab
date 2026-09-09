@@ -152,6 +152,42 @@
     });
   }
 
+  const CANONICAL_RECORD_DESTINATIONS = new Set([
+    "recording_events",
+    "operational_actions",
+    "operational_events",
+    "abnormal_events",
+  ]);
+
+  function canonicalRecordsPayload(payload, environment) {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload) || !Array.isArray(payload.records)) {
+      throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical records response must contain an array.", { payload });
+    }
+    if (payload.environment !== undefined && payload.environment !== environment) {
+      throw new CanonicalApiError("CANONICAL_RECORD_ENVIRONMENT_MISMATCH", "Canonical records response scope does not match the selected environment.", { payload });
+    }
+    const seen = new Set();
+    const records = payload.records.map((row) => {
+      if (!row || typeof row !== "object" || Array.isArray(row)) {
+        throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical record row is invalid.", { payload });
+      }
+      const id = typeof row.id === "string" ? row.id.trim() : "";
+      const taxonomyId = typeof row.taxonomyId === "string" ? row.taxonomyId.trim() : "";
+      if (!id || !taxonomyId || seen.has(id) || !CANONICAL_RECORD_DESTINATIONS.has(row.destination)) {
+        throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical record identity or destination is invalid.", { payload });
+      }
+      if (row.readStatus !== "valid" && row.readStatus !== "unsafe") {
+        throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical record safety status is invalid.", { payload });
+      }
+      if (row.record !== null && (typeof row.record !== "object" || Array.isArray(row.record))) {
+        throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical record domain payload is invalid.", { payload });
+      }
+      seen.add(id);
+      return { ...row, id, taxonomyId };
+    });
+    return { ...payload, environment: payload.environment || environment, records };
+  }
+
   const ERROR_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/u;
   const DEFAULT_API_ERROR_MESSAGE = "Canonical API rejected the request.";
 
@@ -342,9 +378,9 @@
         : relation?.kind === "reversal"
           ? request(`/api/records/${encodeURIComponent(String(relation.id))}/reverse`, { method: "POST", body: commandBody(command) })
           : request("/api/records", { method: "POST", body: commandBody(command) }),
-      listRecords: (query = {}) => request("/api/records", { method: "GET", query }),
+      listRecords: async (query = {}) => canonicalRecordsPayload(await request("/api/records", { method: "GET", query }), environment),
     });
   }
 
-  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, masterDataRows });
+  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, masterDataRows, canonicalRecordsPayload });
 });

@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { CanonicalApiError, createClient, normalizeCanonicalApiError } = require("../../src/canonical-api.js");
+const { CanonicalApiError, canonicalRecordsPayload, createClient, normalizeCanonicalApiError } = require("../../src/canonical-api.js");
 
 function response(payload, status = 200) {
   return { ok: status >= 200 && status < 300, status, async json() { return payload; } };
@@ -297,6 +297,42 @@ test("canonical master-data reads use the authenticated read boundary and preser
     assert.equal(init.credentials, "omit");
     assert.equal(init.headers.accept, "application/json");
   }
+});
+
+test("canonical record reads validate identity, authority, safety, and environment before UI use", async () => {
+  const valid = {
+    id: "record-read-1",
+    taxonomyId: "O4",
+    destination: "recording_events",
+    readStatus: "valid",
+    record: { id: "record-read-1", taxonomyId: "O4", averageWeight: 1.8 },
+  };
+  const payload = canonicalRecordsPayload({ environment: "test", records: [valid] }, "test");
+  assert.equal(payload.environment, "test");
+  assert.equal(payload.records[0].id, "record-read-1");
+  assert.equal(payload.records[0].record.averageWeight, 1.8);
+
+  const unsafe = canonicalRecordsPayload({ records: [{ ...valid, id: "unsafe-1", readStatus: "unsafe", record: null }] }, "production");
+  assert.equal(unsafe.environment, "production");
+  assert.equal(unsafe.records[0].readStatus, "unsafe");
+
+  for (const invalid of [
+    { records: [{ ...valid, id: "" }] },
+    { records: [{ ...valid }, { ...valid }] },
+    { records: [{ ...valid, destination: "unknown_table" }] },
+    { records: [{ ...valid, readStatus: "unknown" }] },
+    { records: [{ ...valid, record: "lossy text" }] },
+  ]) {
+    assert.throws(() => canonicalRecordsPayload(invalid, "production"), (error) => {
+      assert.equal(error instanceof CanonicalApiError, true);
+      assert.equal(error.code, "CANONICAL_RECORD_READ_INVALID");
+      return true;
+    });
+  }
+  assert.throws(() => canonicalRecordsPayload({ environment: "production", records: [] }, "test"), (error) => {
+    assert.equal(error.code, "CANONICAL_RECORD_ENVIRONMENT_MISMATCH");
+    return true;
+  });
 });
 
 test("canonical master-data reads fail closed on duplicate, wrong-parent, and wrong-environment rows", async () => {

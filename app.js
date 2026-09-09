@@ -260,6 +260,15 @@
   };
   let canonicalScopeLoadId = 0;
 
+  const canonicalRecordCatalog = {
+    environment: null,
+    records: [],
+    loading: false,
+    error: "",
+  };
+  let canonicalRecordLoadId = 0;
+  let canonicalReplayReceipt = null;
+
   const app = document.getElementById("app");
 
   function canonicalRecordingEnabled() {
@@ -273,6 +282,14 @@
     canonicalScopeCatalog.flocksByFarm = Object.create(null);
     canonicalScopeCatalog.loading = false;
     canonicalScopeCatalog.error = "";
+  }
+
+  function resetCanonicalRecordCatalog() {
+    canonicalRecordCatalog.environment = CANONICAL_API?.environment || null;
+    canonicalRecordCatalog.records = [];
+    canonicalRecordCatalog.loading = false;
+    canonicalRecordCatalog.error = "";
+    canonicalReplayReceipt = null;
   }
 
   function canonicalFlockDisplay(flock) {
@@ -379,6 +396,39 @@
     }
   }
 
+  async function refreshCanonicalRecords() {
+    if (!canonicalRecordingEnabled()) {
+      resetCanonicalRecordCatalog();
+      return;
+    }
+    const environment = CANONICAL_API.environment;
+    const loadId = ++canonicalRecordLoadId;
+    canonicalRecordCatalog.environment = environment;
+    canonicalRecordCatalog.loading = true;
+    canonicalRecordCatalog.error = "";
+    render();
+    try {
+      const payload = await CANONICAL_API.listRecords({ limit: 100 });
+      if (loadId !== canonicalRecordLoadId || !canonicalRecordingEnabled() || CANONICAL_API.environment !== environment) return;
+      canonicalRecordCatalog.environment = payload.environment;
+      canonicalRecordCatalog.records = payload.records;
+      canonicalRecordCatalog.error = "";
+    } catch (error) {
+      if (loadId === canonicalRecordLoadId && canonicalRecordingEnabled() && CANONICAL_API.environment === environment) {
+        canonicalRecordCatalog.records = [];
+        canonicalRecordCatalog.error = error?.code === "CANONICAL_RECORD_READ_INVALID"
+          ? "正式紀錄讀取契約無效，已停止顯示。"
+          : "正式紀錄目前無法載入；沒有改用本機 fixture。";
+        state.canonicalApiError = canonicalApiErrorMessage(error);
+      }
+    } finally {
+      if (loadId === canonicalRecordLoadId && CANONICAL_API.environment === environment) {
+        canonicalRecordCatalog.loading = false;
+        render();
+      }
+    }
+  }
+
   function webApiEnvironmentLabel() {
     if (!CANONICAL_API) return "本機 Lab";
     return CANONICAL_API.environment === "test" ? "Test scope" : "Production scope";
@@ -411,6 +461,7 @@
       state.canonicalApiError = "";
       state.page = INITIAL_MANAGEMENT_ENTRY ? "today" : "record-portal";
       await refreshCanonicalScopeCatalog();
+      await refreshCanonicalRecords();
     } catch (error) {
       state.webAuthError = canonicalApiErrorMessage(error, "login");
     } finally {
@@ -426,6 +477,7 @@
     state.canonicalApiError = "";
     state.canonicalApiNotice = "";
     resetCanonicalScopeCatalog();
+    resetCanonicalRecordCatalog();
     state.context = { farmId: "all", houseId: null, flockId: null };
     state.sheet = null;
     state.guidedRecord = null;
@@ -636,8 +688,10 @@
   }
 
   function currentContext() {
-    const farm = canonicalRecordingEnabled() && state.context.farmId !== "all"
-      ? (canonicalFarmById(state.context.farmId) || { id: state.context.farmId, name: "正式雞場未載入", subtitle: "canonical master data unavailable", houses: [] })
+    const farm = canonicalRecordingEnabled()
+      ? state.context.farmId === "all"
+        ? { id: "all", name: "全部已授權 scope", subtitle: "canonical read model", houses: [] }
+        : (canonicalFarmById(state.context.farmId) || { id: state.context.farmId, name: "正式雞場未載入", subtitle: "canonical master data unavailable", houses: [] })
       : farmById(state.context.farmId);
     const house = farm.id === "all" ? null : houseById(farm, state.context.houseId);
     const flock = house ? flockById(house, state.context.flockId) : null;
@@ -1473,6 +1527,114 @@
     return `data-action="open-observation" data-observation-id="${escapeHtml(record.id)}"`;
   }
 
+  function canonicalRecordById(id) {
+    return canonicalRecordCatalog.records.find((record) => record.id === id) || null;
+  }
+
+  function canonicalRecordMatchesContext(record) {
+    if (!record || state.context.farmId !== "all" && record.farmId !== state.context.farmId) return false;
+    if (state.context.houseId && record.houseId !== state.context.houseId) return false;
+    if (state.context.flockId && record.flockId !== state.context.flockId) return false;
+    return true;
+  }
+
+  function canonicalRecordRows() {
+    return canonicalRecordCatalog.records.filter(canonicalRecordMatchesContext).sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)) || String(right.id).localeCompare(String(left.id)));
+  }
+
+  function canonicalTaxonomyDefinition(record) {
+    try { return window.JinjiRecordingTaxonomy?.taxonomyDefinitionFor?.(record?.taxonomyId) || null; } catch (_) { return null; }
+  }
+
+  function canonicalSubtypeLabel(subtype) {
+    return ({
+      chick_in: "入雛", vaccination: "疫苗", medication: "用藥", supplement: "補充品", shipment: "出雞", weigh: "磅重",
+      feed_order: "叫飼料", lab_test: "送驗", disinfection: "清消", maintenance: "設備維護", mortality: "死亡", cull: "淘汰",
+      mortality_abnormality: "死亡異常", cough: "咳嗽", respiratory_distress: "喘／呼吸困難", activity_down: "活動下降",
+      eye_swelling: "眼腫", white_crown: "白冠", purple_crown: "紫冠", black_crown: "黑冠", watery: "水樣下痢", white: "白色下痢",
+      green: "綠色下痢", bloody: "血便", growth_delay: "生長遲緩", foot_odor: "臭腳", fever: "發燒", heat_stress: "熱緊迫",
+      catching_stress: "抓雞緊迫", feeding_abnormality: "採食異常", water_abnormality: "飲水異常", feed: "飼料設備", water: "飲水設備",
+      electricity: "電力設備", fan: "風扇", cooling: "降溫設備", heating: "加溫設備", other: "其他", high_temperature: "高溫",
+      low_temperature: "低溫", heavy_rain: "大雨", flooding: "淹水", odor: "異味", attack: "攻擊", infection: "感染", spread: "擴散",
+    })[subtype] || subtype || "未標示";
+  }
+
+  function canonicalRecordStatusLabel(record) {
+    return ({ active: "有效", corrected: "已修正", reversed: "已撤銷", replacement: "修正版本" })[record?.effectiveStatus] || "狀態不明";
+  }
+
+  function canonicalRecordLocation(record) {
+    return [record?.farmName || record?.farmId, record?.houseName || (record?.houseId ? record.houseId : null), record?.flockCode || (record?.flockId ? record.flockId : null)].filter(Boolean).join(" / ");
+  }
+
+  function canonicalRecordTitle(record) {
+    const definition = canonicalTaxonomyDefinition(record);
+    return `${record.taxonomyId} · ${definition?.label || record.family} · ${canonicalSubtypeLabel(record.subtype)}`;
+  }
+
+  function canonicalRecordDateTime(record) {
+    const value = String(record?.occurredAt || record?.createdAt || "");
+    return `${value.slice(0, 10) || "—"} ${value.slice(11, 16) || ""}`.trim();
+  }
+
+  function canonicalFieldLabel(field) {
+    return ({
+      maleCount: "公雞數量", femaleCount: "母雞數量", totalCount: "總數（推導）", condition: "入雛狀況", sex: "性別",
+      quantity: "數量", unit: "單位", averageWeight: "平均體重", totalWeight: "總重量", weightUnit: "重量單位",
+      chickInDate: "入雛日期", ageDays: "日齡（推導）", content: "內容", vendor: "供應商", weight: "重量",
+      submittedAt: "送驗時間", workflowStatus: "流程狀態", result: "檢驗結果", completedAt: "完成時間", reminderDueAt: "提醒時間（推導）",
+      maintenanceContent: "維護內容", extent: "範圍", linkedMortalityEventId: "關聯死亡紀錄", detail: "細節",
+      measuredTemperature: "測得溫度", measurement: "量測", evidence: "證據",
+    })[field] || field;
+  }
+
+  function canonicalFieldValue(value) {
+    if (value === null || value === undefined || value === "") return "—";
+    return typeof value === "number" ? number(value) : String(value);
+  }
+
+  function canonicalRecordFieldRows(record, { includeDerived = true } = {}) {
+    const fields = { ...(record?.fields || {}) };
+    if (includeDerived) Object.assign(fields, record?.derivedFields || {});
+    return Object.entries(fields)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .map(([field, value]) => `<div class="detail-row"><span>${escapeHtml(canonicalFieldLabel(field))}</span><strong>${escapeHtml(canonicalFieldValue(value))}</strong></div>`)
+      .join("");
+  }
+
+  function canonicalRecordActionAttributes(record) {
+    return `data-action="open-canonical-record" data-record-id="${escapeHtml(record.id)}"`;
+  }
+
+  function canonicalAcceptanceReplayEnabled() {
+    const hostname = String(window.location.hostname || "").toLowerCase();
+    const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+    return local && new URLSearchParams(window.location.search).get("acceptance-mode") === "1" && CANONICAL_API?.environment === "test";
+  }
+
+  function canonicalRecordsContextMarkup() {
+    const context = currentContext();
+    const scope = state.context.farmId === "all" ? "全部已授權 scope" : contextLabel(context);
+    return `<section class="context-hub" aria-label="Canonical Records 工作範圍"><div class="context-farm-row"><span class="scope-label">Canonical Records</span><div class="readonly-note">${escapeHtml(scope)} · ${escapeHtml(webApiEnvironmentLabel())}</div></div></section>`;
+  }
+
+  function renderCanonicalRecords() {
+    const rows = canonicalRecordRows();
+    const status = canonicalRecordCatalog.loading
+      ? `<div class="readonly-note" data-testid="canonical-record-status">正在載入 ${escapeHtml(webApiEnvironmentLabel())} canonical records…</div>`
+      : canonicalRecordCatalog.error
+        ? `<div class="lab-write-notice error" role="alert" data-testid="canonical-record-status">${escapeHtml(canonicalRecordCatalog.error)}</div><div class="readonly-note">讀取失敗時不會顯示本機 fixture，也不會從瀏覽器重建紀錄。</div>`
+        : `<div class="readonly-note" data-testid="canonical-record-status">來源：Worker canonical read model · ${escapeHtml(webApiEnvironmentLabel())} · ${rows.length} 筆</div>`;
+    const list = rows.map((record) => `<button type="button" class="list-row" ${canonicalRecordActionAttributes(record)}><span><strong>${escapeHtml(canonicalRecordTitle(record))}</strong><span>${escapeHtml(canonicalRecordLocation(record))} · ${escapeHtml(canonicalRecordDateTime(record))}</span></span><span class="row-end"><span class="status-chip ${record.effectiveStatus === "active" ? "good" : record.effectiveStatus === "reversed" ? "alert" : "warn"}">${escapeHtml(canonicalRecordStatusLabel(record))}</span><span class="row-arrow">›</span></span></button>`).join("");
+    return `<section class="page" data-page="records" data-testid="canonical-records-page">
+      ${canonicalRecordsContextMarkup()}
+      ${pageIntro("CANONICAL READ MODEL", "紀錄", "只顯示目前授權 scope 的 canonical records；時間軸不混入 Lab fixture。")}
+      ${status}
+      <section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>Canonical 紀錄時間軸</h3><p>每筆資料都保留 authority、provenance、derived fields 與 append-only lineage。</p></div><span class="scope-chip">${rows.length} 筆</span></div><div class="list-stack">${list || `<div class="empty-tab"><strong>目前 scope 沒有 canonical 紀錄</strong><p>讀取結果為空，不會補入本機資料。</p></div>`}</div></section>
+      <div class="readonly-note">此頁不做瀏覽器端 stock 計算；O3／O9 的數量效果只由 Worker canonical authority 處理。</div>
+    </section>`;
+  }
+
   function recordsAnalysisLabel() {
     const scope = recordsAnalysisScope();
     if (scope.farmId === "all") return "全部在養";
@@ -1617,6 +1779,7 @@
   }
 
   function renderRecords() {
+    if (canonicalRecordingEnabled()) return renderCanonicalRecords();
     const eventRows = recordsAnalysisEvents().map((event) => ({ kind: "event", id: event.id, sort: `${event.date} ${event.time}`, title: `${eventLabel(event.type)} ${number(event.qty)} ${event.unit}`, detail: `${contextName(event)} · ${event.date} ${event.time}`, tone: ["mortality","cull"].includes(event.type) ? "alert" : "good", state: "有效" }));
     const abnormalRows = recordsAnalysisAbnormalities().map((item) => ({ kind: "abnormal", id: item.id, sort: `${item.date} ${item.time}`, title: `異常：${item.title}`, detail: `${contextName(item)} · ${item.category} · ${item.date} ${item.time}`, tone: item.status === "active" ? "warn" : "good", state: item.state }));
     const observationRows = recordsAnalysisObservations().map((item) => ({ kind: "observation", id: item.id, sort: `${item.date} ${item.time}`, title: `現場觀察：${observationLabel(item)}`, detail: `${contextName(item)} · ${item.date} ${item.time} · 不含精確數量`, tone: "info", state: "已保存" }));
@@ -1942,6 +2105,71 @@
     return sheetShell(escapeHtml(item.title), `${escapeHtml(item.category)} · ${escapeHtml(item.state)}`, `<div class="detail-hero"><small>${escapeHtml(item.state)}</small><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(contextName(item))}</span></div><div class="detail-block"><h3>紀錄</h3><p>${escapeHtml(item.date)} ${escapeHtml(item.time)} · 溫度快照 ${escapeHtml(item.temp)}°C</p></div><div class="detail-block"><h3>說明</h3><p>這個畫面只展示既有異常資料，不會自行產生健康評分或產業比較。</p></div><button type="button" class="sheet-primary" data-action="go-records">查看紀錄</button>`, "abnormal-item");
   }
 
+  function canonicalEditableFields(record) {
+    const definition = canonicalTaxonomyDefinition(record);
+    if (!definition || !record?.record) return [];
+    const derived = new Set(definition.derivedFields || []);
+    const scope = new Set(["farmId", "houseId", "flockId"]);
+    const candidates = ["subtype", ...(definition.requiredFields || []), ...(definition.optionalFields || []).filter((field) => Object.prototype.hasOwnProperty.call(record.record, field))];
+    return [...new Set(candidates)].filter((field) => !derived.has(field) && !scope.has(field));
+  }
+
+  function canonicalFieldControl(field, value, record) {
+    const normalized = value === null || value === undefined ? "" : String(value);
+    const options = field === "subtype"
+      ? canonicalTaxonomyDefinition(record)?.canonicalSubtypes || []
+      : field === "sex"
+        ? ["male", "female", "mixed", "unspecified"]
+        : field === "extent"
+          ? ["small", "medium", "large"]
+          : field === "condition"
+            ? ["good", "fair", "poor"]
+            : field === "workflowStatus"
+              ? record.taxonomyId === "O6" ? ["waiting_result", "completed"] : ["pending", "completed"]
+              : field === "weightUnit"
+                ? ["kg", "bag"]
+                : null;
+    if (options) return `<select id="canonical-correction-${escapeHtml(field)}" data-canonical-correction-field="${escapeHtml(field)}">${options.map((option) => `<option value="${escapeHtml(option)}" ${option === normalized ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
+    const numeric = new Set(["maleCount", "femaleCount", "quantity", "averageWeight", "totalWeight", "weight", "measuredTemperature"]);
+    const type = numeric.has(field) ? "number" : field === "chickInDate" ? "date" : "text";
+    const step = ["maleCount", "femaleCount", "quantity"].includes(field) ? "1" : "any";
+    return `<input id="canonical-correction-${escapeHtml(field)}" data-canonical-correction-field="${escapeHtml(field)}" type="${type}" step="${step}" value="${escapeHtml(normalized)}">`;
+  }
+
+  function canonicalCorrectionSheet(id) {
+    const record = canonicalRecordById(id);
+    if (!record) return sheetShell("找不到 canonical 紀錄", "Canonical read model", `<div class="empty-tab"><strong>這筆正式紀錄已不存在</strong></div>`, "canonical-correction");
+    if (!record.correctionSafe || !record.correctionSeed) return sheetShell("無法安全更正", canonicalRecordTitle(record), `<div class="detail-hero"><small>Fail closed</small><strong>缺少安全更正所需資訊</strong><span>讀取模型沒有完整、可驗證的 source-backed seed；沒有猜值，也沒有建立本機替代紀錄。</span></div><div class="readonly-note">readStatus：${escapeHtml(record.readStatus)} · ${escapeHtml(record.readErrorCode || record.correctionBlockReason || "unsafe")}</div><button type="button" class="sheet-secondary" data-action="close-sheet">返回</button>`, "canonical-correction");
+    const fields = canonicalEditableFields(record).map((field) => {
+      const control = canonicalFieldControl(field, record.correctionSeed[field], record);
+      return `<label class="quick-record-label" for="canonical-correction-${escapeHtml(field)}">${escapeHtml(canonicalFieldLabel(field))}${canonicalTaxonomyDefinition(record)?.requiredFields?.includes(field) ? "（必填）" : ""}</label>${control}`;
+    }).join("");
+    return sheetShell("修正 canonical 紀錄", `${escapeHtml(canonicalRecordTitle(record))} · ${escapeHtml(canonicalRecordDateTime(record))}`, `<div class="detail-hero"><small>append-only correction</small><strong>${escapeHtml(canonicalRecordTitle(record))}</strong><span>${escapeHtml(canonicalRecordLocation(record))}</span></div><div class="detail-block"><h3>原始資料保留</h3><p>原紀錄 ${escapeHtml(record.id)} 不會 UPDATE／DELETE；送出後只新增一筆 correction child。</p></div><div class="canonical-correction-fields">${fields}</div>${state.correctionNotice ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.correctionNotice)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-canonical-correction" data-record-id="${escapeHtml(record.id)}">新增修正紀錄</button><button type="button" class="sheet-secondary" data-action="close-sheet">取消</button></div>`, "canonical-correction");
+  }
+
+  function canonicalDetailReplayMarkup(record) {
+    const eligible = canonicalAcceptanceReplayEnabled() && canonicalReplayReceipt?.command?.record?.id === record.id && canonicalReplayReceipt.environment === CANONICAL_API.environment;
+    if (!eligible) return "";
+    return `<div class="developer-actions"><button type="button" class="sheet-secondary" data-action="replay-canonical-command" data-record-id="${escapeHtml(record.id)}">重播本次成功命令（Test acceptance）</button></div><div class="readonly-note">只保留本次頁面記憶體中的完整成功 RecordCommand；沿用相同 clientOperationId，沒有從 GET 結果重建。</div>`;
+  }
+
+  function canonicalRecordDetailSheet(id) {
+    const record = canonicalRecordById(id);
+    if (!record) return sheetShell("找不到 canonical 紀錄", "Canonical read model", `<div class="empty-tab"><strong>這筆正式紀錄不在目前 read model</strong><p>沒有改用本機 fixture。</p></div>`, "canonical-record-detail");
+    const lineageRows = Object.entries({
+      "原 correction": record.lineage.correctionOfId,
+      "原 reversal": record.lineage.reversalOfId,
+      "原 replacement": record.lineage.replacementOfId,
+      "被 correction": record.lineage.correctedById,
+      "被 reversal": record.lineage.reversedById,
+      "被 replacement": record.lineage.replacedById,
+    }).filter(([, value]) => value).map(([label, value]) => `<div class="detail-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+    const actions = record.isEffective && record.effectiveStatus === "active"
+      ? `<button type="button" class="sheet-primary" data-action="open-canonical-correction" data-record-id="${escapeHtml(record.id)}" ${record.correctionSafe ? "" : "disabled"}>修正紀錄</button><button type="button" class="sheet-secondary" data-action="reverse-canonical-record" data-record-id="${escapeHtml(record.id)}" ${record.reversalSafe ? "" : "disabled"}>撤銷紀錄</button>`
+      : `<div class="readonly-note">這筆資料已經有 append-only lineage，不能再次當作目前有效原紀錄更正或撤銷。</div>`;
+    return sheetShell("Canonical 紀錄詳細", `${escapeHtml(canonicalRecordTitle(record))} · ${escapeHtml(canonicalRecordStatusLabel(record))}`, `<div class="detail-hero"><small>${escapeHtml(record.destination)} · ${escapeHtml(record.sourceChannel)}</small><strong>${escapeHtml(canonicalRecordTitle(record))}</strong><span>${escapeHtml(canonicalRecordLocation(record))} · ${escapeHtml(canonicalRecordDateTime(record))}</span></div><div class="detail-block"><h3>欄位與推導值</h3><div class="detail-list">${canonicalRecordFieldRows(record) || "<div>沒有可顯示的 domain fields。</div>"}</div></div><div class="detail-block"><h3>Provenance</h3><div class="detail-list"><div class="detail-row"><span>clientOperationId</span><strong>${escapeHtml(record.clientOperationId)}</strong></div><div class="detail-row"><span>read status</span><strong>${escapeHtml(record.readStatus)}</strong></div><div class="detail-row"><span>effective status</span><strong>${escapeHtml(canonicalRecordStatusLabel(record))}</strong></div></div></div>${lineageRows ? `<div class="detail-block"><h3>Append-only lineage</h3><div class="detail-list">${lineageRows}</div></div>` : ""}<div class="developer-actions">${actions}</div>${canonicalDetailReplayMarkup(record)}${record.effectiveStatus === "reversed" && ["O3", "O9"].includes(record.taxonomyId) ? `<div class="readonly-note">O3／O9 的 stock effect 由 Worker canonical authority 投影；此頁不重算。</div>` : ""}`, "canonical-record-detail");
+  }
+
   function eventItemSheet(id) {
     const events = effectiveLabEvents();
     const item = events.find((event) => event.id === id) || events[0];
@@ -2080,9 +2308,13 @@
   function submitCanonicalBoundary(command, relation, successText, { onSuccess, onError } = {}) {
     if (!CANONICAL_API_ENABLED) return false;
     state.canonicalApiError = "";
-    CANONICAL_API.submitRecord(command, relation).then((result) => {
+    CANONICAL_API.submitRecord(command, relation).then(async (result) => {
+      if (canonicalAcceptanceReplayEnabled()) {
+        canonicalReplayReceipt = { environment: CANONICAL_API.environment, command: structuredClone(command), relation: relation ? { ...relation } : null, result: structuredClone(result) };
+      }
       state.canonicalApiNotice = `${successText} · ${CANONICAL_API.environment === "test" ? "Test API" : "Production API"}${result?.record?.created === false ? "（idempotent replay）" : ""}`;
       onSuccess?.(result);
+      await refreshCanonicalRecords();
       render();
     }).catch((error) => {
       state.canonicalApiError = canonicalApiErrorMessage(error);
@@ -2095,6 +2327,13 @@
       render();
     });
     return true;
+  }
+
+  function replayCanonicalCommand(id) {
+    if (!canonicalAcceptanceReplayEnabled() || canonicalReplayReceipt?.command?.record?.id !== id) return;
+    submitCanonicalBoundary(canonicalReplayReceipt.command, canonicalReplayReceipt.relation, "已重播本次成功命令", {
+      onError: (error) => { state.canonicalApiError = canonicalApiErrorMessage(error); },
+    });
   }
 
   function showMasterDataError(message) {
@@ -2602,6 +2841,89 @@
     state.selectedCalendarDate = PLUS_AS_OF;
     state.sheet = null;
     render();
+  }
+
+  function canonicalCommandFromSeed(record, relationKind, relationId) {
+    if (!record?.record) return null;
+    const next = structuredClone(record.record);
+    const definition = canonicalTaxonomyDefinition(record);
+    for (const field of definition?.derivedFields || []) delete next[field];
+    delete next.correctionOfId;
+    delete next.reversalOfId;
+    delete next.replacementOfId;
+    next.id = window.JinjiDomain.id(`canonical-${relationKind}`);
+    next.clientOperationId = window.JinjiDomain.clientOperationId(`canonical-${relationKind}`);
+    next.createdAt = new Date().toISOString();
+    next.sourceChannel = "web";
+    next.confirmedBy = "human-review";
+    next.lifecycleStatus = "active";
+    if (relationKind === "correction") next.correctionOfId = relationId;
+    if (relationKind === "reversal") next.reversalOfId = relationId;
+    return safeRecordCommand(next);
+  }
+
+  function canonicalFormRecord(record) {
+    const next = structuredClone(record.record);
+    const numericFields = new Set(["maleCount", "femaleCount", "quantity", "averageWeight", "totalWeight", "weight", "measuredTemperature"]);
+    document.querySelectorAll("[data-canonical-correction-field]").forEach((input) => {
+      const field = input.dataset.canonicalCorrectionField;
+      const raw = String(input.value ?? "").trim();
+      if (!field) return;
+      if (!raw) {
+        delete next[field];
+      } else if (numericFields.has(field)) {
+        next[field] = Number(raw);
+      } else {
+        next[field] = raw;
+      }
+    });
+    return next;
+  }
+
+  function commitCanonicalCorrection(id) {
+    const original = canonicalRecordById(id);
+    if (!original?.correctionSafe || !original.correctionSeed) return openSheet({ kind: "canonical-correction", id });
+    const nextRecord = canonicalFormRecord(original);
+    for (const field of canonicalTaxonomyDefinition(original)?.derivedFields || []) delete nextRecord[field];
+    delete nextRecord.correctionOfId;
+    delete nextRecord.reversalOfId;
+    delete nextRecord.replacementOfId;
+    nextRecord.id = window.JinjiDomain.id("canonical-correction");
+    nextRecord.clientOperationId = window.JinjiDomain.clientOperationId("canonical-correction");
+    nextRecord.createdAt = new Date().toISOString();
+    nextRecord.sourceChannel = "web";
+    nextRecord.confirmedBy = "human-review";
+    nextRecord.lifecycleStatus = "active";
+    nextRecord.correctionOfId = original.id;
+    const command = safeRecordCommand(nextRecord);
+    if (!command) {
+      state.correctionNotice = "修正欄位沒有形成可驗證的 canonical RecordCommand；沒有建立本機替代紀錄。";
+      return openSheet({ kind: "canonical-correction", id });
+    }
+    submitCanonicalBoundary(command, { kind: "correction", id: original.id }, `已送出修正：${canonicalRecordTitle(original)}`, {
+      onSuccess: () => {
+        state.correctionNotice = "";
+        state.sheet = null;
+      },
+      onError: (error) => {
+        state.correctionNotice = canonicalApiErrorMessage(error);
+        state.sheet = { kind: "canonical-correction", id };
+      },
+    });
+  }
+
+  function commitCanonicalReversal(id) {
+    const original = canonicalRecordById(id);
+    if (!original?.reversalSafe || !original.reversalSeed) return;
+    const command = canonicalCommandFromSeed(original, "reversal", original.id);
+    if (!command) {
+      state.canonicalApiError = "這筆紀錄沒有可驗證的撤銷 seed；沒有建立本機替代紀錄。";
+      return render();
+    }
+    submitCanonicalBoundary(command, { kind: "reversal", id: original.id }, `已送出撤銷：${canonicalRecordTitle(original)}`, {
+      onSuccess: () => { state.sheet = null; },
+      onError: (error) => { state.canonicalApiError = canonicalApiErrorMessage(error); },
+    });
   }
 
   function commitCorrection(eventId) {
@@ -3365,6 +3687,8 @@
     if (state.sheet.kind === "cull") return cullSheet();
     if (state.sheet.kind === "flocks") return flocksSheet();
     if (state.sheet.kind === "flock") return flockSheet(state.sheet.id);
+    if (state.sheet.kind === "canonical-record-detail") return canonicalRecordDetailSheet(state.sheet.id);
+    if (state.sheet.kind === "canonical-correction") return canonicalCorrectionSheet(state.sheet.id);
     if (state.sheet.kind === "event-item") return eventItemSheet(state.sheet.id);
     if (state.sheet.kind === "farm-detail") return farmDetailSheet(state.sheet.farmId);
     if (state.sheet.kind === "house-detail") return houseDetailSheet(state.sheet.farmId, state.sheet.houseId);
@@ -3700,6 +4024,7 @@
       state.masterDataConfirmation = null;
       state.settingsError = "";
       state.settingsDraft = null;
+      if (state.page === "records" && canonicalRecordingEnabled()) void refreshCanonicalRecords();
       render();
       return;
     }
@@ -3853,7 +4178,7 @@
     if (action === "go-farms") { state.page = "farms"; return render(); }
     if (action === "go-todo") { state.page = "todo"; return render(); }
     if (action === "go-calendar") { state.page = "calendar"; state.sheet = null; return render(); }
-    if (action === "go-records") { state.page = "records"; state.sheet = null; return render(); }
+    if (action === "go-records") { state.page = "records"; state.sheet = null; if (canonicalRecordingEnabled()) void refreshCanonicalRecords(); return render(); }
     if (action === "calendar-select-date") { state.selectedCalendarDate = actionElement.dataset.date; return render(); }
     if (action === "calendar-prev-month") { calendarMoveMonth(-1); return render(); }
     if (action === "calendar-next-month") { calendarMoveMonth(1); return render(); }
@@ -3906,6 +4231,8 @@
     if (action === "approve-pending-review") return approvePendingReview(actionElement.dataset.pendingId);
     if (action === "open-abnormal") return openSheet({ kind: "abnormal-item", id: actionElement.dataset.abnormalId });
     if (action === "open-event") return openSheet({ kind: "event-item", id: actionElement.dataset.eventId });
+    if (action === "open-canonical-record") return openSheet({ kind: "canonical-record-detail", id: actionElement.dataset.recordId });
+    if (action === "open-canonical-correction") return openSheet({ kind: "canonical-correction", id: actionElement.dataset.recordId });
     if (action === "open-action") return openSheet({ kind: "action-item", id: actionElement.dataset.actionId });
     if (action === "open-observation") return openSheet({ kind: "observation-item", id: actionElement.dataset.observationId });
     if (action === "open-farm-detail") return openSheet({ kind: "farm-detail", farmId: actionElement.dataset.farmId });
@@ -4014,6 +4341,13 @@
     }
     if (action === "open-correction") return openSheet({ kind: "correction", id: actionElement.dataset.eventId });
     if (action === "commit-correction") return commitCorrection(actionElement.dataset.eventId);
+    if (action === "commit-canonical-correction") return commitCanonicalCorrection(actionElement.dataset.recordId);
+    if (action === "reverse-canonical-record") {
+      const record = canonicalRecordById(actionElement.dataset.recordId);
+      if (record && window.confirm(`確定要撤銷 ${canonicalRecordTitle(record)}？原紀錄會保留，只新增 append-only reversal；不會在瀏覽器重算 stock。`)) return commitCanonicalReversal(record.id);
+      return;
+    }
+    if (action === "replay-canonical-command") return replayCanonicalCommand(actionElement.dataset.recordId);
     if (action === "set-lab-mode") {
       const mode = actionElement.dataset.mode;
       LAB_STORE.setMode(mode);
@@ -4095,6 +4429,7 @@
         CANONICAL_API.setEnvironment(event.target.value, { explicitChoice: true });
         state.canonicalApiError = "";
         void refreshCanonicalScopeCatalog({ clearSelection: true });
+        void refreshCanonicalRecords();
       } catch (error) {
         state.canonicalApiError = canonicalApiErrorMessage(error);
       }
