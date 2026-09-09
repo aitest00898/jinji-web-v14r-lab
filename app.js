@@ -24,6 +24,8 @@
   };
 
   const DATA = window.JinjiLabFixture;
+  const CANONICAL_API = window.JinjiCanonicalApi?.createClient?.() || null;
+  const CANONICAL_API_ENABLED = Boolean(CANONICAL_API?.isConfigured?.());
 
   const OPERATIONAL_TIMEZONE = "Asia/Taipei";
   const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -237,6 +239,8 @@
     masterDataNotice: "",
     masterDataError: "",
     masterDataConfirmation: null,
+    canonicalApiNotice: "",
+    canonicalApiError: "",
   };
 
   const app = document.getElementById("app");
@@ -1463,7 +1467,7 @@
         <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="audit"><span class="more-item-icon">${icon("records")}</span><span><strong>變更紀錄</strong><span>修改、取消與操作歷程的入口</span></span><span>›</span></button>
         <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="settings"><span class="more-item-icon">${icon("more")}</span><span><strong>設定</strong><span>操作與管理設定</span></span><span>›</span></button>
       </div>
-      <section class="developer-block"><div class="section-heading"><div><h2>開發者</h2><p>本機測試分析，不上傳操作資料。</p></div><span class="env-chip">${number(totalClicks)} 次點擊</span></div><div class="developer-grid">
+      <section class="developer-block"><div class="section-heading"><div><h2>開發者</h2><p>${CANONICAL_API_ENABLED ? "canonical API candidate；只送出已確認的 RecordCommand。" : "本機測試分析，不上傳操作資料。"}</p></div><span class="env-chip">${number(totalClicks)} 次點擊</span></div><div class="developer-grid">
         <button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-clicks"><span>${icon("todo")}</span><strong>點擊計數</strong><small>查看每個組件／按鈕使用次數</small></button>
         <button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-log"><span>${icon("records")}</span><strong>UI Log</strong><small>最近 ${Math.min(developerAnalytics.log.length, DEV_LOG_LIMIT)} 筆本機互動</small></button>
         <button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-notes"><span>${icon("spark")}</span><strong>開發者筆記</strong><small>只存本機瀏覽器</small></button>
@@ -1848,6 +1852,35 @@
     return messages[error?.message] || "主檔資料格式不完整，請檢查後再試。";
   }
 
+  function canonicalApiErrorMessage(error) {
+    const messages = {
+      CANONICAL_API_NOT_CONFIGURED: "目前未設定 canonical API；這個頁面仍維持 Lab local overlay。",
+      CANONICAL_API_ENV_INVALID: "API environment 不明，已 fail closed，沒有送出資料。",
+      CANONICAL_API_TEST_AUTH_REQUIRED: "Test API 需要明確的 test-admin 標記，沒有送出資料。",
+      CANONICAL_API_NETWORK_ERROR: "canonical API 無法連線；沒有建立本機替代紀錄。",
+      CANONICAL_COMMAND_REQUIRED: "這個操作沒有可驗證的 RecordCommand，沒有送出資料。",
+      CANONICAL_CLIENT_OPERATION_ID_REQUIRED: "缺少 clientOperationId，沒有送出資料。",
+      CANONICAL_SCOPE_INVALID: "資料範圍無效，沒有送出資料。",
+      CANONICAL_RELATION_TARGET_MISMATCH: "修正／撤銷關聯目標不一致，沒有送出資料。",
+    };
+    return messages[error?.code] || error?.message || "canonical API 拒絕了這筆資料，沒有建立本機替代紀錄。";
+  }
+
+  function submitCanonicalBoundary(command, relation, successText, { onSuccess, onError } = {}) {
+    if (!CANONICAL_API_ENABLED) return false;
+    state.canonicalApiError = "";
+    CANONICAL_API.submitRecord(command, relation).then((result) => {
+      state.canonicalApiNotice = `${successText} · ${CANONICAL_API.environment === "test" ? "Test API" : "Production API"}${result?.record?.created === false ? "（idempotent replay）" : ""}`;
+      onSuccess?.(result);
+      render();
+    }).catch((error) => {
+      state.canonicalApiError = canonicalApiErrorMessage(error);
+      onError?.(error);
+      render();
+    });
+    return true;
+  }
+
   function showMasterDataError(message) {
     state.masterDataError = message;
     state.masterDataNotice = "";
@@ -2124,13 +2157,15 @@
     const parsed = window.JinjiDomain.parseQuickRecord(state.quickRecordDraft);
     if (parsed.status === "event") {
       const event = parsed.event;
-      return sheetShell("紀錄預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>可寫入 Lab</small><strong>${eventLabel(event.type)} ${number(event.quantity)} ${escapeHtml(event.unit)}</strong><span>${event.note ? `備註：${escapeHtml(event.note)}` : "已辨識類型與數量；這筆會加入目前雞場的事件時間軸。"}</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div><div class="readonly-note">確認後只建立一筆 OperationalEvent，並同步 Today、紀錄、月曆、圖表、趨勢與變更紀錄。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-lab-event">寫入 Lab 紀錄</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+      const target = CANONICAL_API_ENABLED ? "canonical API" : "Lab";
+      const detailText = event.note ? `備註：${escapeHtml(event.note)}` : CANONICAL_API_ENABLED ? "已辨識類型與數量；確認後會沿 canonical RecordCommand 邊界送出。" : "已辨識類型與數量；這筆會加入目前雞場的事件時間軸。";
+      return sheetShell("紀錄預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>${CANONICAL_API_ENABLED ? `可送出 ${target}` : "可寫入 Lab"}</small><strong>${eventLabel(event.type)} ${number(event.quantity)} ${escapeHtml(event.unit)}</strong><span>${detailText}</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div><div class="readonly-note">${CANONICAL_API_ENABLED ? "確認後只送出一筆已驗證的 RecordCommand；Web 不直接存取 D1。" : "確認後只建立一筆 OperationalEvent，並同步 Today、紀錄、月曆、圖表、趨勢與變更紀錄。"}</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-lab-event">${CANONICAL_API_ENABLED ? "送出 canonical API" : "寫入 Lab 紀錄"}</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
     }
     if (parsed.status === "observation") {
       const extent = parsed.observation?.extent || state.quickRecordExtent;
       const observationLabel = [parsed.observation?.text || state.quickRecordDraft, extent ? window.JinjiDomain.OBSERVATION_EXTENT_LABELS?.[extent] : null].filter(Boolean).join("｜");
       const ready = !parsed.needsExtent || Boolean(extent);
-      return sheetShell("觀察預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>現場觀察 · 不納入數量統計</small><strong>${escapeHtml(observationLabel)}</strong><span>沒有精確數字也可以記錄；這筆會保留原文與觀察範圍，不會轉成死亡、淘汰或在養數量。</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div>${!ready ? `<div class="lab-write-notice error" role="alert">請先選擇小範圍、中範圍或大範圍。</div>` : ""}<div class="readonly-note">確認後建立一筆現場觀察，並同步紀錄、月曆、Audit 與本機 outbox。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions">${ready ? `<button type="button" class="sheet-primary" data-action="commit-observation">保存觀察紀錄</button>` : ""}<button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+      return sheetShell("觀察預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>現場觀察 · 不納入數量統計</small><strong>${escapeHtml(observationLabel)}</strong><span>沒有精確數字也可以記錄；這筆會保留原文與觀察範圍，不會轉成死亡、淘汰或在養數量。</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div>${!ready ? `<div class="lab-write-notice error" role="alert">請先選擇小範圍、中範圍或大範圍。</div>` : ""}<div class="readonly-note">${CANONICAL_API_ENABLED ? "確認後只送出一筆已驗證的觀察 RecordCommand；Web 不直接存取 D1。" : "確認後建立一筆現場觀察，並同步紀錄、月曆、Audit 與本機 outbox。"}</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions">${ready ? `<button type="button" class="sheet-primary" data-action="commit-observation">${CANONICAL_API_ENABLED ? "送出 canonical API" : "保存觀察紀錄"}</button>` : ""}<button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
     }
     return sheetShell("紀錄預覽", htmlContextLabel(), `<div class="detail-hero"><small>待人工確認 · 尚未建立正式紀錄</small><strong>${escapeHtml(state.quickRecordDraft || "（沒有內容）")}</strong><span>${escapeHtml(parsed.message)}</span></div><div class="readonly-note">資料不完整或語意不明時，先保留原始輸入與 Context；人工確認後才會建立正式的數字事件或質性觀察。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-pending-review">送人工確認</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
   }
@@ -2257,6 +2292,26 @@
     const { parsed, event } = labEventFromDraft();
     if (parsed.status !== "event" || !event) return openSheet({ kind: "quick-record-preview" });
     const recordCommand = quickEventRecordCommand(event);
+    if (CANONICAL_API_ENABLED) {
+      if (!recordCommand) {
+        state.quickRecordError = "這個 Quick Record 沒有可驗證的 canonical RecordCommand；Production API 模式不會走 local fallback。";
+        return openSheet({ kind: "quick-record-preview" });
+      }
+      submitCanonicalBoundary(recordCommand, null, `已送出 ${eventLabel(event.type)} ${number(event.quantity)} ${event.unit} · ${contextLabel()}`, {
+        onSuccess: () => {
+          resetQuickRecordFlow();
+          state.calendarYear = Number(PLUS_AS_OF.slice(0, 4));
+          state.calendarMonth = Number(PLUS_AS_OF.slice(5, 7));
+          state.selectedCalendarDate = PLUS_AS_OF;
+          state.sheet = null;
+        },
+        onError: (error) => {
+          state.quickRecordError = canonicalApiErrorMessage(error);
+          state.sheet = { kind: "quick-record-preview" };
+        },
+      });
+      return;
+    }
     const audit = window.JinjiDomain.createAuditEntry({ entityId: event.id, operation: "create", source: "quick_record", newEventIds: [event.id], metadata: { scopeSelection: event.scopeSelection, scopeConfirmed: event.scopeConfirmed, rawText: event.rawText } });
     try {
       const { sync } = commitLabLocalOperation({
@@ -2286,6 +2341,26 @@
     const { parsed, observation } = labObservationFromDraft();
     if (!observation) return openSheet({ kind: "quick-record-preview" });
     const recordCommand = quickObservationRecordCommand(observation);
+    if (CANONICAL_API_ENABLED) {
+      if (!recordCommand) {
+        state.quickRecordError = "這個現場觀察沒有可驗證的 canonical RecordCommand；Production API 模式不會走 local fallback。";
+        return openSheet({ kind: "quick-record-preview" });
+      }
+      submitCanonicalBoundary(recordCommand, null, `已送出現場觀察：${observation.text} · ${contextLabel()}`, {
+        onSuccess: () => {
+          resetQuickRecordFlow();
+          state.calendarYear = Number(PLUS_AS_OF.slice(0, 4));
+          state.calendarMonth = Number(PLUS_AS_OF.slice(5, 7));
+          state.selectedCalendarDate = PLUS_AS_OF;
+          state.sheet = null;
+        },
+        onError: (error) => {
+          state.quickRecordError = canonicalApiErrorMessage(error);
+          state.sheet = { kind: "quick-record-preview" };
+        },
+      });
+      return;
+    }
     const audit = window.JinjiDomain.createAuditEntry({
       entityType: "OperationalObservation",
       entityId: observation.id,
@@ -2320,6 +2395,35 @@
     if (!original || !rawQuantity || !Number.isFinite(nextQuantity) || nextQuantity < 0) {
       state.correctionNotice = rawQuantity ? "請輸入有效的零或正數。" : "請填寫修正後數量；若要改成零，請明確輸入 0。";
       return openSheet({ kind: "correction", id: eventId });
+    }
+    if (CANONICAL_API_ENABLED) {
+      const baseCommand = quickEventRecordCommand(original, "web");
+      const correctionCommand = baseCommand
+        ? safeRecordCommand({
+            ...baseCommand.record,
+            id: window.JinjiDomain.id("web-correction"),
+            clientOperationId: window.JinjiDomain.clientOperationId("web-correction"),
+            createdAt: new Date().toISOString(),
+            rawText: `${baseCommand.record.rawText} · correction`,
+            quantity: nextQuantity,
+            correctionOfId: original.id,
+          })
+        : null;
+      if (!correctionCommand) {
+        state.correctionNotice = "這個項目沒有可驗證的 canonical correction RecordCommand；沒有建立本機替代紀錄。";
+        return openSheet({ kind: "correction", id: eventId });
+      }
+      submitCanonicalBoundary(correctionCommand, { kind: "correction", id: original.id }, `已送出修正：${eventLabel(original.type)} ${number(nextQuantity)} ${original.unit}`, {
+        onSuccess: () => {
+          state.correctionNotice = "";
+          state.sheet = null;
+        },
+        onError: (error) => {
+          state.correctionNotice = canonicalApiErrorMessage(error);
+          state.sheet = { kind: "correction", id: eventId };
+        },
+      });
+      return;
     }
     const ledger = window.JinjiDomain.createCorrectionLedger(original, {
       operation: "replacement",
@@ -2482,6 +2586,24 @@
         sourcePendingReview: true,
       },
     }, now);
+    if (CANONICAL_API_ENABLED) {
+      if (!recordCommand) {
+        state.quickRecordError = "人工確認結果沒有可驗證的 canonical RecordCommand；沒有建立本機替代紀錄。";
+        return openSheet({ kind: "pending-approval", id: item.id });
+      }
+      submitCanonicalBoundary(recordCommand, null, `已送出人工確認：已建立${resultType === "event" ? "數字事件" : "現場觀察"}。`, {
+        onSuccess: () => {
+          state.pendingApproval = null;
+          state.quickRecordError = "";
+          state.sheet = null;
+        },
+        onError: (error) => {
+          state.quickRecordError = canonicalApiErrorMessage(error);
+          state.sheet = { kind: "pending-approval", id: item.id };
+        },
+      });
+      return;
+    }
     try {
       const { sync } = commitLabLocalOperation({
         ...(resultType === "event" ? { events: [result] } : { observations: [result] }),
@@ -2529,7 +2651,7 @@
   function systemSheet() {
     const farms = allProductionFarms();
     const houses = farms.flatMap((farm) => farm.houses);
-    return sheetShell("系統", "測試版資訊", `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="farms"><span><strong>雞場</strong><span>${farms.length} 場</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="houses"><span><strong>雞舍</strong><span>${houses.length} 舍</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="flocks"><span><strong>批次</strong><span>${allFlocks().length} 批</span></span><span class="sheet-item-end">›</span></button><div class="sheet-item static"><span><strong>正式服務</strong><span>這個公開測試版沒有連線 LINE、資料庫或正式後端</span></span></div></div>`, "system");
+    return sheetShell("系統", "測試版資訊", `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="farms"><span><strong>雞場</strong><span>${farms.length} 場</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="houses"><span><strong>雞舍</strong><span>${houses.length} 舍</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="flocks"><span><strong>批次</strong><span>${allFlocks().length} 批</span></span><span class="sheet-item-end">›</span></button><div class="sheet-item static"><span><strong>正式服務</strong><span>${CANONICAL_API_ENABLED ? "Web 只透過 canonical API；不直接存取資料庫，LINE、Queue、Cron 與 AI 不由此入口觸發" : "這個公開測試版沒有連線 LINE、資料庫或正式後端"}</span></span></div></div>`, "system");
   }
 
   function systemDetailSheet(key) {
@@ -2694,7 +2816,9 @@
     const overlay = labOverlay();
     const mode = overlay.mode;
     const aiStatus = simulatedAiAvailable() ? "AI_AVAILABLE" : "AI_UNAVAILABLE";
-    return sheetShell("開發者診斷", "V14R Plus r4", `<div class="diagnostic-grid"><div><span>Environment</span><strong>PREPROD LAB</strong></div><div><span>Build SHA</span><strong>${escapeHtml(buildSha)}</strong></div><div><span>Build marker</span><strong>${escapeHtml(root.dataset.buildMarker || "")}</strong></div><div><span>Build time</span><strong>${escapeHtml(buildTime)}</strong></div><div><span>Branch</span><strong>${escapeHtml(buildBranch)}</strong></div><div><span>資料契約</span><strong>PASS（載入時驗證）</strong></div><div><span>連動測試事件</span><strong>${number(PLUS_LINKED_TEST_EVENTS.length)} 筆</strong></div><div><span>Lab backend</span><strong>${escapeHtml(labModeLabel(mode))}</strong></div><div><span>待同步操作</span><strong>${number(overlay.outbox.length)} 筆</strong></div><div><span>點擊資料</span><strong>localStorage</strong></div><div><span>AI 狀態</span><strong>${aiStatus}</strong></div></div><div class="developer-actions"><button type="button" class="sheet-primary" data-action="toggle-ai-simulation">${aiStatus === "AI_AVAILABLE" ? "模擬 AI 不可用" : "恢復 AI 可用"}</button><button type="button" class="sheet-secondary" data-action="export-dev-analytics">匯出本機診斷 JSON</button></div><div class="readonly-note">診斷只顯示 PREPROD LAB 身份、版本與本機 adapter 狀態；不暴露 secret、token 或個人內容。</div>`, "developer-diagnostics");
+    const apiState = CANONICAL_API?.state?.() || { enabled: false, environment: "production", base: null, configurationError: null };
+    const apiDiagnostic = CANONICAL_API_ENABLED ? `<div><span>Canonical API</span><strong>${escapeHtml(apiState.environment)} · configured</strong></div>` : "";
+    return sheetShell("開發者診斷", "V14R Plus r4", `<div class="diagnostic-grid"><div><span>Environment</span><strong>PREPROD LAB</strong></div><div><span>Build SHA</span><strong>${escapeHtml(buildSha)}</strong></div><div><span>Build marker</span><strong>${escapeHtml(root.dataset.buildMarker || "")}</strong></div><div><span>Build time</span><strong>${escapeHtml(buildTime)}</strong></div><div><span>Branch</span><strong>${escapeHtml(buildBranch)}</strong></div><div><span>資料契約</span><strong>PASS（載入時驗證）</strong></div><div><span>連動測試事件</span><strong>${number(PLUS_LINKED_TEST_EVENTS.length)} 筆</strong></div><div><span>Lab backend</span><strong>${escapeHtml(labModeLabel(mode))}</strong></div><div><span>待同步操作</span><strong>${number(overlay.outbox.length)} 筆</strong></div>${apiDiagnostic}<div><span>點擊資料</span><strong>localStorage</strong></div><div><span>AI 狀態</span><strong>${aiStatus}</strong></div></div><div class="developer-actions"><button type="button" class="sheet-primary" data-action="toggle-ai-simulation">${aiStatus === "AI_AVAILABLE" ? "模擬 AI 不可用" : "恢復 AI 可用"}</button><button type="button" class="sheet-secondary" data-action="export-dev-analytics">匯出本機診斷 JSON</button></div><div class="readonly-note">診斷只顯示 PREPROD LAB 身份、版本與本機 adapter 狀態；不暴露 secret、token 或個人內容。</div>`, "developer-diagnostics");
   }
 
   function developerFallbackSheet() {
@@ -2715,7 +2839,7 @@
         <button type="button" class="record-portal-card abnormal" data-action="start-guided-abnormal" data-testid="portal-abnormal"><span class="record-portal-icon">${icon("warning")}</span><span><strong>異常登錄</strong><small>從 A1–A16 選擇現場觀察；範圍只描述小／中／大，不換算隻數</small></span><span class="record-portal-arrow">›</span></button>
         <button type="button" class="record-portal-card management" data-action="enter-management" data-testid="portal-management"><span class="record-portal-icon">${icon("farm")}</span><span><strong>進入管理中心</strong><small>開啟既有今日、紀錄、月曆、待辦、場務與財務介面</small></span><span class="record-portal-arrow">›</span></button>
       </div>
-      <div class="record-portal-note"><span class="status-chip good">本機 Lab</span><span>正式資料寫入、LINE、Queue、Cron 與 AI 都不會由這個入口觸發。</span></div>
+      <div class="record-portal-note"><span class="status-chip good">${CANONICAL_API_ENABLED ? "Canonical API candidate" : "本機 Lab"}</span><span>${CANONICAL_API_ENABLED ? "確認後只送出 RecordCommand 到已設定 API；不由瀏覽器直接存取 D1，也不觸發 LINE、Queue、Cron 或 AI。" : "正式資料寫入、LINE、Queue、Cron 與 AI 都不會由這個入口觸發。"}</span></div>
     </section>`;
   }
 
@@ -2866,7 +2990,9 @@
     const definition = guidedDefinition();
     const preview = previewGuidedRecord();
     const record = preview.record;
-    return `<div class="guided-step" data-testid="guided-review"><div class="sheet-step"><span>最後一步</span><strong>確認後才保存</strong></div><div class="guided-question"><p class="kicker">${escapeHtml(definition?.label || "記錄")}</p><h3>請確認這筆資料</h3><p>分類、位置、原始欄位與推導值都會在本機保存；不會寫入 Production。</p></div>${record ? `<div class="detail-hero"><small>${escapeHtml(record.taxonomyId)} · ${escapeHtml(record.family)}</small><strong>${escapeHtml(definition.label)} · ${escapeHtml(record.subtype)}</strong><span>${escapeHtml(guidedScopeLabel())} · ${escapeHtml(record.occurredAt.slice(0, 10))}</span></div><div class="detail-list guided-review-list">${guidedRecordFieldRows(record)}</div>` : `<div class="lab-write-notice error" role="alert">${escapeHtml(guidedErrorMessage(preview.error))}</div>`}<div class="readonly-note">這是 review gate：未通過既有 strict validator 就不會建立事件、觀察、操作或 outbox。</div><div class="guided-actions">${record ? `<button type="button" class="sheet-primary" data-action="guided-confirm">確認並保存到 Lab</button>` : ""}<button type="button" class="sheet-secondary" data-action="guided-back">返回修改</button><button type="button" class="text-link" data-action="guided-cancel">取消</button></div></div>`;
+    const target = CANONICAL_API_ENABLED ? "已設定的 canonical API" : "Lab";
+    const reviewCopy = CANONICAL_API_ENABLED ? "分類、位置、原始欄位與推導值都會先通過既有 strict validator；確認後只送到已設定的 canonical API。" : "分類、位置、原始欄位與推導值都會在本機保存；不會寫入 Production。";
+    return `<div class="guided-step" data-testid="guided-review"><div class="sheet-step"><span>最後一步</span><strong>${CANONICAL_API_ENABLED ? "確認後才送出" : "確認後才保存"}</strong></div><div class="guided-question"><p class="kicker">${escapeHtml(definition?.label || "記錄")}</p><h3>請確認這筆資料</h3><p>${reviewCopy}</p></div>${record ? `<div class="detail-hero"><small>${escapeHtml(record.taxonomyId)} · ${escapeHtml(record.family)}</small><strong>${escapeHtml(definition.label)} · ${escapeHtml(record.subtype)}</strong><span>${escapeHtml(guidedScopeLabel())} · ${escapeHtml(record.occurredAt.slice(0, 10))}</span></div><div class="detail-list guided-review-list">${guidedRecordFieldRows(record)}</div>` : `<div class="lab-write-notice error" role="alert">${escapeHtml(guidedErrorMessage(preview.error))}</div>`}<div class="readonly-note">這是 review gate：未通過既有 strict validator 就不會建立事件、觀察、操作或 outbox。</div><div class="guided-actions">${record ? `<button type="button" class="sheet-primary" data-action="guided-confirm">${CANONICAL_API_ENABLED ? "確認並送出 API" : "確認並保存到 Lab"}</button>` : ""}<button type="button" class="sheet-secondary" data-action="guided-back">返回修改</button><button type="button" class="text-link" data-action="guided-cancel">取消</button></div></div>`;
   }
 
   function guidedRecordSheet() {
@@ -2948,6 +3074,23 @@
       });
       const command = window.JinjiRecordCommand.createRecordCommand(record);
       const definition = guidedDefinition();
+      if (CANONICAL_API_ENABLED) {
+        submitCanonicalBoundary(command, null, `已送出 ${definition.id} ${definition.label}：${record.subtype} · ${guidedScopeLabel()}`, {
+          onSuccess: () => {
+            state.guidedRecord = null;
+            state.sheet = null;
+            state.page = "records";
+            state.calendarYear = Number(record.occurredAt.slice(0, 4));
+            state.calendarMonth = Number(record.occurredAt.slice(5, 7));
+            state.selectedCalendarDate = record.occurredAt.slice(0, 10);
+          },
+          onError: (error) => {
+            guided.error = canonicalApiErrorMessage(error);
+            state.sheet = { kind: "guided-record" };
+          },
+        });
+        return;
+      }
       const event = definition.family === "operational_event" ? legacyEventFromGuided(record) : null;
       const observation = definition.family === "operational_observation" ? legacyObservationFromGuided(record) : null;
       const audit = window.JinjiDomain.createAuditEntry({
@@ -3303,7 +3446,8 @@
     const header = portal ? "" : desktop
       ? `<header class="topbar desktop-topbar"><div class="desktop-topbar-copy"><span class="desktop-page-kicker">目前頁面</span><strong>${currentPageTitle()}</strong><small>${escapeHtml(contextLabel())}</small></div>${desktopQuick}</header>`
       : `<header class="topbar"><div class="brand-lockup mobile-brand"><span class="brand-symbol">🐔</span><span class="brand-copy"><strong>金雞管理中心</strong><span>營運管理 · V14R Plus r4</span></span></div><span class="topbar-status">Plus r4${modeStatus}</span></header>`;
-    const globalLabNotice = state.quickRecordNotice ? `<div class="lab-write-notice" role="status">${escapeHtml(state.quickRecordNotice)}</div>` : "";
+    const globalNotices = [state.quickRecordNotice, state.canonicalApiNotice, state.canonicalApiError ? `Canonical API：${state.canonicalApiError}` : ""].filter(Boolean);
+    const globalLabNotice = globalNotices.map((notice, index) => `<div class="lab-write-notice ${state.canonicalApiError && index === globalNotices.length - 1 ? "error" : ""}" role="${state.canonicalApiError && index === globalNotices.length - 1 ? "alert" : "status"}">${escapeHtml(notice)}</div>`).join("");
     app.innerHTML = `<div class="app-shell ${portal ? "portal-mode" : ""}">${desktop && !portal ? desktopNavMarkup() : ""}<div class="workspace-shell">${header}${globalLabNotice}<main class="page-shell">${pageMarkup()}</main></div>${portal ? "" : (desktop ? "" : mobileQuick)}${portal ? "" : navMarkup()}${renderSheet()}</div>`;
     if (state.sheet) lockBody(); else unlockBody();
   }

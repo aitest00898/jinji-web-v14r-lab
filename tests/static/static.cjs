@@ -19,11 +19,12 @@ assert.match(index, /<meta name="viewport" content="width=device-width, initial-
 assert.match(index, /<link rel="stylesheet" href="\.\/styles\.css">/);
 assert.equal((index.match(/<style(?:\s[^>]*)?>/g) || []).length, 0, "index keeps CSS external");
 assert.equal((index.match(/<script>(?![\s\S]*src=)[\s\S]*?<\/script>/g) || []).length, 0, "index keeps JavaScript external");
-for (const file of ["src/recording-taxonomy.js", "src/domain.js", "src/storage.js", "src/admin.js", "src/ai.js", "src/lab-fixture.js", "src/finance-fixture.js"]) assert.ok(fs.existsSync(path.join(root, file)), `${file} exists`);
+for (const file of ["src/recording-taxonomy.js", "src/record-command.js", "src/canonical-api.js", "src/domain.js", "src/storage.js", "src/admin.js", "src/ai.js", "src/lab-fixture.js", "src/finance-fixture.js"]) assert.ok(fs.existsSync(path.join(root, file)), `${file} exists`);
 assert.match(index, /src\/lab-fixture\.js/);
 assert.match(index, /src\/recording-taxonomy\.js/);
 assert.match(index, /src\/finance-fixture\.js/);
 assert.match(index, /src\/admin\.js/);
+assert.match(index, /src\/canonical-api\.js/);
 assert.match(app, /const DATA = window\.JinjiLabFixture;/);
 
 const financeMapMatch = app.match(/const FINANCE_CONTEXT_FARM_MAP = Object\.freeze\((\{[\s\S]*?\})\);/);
@@ -111,12 +112,16 @@ assert.deepEqual(finance.getPortfolioTotals(), { gross: 901000, allocated: 12125
 assert.equal(finance.getCumulativeNetSeries().at(-1).value, 115250);
 
 const guardedSource = [app, read("src/domain.js"), read("src/storage.js"), read("src/admin.js"), read("src/ai.js"), read("src/finance-fixture.js")].join("\n");
+const canonicalApi = read("src/canonical-api.js");
 assert.doesNotMatch(app, /farm\.finance|\.finance\b/);
 assert.doesNotMatch(app, /labData\(\)\.history/);
 assert.doesNotMatch(app, /(?:204000|120000|5000|115000)/);
 assert.doesNotMatch(guardedSource, /https?:\/\/[^\s"']*(?:workers\.dev|api\.line\.me|cloudflareworkers\.com)/i);
 assert.doesNotMatch(guardedSource, /\b(?:fetch|XMLHttpRequest|WebSocket)\s*\(/);
 assert.doesNotMatch(guardedSource, /(?:LINE_CHANNEL_SECRET|CHANNEL_ACCESS_TOKEN|Authorization:\s*Bearer|wrangler\s+secret)/i);
+assert.match(canonicalApi, /\/api\/records/);
+assert.match(canonicalApi, /credentials:\s*"include"/);
+assert.doesNotMatch(canonicalApi, /Authorization\s*:/i);
 assert.match(app, /structuredClone\(DATA\)/);
 assert.match(app, /reconstructOperationalEvents\(labData\(\)\.events\)/);
 assert.match(app, /escapeHtml\(state\.quickRecordDraft\)/);
