@@ -1012,7 +1012,7 @@
   function webRuntimeControls() {
     if (!CANONICAL_API_ENABLED || !CANONICAL_API.isAuthenticated()) return "";
     const environment = CANONICAL_API.environment;
-    return `<div class="web-runtime-controls" data-testid="web-runtime-controls"><label><span>資料 scope</span><select id="web-environment-select" data-action="select-api-environment" aria-label="資料 scope"><option value="production" ${environment === "production" ? "selected" : ""}>Production</option><option value="test" ${environment === "test" ? "selected" : ""}>Test（明確選取）</option></select></label><span class="web-auth-status">已登入 · ${escapeHtml(webApiEnvironmentLabel())}</span><button type="button" class="web-logout-button" data-action="web-logout">登出</button></div>`;
+    return `<div class="web-runtime-controls" data-testid="web-runtime-controls"><button type="button" class="web-record-entry" data-nav="record-portal">開始記錄</button><label><span>資料 scope</span><select id="web-environment-select" data-action="select-api-environment" aria-label="資料 scope"><option value="production" ${environment === "production" ? "selected" : ""}>Production</option><option value="test" ${environment === "test" ? "selected" : ""}>Test（明確選取）</option></select></label><span class="web-auth-status">已登入 · ${escapeHtml(webApiEnvironmentLabel())}</span><button type="button" class="web-logout-button" data-action="web-logout">登出</button></div>`;
   }
 
   function desktopNavMarkup() {

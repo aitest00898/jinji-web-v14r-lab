@@ -104,6 +104,8 @@ button:focus-visible {
 .web-runtime-controls label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 800; white-space: nowrap; }
 .web-runtime-controls select { min-height: 34px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 9px; color: var(--ink); background: #fff; font-size: 11px; font-weight: 800; }
 .web-auth-status { color: var(--green-dark); font-size: 10px; font-weight: 800; white-space: nowrap; }
+.web-record-entry { min-height: 34px; padding: 5px 9px; border: 1px solid #b9d6c5; border-radius: 9px; color: var(--green-dark); background: var(--green-soft); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.web-record-entry:hover { border-color: #8fbba0; background: #e1f2e7; }
 .web-logout-button { min-height: 34px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 9px; color: var(--red); background: #fff; font-size: 11px; font-weight: 800; white-space: nowrap; }
 .web-logout-button:hover { border-color: #e7c3bf; background: var(--red-soft); }
 .api-runtime-notice { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 8px max(18px, calc(18px + var(--safe-right))) 8px max(18px, calc(18px + var(--safe-left))); border-bottom: 1px solid #d7e6dd; color: var(--green-dark); background: #f2faf5; font-size: 11px; line-height: 1.45; text-align: center; }
@@ -606,7 +608,7 @@ button.summary-tile:hover { border-color: #b5c9bf; }
   .topbar { gap: 8px; }
   .topbar .web-runtime-controls { gap: 5px; }
   .topbar .web-runtime-controls label span, .topbar .web-auth-status { display: none; }
-  .topbar .web-runtime-controls select, .topbar .web-logout-button { min-height: 30px; font-size: 10px; }
+  .topbar .web-runtime-controls select, .topbar .web-record-entry, .topbar .web-logout-button { min-height: 30px; font-size: 10px; }
   .api-runtime-notice { display: grid; gap: 3px; padding-top: 7px; padding-bottom: 7px; }
 }
 
