@@ -6,6 +6,10 @@
   "use strict";
 
   const VALID_ENVIRONMENTS = new Set(["production", "test"]);
+  const DEFAULT_PRODUCTION_API_BASE = "https://chicken-line-production.jinji-assistant.workers.dev";
+  const PRODUCTION_PAGES_ORIGIN = "https://aitest00898.github.io";
+  const PRODUCTION_PAGES_PATH = "/jinji-web-v14r-lab";
+  const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
   class CanonicalApiError extends Error {
     constructor(code, message, options = {}) {
@@ -21,15 +25,35 @@
     try { return new URLSearchParams(root?.location?.search || ""); } catch (_) { return new URLSearchParams(); }
   }
 
-  function configuredBase(options, params) {
-    const raw = options.base
-      ?? params.get("api-base")
-      ?? root?.__JINJI_API_BASE__
-      ?? root?.document?.querySelector?.('meta[name="jinji-api-base"]')?.content
-      ?? "";
-    if (!String(raw).trim()) return null;
+  function pageLocation(options) {
+    return options.location || root?.location || null;
+  }
+
+  function isProductionPagesLocation(location) {
+    if (!location) return false;
+    const origin = String(location.origin || "").replace(/\/+$/u, "");
+    const pathname = String(location.pathname || "").replace(/\/+$/u, "") || "/";
+    return origin === PRODUCTION_PAGES_ORIGIN && (pathname === PRODUCTION_PAGES_PATH || pathname === `${PRODUCTION_PAGES_PATH}/index.html`);
+  }
+
+  function isLocalLocation(location) {
+    if (!location) return true;
+    let hostname = location.hostname;
+    let protocol = location.protocol;
+    if ((!hostname || !protocol) && (location.href || location.origin)) {
+      try {
+        const parsed = new URL(location.href || location.origin);
+        hostname ||= parsed.hostname;
+        protocol ||= parsed.protocol;
+      } catch (_) {}
+    }
+    if (!hostname) return true;
+    return LOCAL_HOSTNAMES.has(String(hostname).toLowerCase()) && /^https?:$/u.test(String(protocol || ""));
+  }
+
+  function normalizeBase(raw, location) {
     try {
-      const url = new URL(String(raw), root?.location?.href || "http://localhost/");
+      const url = new URL(String(raw), location?.href || "http://localhost/");
       if (!/^https?:$/u.test(url.protocol) || url.username || url.password) throw new Error("invalid_api_base");
       url.search = "";
       url.hash = "";
@@ -39,15 +63,44 @@
     }
   }
 
+  function configuredBase(options, params, location) {
+    const explicitOption = options.base !== undefined;
+    const raw = options.base
+      ?? params.get("api-base")
+      ?? root?.__JINJI_API_BASE__
+      ?? root?.document?.querySelector?.('meta[name="jinji-api-base"]')?.content
+      ?? "";
+    if (!String(raw).trim()) {
+      if (isProductionPagesLocation(location)) return { value: DEFAULT_PRODUCTION_API_BASE, source: "pages-origin-allowlist" };
+      return { value: null, source: "none" };
+    }
+    const value = normalizeBase(raw, location);
+    if (isProductionPagesLocation(location) && !explicitOption && value !== DEFAULT_PRODUCTION_API_BASE) {
+      throw new CanonicalApiError("CANONICAL_API_PAGES_BASE_OVERRIDE_FORBIDDEN", "The production Pages host may use only its allowlisted Worker origin.");
+    }
+    return {
+      value,
+      source: explicitOption ? "options" : params.get("api-base") ? "query" : root?.__JINJI_API_BASE__ ? "global" : "meta",
+    };
+  }
+
+  function runtimeModeFor(location, base) {
+    if (isProductionPagesLocation(location)) return "production_api";
+    if (base) return "canonical_api";
+    if (isLocalLocation(location)) return "fixture_local";
+    return "unsupported_host";
+  }
+
   function configuredEnvironment(options, params) {
     const value = String(options.environment ?? params.get("api-environment") ?? "production").trim().toLowerCase();
     if (value === "production") return value;
-    const explicitTest = options.testAdmin === true
-      || params.get("api-test-admin") === "1"
-      || root?.__JINJI_API_TEST_ADMIN__ === true;
+    // A URL flag is not an authorization boundary. Browser Test mode is
+    // selected through the authenticated UI; testAdmin is retained only for
+    // isolated local contract tests that inject an explicit option.
+    const explicitTest = options.testAdmin === true;
     if (value === "test" && explicitTest) return value;
     if (!VALID_ENVIRONMENTS.has(value)) throw new CanonicalApiError("CANONICAL_API_ENV_INVALID", "Unknown API environment; request was not sent.");
-    throw new CanonicalApiError("CANONICAL_API_TEST_AUTH_REQUIRED", "Test API mode requires an explicit test-admin marker.");
+    throw new CanonicalApiError("CANONICAL_API_TEST_AUTH_REQUIRED", "Test API mode requires an authenticated, explicit UI selection.");
   }
 
   function requestUrl(base, pathname, environment, query = {}) {
@@ -74,11 +127,15 @@
 
   function createClient(options = {}) {
     const params = options.searchParams || searchParams();
+    const location = pageLocation(options);
     let base = null;
+    let baseSource = "none";
     let configurationError = null;
     let environment = "production";
     try {
-      base = configuredBase(options, params);
+      const configured = configuredBase(options, params, location);
+      base = configured.value;
+      baseSource = configured.source;
       environment = configuredEnvironment(options, params);
     } catch (error) {
       configurationError = error instanceof CanonicalApiError
@@ -87,6 +144,16 @@
     }
     const fetchImpl = options.fetchImpl || root?.fetch?.bind(root);
     const enabled = Boolean(base) && !configurationError;
+    const runtimeMode = runtimeModeFor(location, base);
+    let token = null;
+    let expiresAt = null;
+    let organization = null;
+
+    function clearAuth() {
+      token = null;
+      expiresAt = null;
+      organization = null;
+    }
 
     async function request(pathname, requestOptions = {}) {
       if (configurationError) throw configurationError;
@@ -94,9 +161,10 @@
       if (typeof fetchImpl !== "function") throw new CanonicalApiError("CANONICAL_API_FETCH_UNAVAILABLE", "Browser fetch is unavailable.");
       const url = requestUrl(base, pathname, environment, requestOptions.query);
       const headers = { accept: "application/json" };
+      if (token) headers.authorization = `Bearer ${token}`;
       const init = {
         method: requestOptions.method || "GET",
-        credentials: "include",
+        credentials: "omit",
         headers,
       };
       if (requestOptions.body !== undefined) {
@@ -112,19 +180,73 @@
       let payload = null;
       try { payload = await response.json(); } catch (_) {}
       if (!response.ok) {
+        if (response.status === 401 && pathname !== "/api/web/auth/login" && pathname !== "/api/web/auth/session") clearAuth();
         const detail = errorPayload(payload);
         throw new CanonicalApiError(String(detail?.code || `CANONICAL_API_HTTP_${response.status}`), String(detail?.message || "Canonical API rejected the request."), { status: response.status, payload });
       }
       return payload;
     }
 
+    async function login(password) {
+      if (typeof password !== "string" || !password || password.length > 200) {
+        throw new CanonicalApiError("CANONICAL_API_INVALID_LOGIN", "登入資料無效。");
+      }
+      const payload = await request("/api/web/auth/login", { method: "POST", body: { password } });
+      if (payload?.authenticated !== true || typeof payload.token !== "string" || !/^[A-Za-z0-9_-]{32,100}$/u.test(payload.token)) {
+        clearAuth();
+        throw new CanonicalApiError("CANONICAL_API_AUTH_RESPONSE_INVALID", "登入服務回傳無效 session。");
+      }
+      token = payload.token;
+      expiresAt = typeof payload.expiresAt === "string" ? payload.expiresAt : null;
+      organization = payload.organization || null;
+      return { authenticated: true, expiresAt, organization };
+    }
+
+    async function logout() {
+      try {
+        if (token) await request("/api/web/auth/logout", { method: "POST" });
+      } finally {
+        clearAuth();
+      }
+      return { authenticated: false };
+    }
+
+    async function session() {
+      const payload = await request("/api/web/auth/session", { method: "GET" });
+      if (payload?.authenticated === true && token) {
+        expiresAt = typeof payload.expiresAt === "string" ? payload.expiresAt : expiresAt;
+        organization = payload.organization || organization;
+      } else if (payload?.authenticated !== true) {
+        clearAuth();
+      }
+      return { authenticated: payload?.authenticated === true && Boolean(token), expiresAt, organization };
+    }
+
+    function setEnvironment(next, { explicitChoice = false } = {}) {
+      const value = String(next || "").trim().toLowerCase();
+      if (!VALID_ENVIRONMENTS.has(value)) throw new CanonicalApiError("CANONICAL_API_ENV_INVALID", "Unknown API environment; request was not sent.");
+      if (value === "test" && (!explicitChoice || !token)) {
+        throw new CanonicalApiError("CANONICAL_API_TEST_AUTH_REQUIRED", "Test API mode requires an authenticated, explicit UI selection.");
+      }
+      environment = value;
+      return environment;
+    }
+
     return Object.freeze({
       enabled,
-      environment,
       base,
+      baseSource,
+      runtimeMode,
       configurationError,
+      get environment() { return environment; },
       isConfigured: () => enabled,
-      state: () => ({ enabled, environment, base, configurationError: configurationError?.code || null }),
+      isAuthenticated: () => Boolean(token),
+      authState: () => ({ authenticated: Boolean(token), expiresAt, organization }),
+      state: () => ({ enabled, environment, base, baseSource, runtimeMode, authenticated: Boolean(token), expiresAt, configurationError: configurationError?.code || null }),
+      login,
+      logout,
+      session,
+      setEnvironment,
       createRecord: (command) => request("/api/records", { method: "POST", body: commandBody(command) }),
       correctRecord: (id, command) => request(`/api/records/${encodeURIComponent(String(id))}/correct`, { method: "POST", body: commandBody(command) }),
       reverseRecord: (id, command) => request(`/api/records/${encodeURIComponent(String(id))}/reverse`, { method: "POST", body: commandBody(command) }),
@@ -137,5 +259,5 @@
     });
   }
 
-  return Object.freeze({ CanonicalApiError, createClient });
+  return Object.freeze({ CanonicalApiError, createClient, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH });
 });

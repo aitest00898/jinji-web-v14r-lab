@@ -75,9 +75,10 @@ test("Guided Web representative commands use the shared canonical API in explici
   assert.equal(calls[12].url.pathname, "/api/records");
   for (const { url, init } of calls) {
     assert.equal(url.searchParams.get("environment"), "test");
-    assert.equal(init.credentials, "include");
+    assert.equal(init.credentials, "omit");
     assert.equal(init.headers.accept, "application/json");
     assert.equal(Object.prototype.hasOwnProperty.call(init.headers, "Authorization"), false);
+    assert.equal(Object.prototype.hasOwnProperty.call(init.headers, "authorization"), false);
   }
   const destinations = calls.slice(0, 10).map(({ init }) => JSON.parse(init.body).command.authoritativeDestination);
   assert.deepEqual(destinations, [

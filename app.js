@@ -26,6 +26,8 @@
   const DATA = window.JinjiLabFixture;
   const CANONICAL_API = window.JinjiCanonicalApi?.createClient?.() || null;
   const CANONICAL_API_ENABLED = Boolean(CANONICAL_API?.isConfigured?.());
+  const CANONICAL_API_STATE = CANONICAL_API?.state?.() || { runtimeMode: "fixture_local", configurationError: null };
+  const WEB_RUNTIME_BLOCKED = CANONICAL_API_STATE.runtimeMode === "unsupported_host" || Boolean(CANONICAL_API_STATE.configurationError);
 
   const OPERATIONAL_TIMEZONE = "Asia/Taipei";
   const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -241,9 +243,62 @@
     masterDataConfirmation: null,
     canonicalApiNotice: "",
     canonicalApiError: "",
+    webAuthError: "",
+    webAuthSubmitting: false,
   };
 
   const app = document.getElementById("app");
+
+  function webApiEnvironmentLabel() {
+    if (!CANONICAL_API) return "本機 Lab";
+    return CANONICAL_API.environment === "test" ? "Test scope" : "Production scope";
+  }
+
+  function webAccessBoundaryMarkup() {
+    if (!WEB_RUNTIME_BLOCKED && !CANONICAL_API_ENABLED) return "";
+    if (WEB_RUNTIME_BLOCKED) {
+      const detail = CANONICAL_API_STATE.configurationError || "此 host 未被允許自動連線 Production API。";
+      return `<main class="web-access-boundary" data-testid="web-runtime-blocked"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · ACCESS BLOCKED</p><h1>此執行位置未獲授權</h1><p>為避免把模擬資料誤當成正式資料，未知 host、錯誤 API scope 或不合法 Pages base 不會載入 fixture，也不會送出 API request。</p><div class="web-access-error" role="alert">${escapeHtml(detail.message || detail)}</div><div class="readonly-note">請從已核准的 Pages host 或 localhost Lab 開啟。</div></section></main>`;
+    }
+    if (CANONICAL_API.isAuthenticated()) return "";
+    return `<main class="web-access-boundary" data-testid="web-auth-gate"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · AUTHENTICATED API</p><h1>登入管理介面</h1><p>此 Pages URL 會使用核准的 canonical Worker API。密碼只在瀏覽器輸入框送往登入端點；session token 只保留在本次頁面的記憶體，不寫入 localStorage、IndexedDB 或 URL。</p><div class="web-access-meta"><span>API：${escapeHtml(CANONICAL_API.base || "—")}</span><span>預設 scope：Production</span></div><form id="web-login-form" class="web-login-form"><label for="web-admin-password">管理密碼</label><input id="web-admin-password" name="password" type="password" autocomplete="current-password" required ${state.webAuthSubmitting ? "disabled" : ""}><button type="submit" class="sheet-primary" ${state.webAuthSubmitting ? "disabled" : ""}>${state.webAuthSubmitting ? "登入中…" : "登入"}</button></form>${state.webAuthError ? `<div class="web-access-error" role="alert">${escapeHtml(state.webAuthError)}</div>` : ""}<div class="readonly-note">未登入時不會載入或提交正式資料；登入失效時會回到此畫面，不會改用本機 fixture 寫入。</div></section></main>`;
+  }
+
+  async function beginWebLogin() {
+    if (!CANONICAL_API_ENABLED || state.webAuthSubmitting) return;
+    const passwordInput = document.getElementById("web-admin-password");
+    const password = passwordInput?.value || "";
+    if (!password) {
+      state.webAuthError = "請輸入管理密碼。";
+      return render();
+    }
+    state.webAuthSubmitting = true;
+    state.webAuthError = "";
+    render();
+    try {
+      await CANONICAL_API.login(password);
+      state.webAuthError = "";
+      state.canonicalApiError = "";
+      state.page = INITIAL_MANAGEMENT_ENTRY ? "today" : "record-portal";
+    } catch (error) {
+      state.webAuthError = canonicalApiErrorMessage(error);
+    } finally {
+      state.webAuthSubmitting = false;
+      render();
+    }
+  }
+
+  async function beginWebLogout() {
+    if (!CANONICAL_API_ENABLED) return;
+    try { await CANONICAL_API.logout(); } catch (_) {}
+    state.webAuthError = "";
+    state.canonicalApiError = "";
+    state.canonicalApiNotice = "";
+    state.sheet = null;
+    state.guidedRecord = null;
+    state.page = "record-portal";
+    render();
+  }
 
   const DEV_ANALYTICS_KEY = "jinji-v14r-plus-r4-analytics";
   const DEV_NOTE_KEY = "jinji-v14r-plus-r4-developer-note";
@@ -819,6 +874,12 @@
     return ({ "record-portal": "開始記錄", today: "今日", calendar: "月曆", farms: "場務", records: "紀錄", todo: "待辦", more: "更多", finance: "財務", ai: "AI 助理" })[state.page] || "金雞管理中心";
   }
 
+  function webRuntimeControls() {
+    if (!CANONICAL_API_ENABLED || !CANONICAL_API.isAuthenticated()) return "";
+    const environment = CANONICAL_API.environment;
+    return `<div class="web-runtime-controls" data-testid="web-runtime-controls"><label><span>資料 scope</span><select id="web-environment-select" data-action="select-api-environment" aria-label="資料 scope"><option value="production" ${environment === "production" ? "selected" : ""}>Production</option><option value="test" ${environment === "test" ? "selected" : ""}>Test（明確選取）</option></select></label><span class="web-auth-status">已登入 · ${escapeHtml(webApiEnvironmentLabel())}</span><button type="button" class="web-logout-button" data-action="web-logout">登出</button></div>`;
+  }
+
   function desktopNavMarkup() {
     const primary = [
       ["today", "今日", "digest"],
@@ -839,7 +900,7 @@
         <div class="desktop-nav-group"><span class="desktop-nav-label">主工作</span>${primary.map(item).join("")}</div>
         <div class="desktop-nav-group"><span class="desktop-nav-label">分析與管理</span>${secondary.map(item).join("")}</div>
       </nav>
-      <div class="desktop-sidebar-footer"><span class="desktop-online-dot" aria-hidden="true"></span><span><strong>測試環境</strong><small>模擬資料 · 不連 Production</small></span></div>
+      <div class="desktop-sidebar-footer"><span class="desktop-online-dot" aria-hidden="true"></span><span><strong>${CANONICAL_API_ENABLED ? "Canonical API" : "測試環境"}</strong><small>${CANONICAL_API_ENABLED ? `${escapeHtml(webApiEnvironmentLabel())} · session in memory` : "模擬資料 · 不連 Production"}</small></span></div>
     </aside>`;
   }
 
@@ -1856,7 +1917,10 @@
     const messages = {
       CANONICAL_API_NOT_CONFIGURED: "目前未設定 canonical API；這個頁面仍維持 Lab local overlay。",
       CANONICAL_API_ENV_INVALID: "API environment 不明，已 fail closed，沒有送出資料。",
-      CANONICAL_API_TEST_AUTH_REQUIRED: "Test API 需要明確的 test-admin 標記，沒有送出資料。",
+      CANONICAL_API_TEST_AUTH_REQUIRED: "Test scope 必須在已登入後由操作人明確選取，沒有送出資料。",
+      CANONICAL_API_INVALID_LOGIN: "請輸入管理密碼。",
+      CANONICAL_API_AUTH_RESPONSE_INVALID: "登入服務回傳無效 session，沒有送出資料。",
+      unauthorized: "登入 session 已失效，請重新登入；沒有建立本機替代紀錄。",
       CANONICAL_API_NETWORK_ERROR: "canonical API 無法連線；沒有建立本機替代紀錄。",
       CANONICAL_COMMAND_REQUIRED: "這個操作沒有可驗證的 RecordCommand，沒有送出資料。",
       CANONICAL_CLIENT_OPERATION_ID_REQUIRED: "缺少 clientOperationId，沒有送出資料。",
@@ -1875,6 +1939,11 @@
       render();
     }).catch((error) => {
       state.canonicalApiError = canonicalApiErrorMessage(error);
+      if (error?.status === 401 || error?.code === "unauthorized" || error?.code === "CANONICAL_API_AUTH_REQUIRED") {
+        state.webAuthError = "登入 session 已失效，請重新登入；沒有建立本機替代紀錄。";
+        state.sheet = null;
+        state.guidedRecord = null;
+      }
       onError?.(error);
       render();
     });
@@ -2832,14 +2901,15 @@
   }
 
   function recordPortalMarkup() {
+    const apiMode = CANONICAL_API_ENABLED;
     return `<section class="page record-portal" data-page="record-portal" data-testid="record-portal">
-      <div class="record-portal-intro"><p class="kicker">金雞管理中心 · PREPROD LAB</p><h1>今天要記哪一類？</h1><p>先選擇入口，再用一步一步的方式建立紀錄。這裡只保存本機 Lab 測試資料，不連線 Production。</p></div>
+      <div class="record-portal-intro"><p class="kicker">金雞管理中心 · ${apiMode ? "AUTHENTICATED API" : "PREPROD LAB"}</p><h1>今天要記哪一類？</h1><p>${apiMode ? "先選擇入口，再用一步一步的方式建立紀錄。確認後只送出已驗證的 RecordCommand；API 失敗時不會改寫本機 fixture。" : "先選擇入口，再用一步一步的方式建立紀錄。這裡只保存本機 Lab 測試資料，不連線 Production。"}</p></div>
       <div class="record-portal-grid">
         <button type="button" class="record-portal-card operational" data-action="start-guided-operational" data-testid="portal-operational"><span class="record-portal-icon">${icon("records")}</span><span><strong>營運資料</strong><small>入雛、用藥、出雞、磅重、飼料、送驗、清消、維護、死亡／淘汰</small></span><span class="record-portal-arrow">›</span></button>
         <button type="button" class="record-portal-card abnormal" data-action="start-guided-abnormal" data-testid="portal-abnormal"><span class="record-portal-icon">${icon("warning")}</span><span><strong>異常登錄</strong><small>從 A1–A16 選擇現場觀察；範圍只描述小／中／大，不換算隻數</small></span><span class="record-portal-arrow">›</span></button>
         <button type="button" class="record-portal-card management" data-action="enter-management" data-testid="portal-management"><span class="record-portal-icon">${icon("farm")}</span><span><strong>進入管理中心</strong><small>開啟既有今日、紀錄、月曆、待辦、場務與財務介面</small></span><span class="record-portal-arrow">›</span></button>
       </div>
-      <div class="record-portal-note"><span class="status-chip good">${CANONICAL_API_ENABLED ? "Canonical API candidate" : "本機 Lab"}</span><span>${CANONICAL_API_ENABLED ? "確認後只送出 RecordCommand 到已設定 API；不由瀏覽器直接存取 D1，也不觸發 LINE、Queue、Cron 或 AI。" : "正式資料寫入、LINE、Queue、Cron 與 AI 都不會由這個入口觸發。"}</span></div>
+      <div class="record-portal-note"><span class="status-chip good">${apiMode ? `Canonical API · ${escapeHtml(webApiEnvironmentLabel())}` : "本機 Lab"}</span><span>${apiMode ? "確認後只送出 RecordCommand 到已驗證 API；不由瀏覽器直接存取 D1，也不觸發 LINE、Queue、Cron 或 AI。" : "正式資料寫入、LINE、Queue、Cron 與 AI 都不會由這個入口觸發。"}</span>${apiMode ? webRuntimeControls() : ""}</div>
     </section>`;
   }
 
@@ -3437,6 +3507,13 @@
   }
 
   function render() {
+    const accessBoundary = webAccessBoundaryMarkup();
+    if (accessBoundary) {
+      app.innerHTML = accessBoundary;
+      unlockBody();
+      window.requestAnimationFrame(() => document.getElementById("web-admin-password")?.focus());
+      return;
+    }
     const desktop = desktopWideMode();
     const portal = state.page === "record-portal";
     const mode = labOverlay().mode;
@@ -3444,11 +3521,12 @@
     const desktopQuick = `<div class="desktop-quick-slot" aria-label="快速行動固定區"><button type="button" class="desktop-quick-button" data-action="open-sheet" data-sheet-kind="quick-actions" aria-label="開啟快速行動" title="快速行動">${icon("plus")}</button></div>`;
     const mobileQuick = `<div class="mobile-quick-slot" aria-label="快速行動固定區"><button type="button" class="mobile-quick-button" data-action="open-sheet" data-sheet-kind="quick-actions" aria-label="開啟快速行動" title="快速行動">${icon("plus")}</button></div>`;
     const header = portal ? "" : desktop
-      ? `<header class="topbar desktop-topbar"><div class="desktop-topbar-copy"><span class="desktop-page-kicker">目前頁面</span><strong>${currentPageTitle()}</strong><small>${escapeHtml(contextLabel())}</small></div>${desktopQuick}</header>`
-      : `<header class="topbar"><div class="brand-lockup mobile-brand"><span class="brand-symbol">🐔</span><span class="brand-copy"><strong>金雞管理中心</strong><span>營運管理 · V14R Plus r4</span></span></div><span class="topbar-status">Plus r4${modeStatus}</span></header>`;
+      ? `<header class="topbar desktop-topbar"><div class="desktop-topbar-copy"><span class="desktop-page-kicker">目前頁面</span><strong>${currentPageTitle()}</strong><small>${escapeHtml(contextLabel())}</small></div>${webRuntimeControls()}${desktopQuick}</header>`
+      : `<header class="topbar"><div class="brand-lockup mobile-brand"><span class="brand-symbol">🐔</span><span class="brand-copy"><strong>金雞管理中心</strong><span>營運管理 · V14R Plus r4</span></span></div><span class="topbar-status">Plus r4${modeStatus}</span>${webRuntimeControls()}</header>`;
     const globalNotices = [state.quickRecordNotice, state.canonicalApiNotice, state.canonicalApiError ? `Canonical API：${state.canonicalApiError}` : ""].filter(Boolean);
     const globalLabNotice = globalNotices.map((notice, index) => `<div class="lab-write-notice ${state.canonicalApiError && index === globalNotices.length - 1 ? "error" : ""}" role="${state.canonicalApiError && index === globalNotices.length - 1 ? "alert" : "status"}">${escapeHtml(notice)}</div>`).join("");
-    app.innerHTML = `<div class="app-shell ${portal ? "portal-mode" : ""}">${desktop && !portal ? desktopNavMarkup() : ""}<div class="workspace-shell">${header}${globalLabNotice}<main class="page-shell">${pageMarkup()}</main></div>${portal ? "" : (desktop ? "" : mobileQuick)}${portal ? "" : navMarkup()}${renderSheet()}</div>`;
+    const apiRuntimeNotice = CANONICAL_API_ENABLED ? `<div class="api-runtime-notice" role="status"><strong>已登入 ${escapeHtml(webApiEnvironmentLabel())}</strong><span>Canonical write 只經 Worker business boundary；畫面中的 Lab／Finance fixture 明確標示為 synthetic，API 失敗不會改用 fixture 寫入或靜默回退。</span></div>` : "";
+    app.innerHTML = `<div class="app-shell ${portal ? "portal-mode" : ""}">${desktop && !portal ? desktopNavMarkup() : ""}<div class="workspace-shell">${header}${apiRuntimeNotice}${globalLabNotice}<main class="page-shell">${pageMarkup()}</main></div>${portal ? "" : (desktop ? "" : mobileQuick)}${portal ? "" : navMarkup()}${renderSheet()}</div>`;
     if (state.sheet) lockBody(); else unlockBody();
   }
 
@@ -3468,6 +3546,7 @@
     const actionElement = event.target.closest("[data-action]");
     if (!actionElement) return;
     const action = actionElement.dataset.action;
+    if (action === "web-logout") return beginWebLogout();
     if (action === "start-guided-operational") return startGuidedRecord("operational");
     if (action === "start-guided-abnormal") return startGuidedRecord("abnormal");
     if (action === "enter-management") {
@@ -3850,6 +3929,15 @@
   }
 
   function handleChange(event) {
+    if (event.target?.id === "web-environment-select") {
+      try {
+        CANONICAL_API.setEnvironment(event.target.value, { explicitChoice: true });
+        state.canonicalApiError = "";
+      } catch (error) {
+        state.canonicalApiError = canonicalApiErrorMessage(error);
+      }
+      return render();
+    }
     const guidedField = event.target?.dataset?.guidedField;
     if (guidedField && guidedState()) {
       guidedState().values[guidedField] = event.target.value;
@@ -3909,6 +3997,12 @@
     status.textContent = next.text;
   }
 
+  function handleSubmit(event) {
+    if (event.target?.id !== "web-login-form") return;
+    event.preventDefault();
+    beginWebLogin();
+  }
+
 
   function chartTooltipElement() {
     let tooltip = document.getElementById("chart-query-tooltip");
@@ -3959,6 +4053,7 @@
   });
   document.addEventListener("change", handleChange);
   document.addEventListener("input", handleInput);
+  document.addEventListener("submit", handleSubmit);
   document.addEventListener("pointerover", (event) => {
     const target = event.target.closest("[data-chart-tip]");
     if (target && event.pointerType !== "touch") showChartTooltip(target, event);

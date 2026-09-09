@@ -1,36 +1,50 @@
-# Canonical API local integration
+# Canonical API and authenticated Web integration
 
-The Lab keeps its existing fixture-backed local behavior unless a canonical
-API base is explicitly configured. Guided Record, Quick Record, pending
-approval, correction, reversal, and record reads then use the same API
-boundary as LINE:
+The Web client has two explicit runtime modes. `localhost` and
+`127.0.0.1` remain fixture-backed Lab runtimes. The allowlisted Pages host
+`https://aitest00898.github.io/jinji-web-v14r-lab/` enters authenticated
+Production API mode and binds to the reviewed Worker origin automatically.
+Unknown hosted origins fail closed; they do not load fixture data or guess an
+API base.
+
+Guided Record, Quick Record, pending approval, correction, reversal, and
+canonical writes use the same API boundary as LINE:
 
 ```text
 RecordCommand -> Worker API -> canonical business boundary
 ```
 
-## Opt-in configuration
+## Local and test configuration
 
-Use one of the following local-only configuration sources:
+For a local contract harness, an API base may be injected through:
 
 - `?api-base=https://<authorized-worker-host>`
 - `window.__JINJI_API_BASE__`
 - `<meta name="jinji-api-base" content="...">`
 
-The default environment is `production`. Test mode requires both
-`api-environment=test` and an explicit `api-test-admin=1` marker (or the
-equivalent test-admin option). Unknown environments fail closed.
+The default environment is `production`. Browser Test mode is not enabled by
+URL flags: after Web login, the operator must explicitly select `Test` in the
+scope control. Contract tests may inject `testAdmin: true` as a test-only
+option. Unknown environments and a Pages API-base override fail closed.
 
-The client sends `credentials: "include"` so the existing session/CORS
-boundary remains authoritative. It does not create browser bearer tokens or
-access D1 directly. Every write body is `{ command: RecordCommand }`, and
-correction/reversal use the append-only endpoints:
+The Worker already exposes browser-safe login/session routes. The client sends
+the password only to `POST /api/web/auth/login`, retains the returned short-
+lived Bearer token in memory for the current page, and clears it on logout or
+HTTP 401. It does not persist a token in localStorage, IndexedDB, cookies, or
+URLs. Requests use `credentials: "omit"` plus the runtime Authorization header;
+the Worker CORS allowlist remains authoritative. Safari does not depend on
+cross-site cookie behavior.
+
+Every write body is `{ command: RecordCommand }`, and correction/reversal use
+the append-only endpoints:
 
 - `POST /api/records`
 - `POST /api/records/:id/correct`
 - `POST /api/records/:id/reverse`
 - `GET /api/records`
 
-Without an explicit API base, the Lab does not send a request and continues
-to use synthetic local data. This document does not authorize a deployment,
-remote write, or Pages release.
+In Production API mode, an API failure never falls back to a local write. The
+visible Lab/Finance fixture surfaces remain explicitly labelled synthetic
+until a separate read-model integration is approved; they are not presented as
+Production read-back. This document does not authorize a deployment, remote
+write, human canary, or Pages release.

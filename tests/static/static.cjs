@@ -120,8 +120,9 @@ assert.doesNotMatch(guardedSource, /https?:\/\/[^\s"']*(?:workers\.dev|api\.line
 assert.doesNotMatch(guardedSource, /\b(?:fetch|XMLHttpRequest|WebSocket)\s*\(/);
 assert.doesNotMatch(guardedSource, /(?:LINE_CHANNEL_SECRET|CHANNEL_ACCESS_TOKEN|Authorization:\s*Bearer|wrangler\s+secret)/i);
 assert.match(canonicalApi, /\/api\/records/);
-assert.match(canonicalApi, /credentials:\s*"include"/);
-assert.doesNotMatch(canonicalApi, /Authorization\s*:/i);
+assert.match(canonicalApi, /credentials:\s*"omit"/);
+assert.match(canonicalApi, /headers\.authorization/);
+assert.doesNotMatch(canonicalApi, /localStorage|indexedDB/i);
 assert.match(app, /structuredClone\(DATA\)/);
 assert.match(app, /reconstructOperationalEvents\(labData\(\)\.events\)/);
 assert.match(app, /escapeHtml\(state\.quickRecordDraft\)/);
