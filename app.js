@@ -3837,6 +3837,7 @@
     if (state.page === "today") return desktopToday();
     if (state.page === "calendar") return renderCalendar();
     if (state.page === "farms") return desktopFarms();
+    if (state.page === "records" && canonicalRecordingEnabled()) return renderCanonicalRecords();
     if (state.page === "records") return desktopRecords();
     if (state.page === "todo") return desktopTodo();
     if (state.page === "more") return desktopMore();

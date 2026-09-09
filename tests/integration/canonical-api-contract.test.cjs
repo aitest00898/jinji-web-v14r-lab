@@ -136,6 +136,7 @@ test("Web canonical recording scope uses master-data reads without fixture fallb
 test("Web canonical Records page consumes the read model and keeps replay local-only", () => {
   const appSource = fs.readFileSync(path.join(__dirname, "../../app.js"), "utf8");
   assert.match(appSource, /if \(canonicalRecordingEnabled\(\)\) return renderCanonicalRecords\(\)/u);
+  assert.match(appSource, /if \(state\.page === "records" && canonicalRecordingEnabled\(\)\) return renderCanonicalRecords\(\)/u);
   assert.match(appSource, /CANONICAL_API\.listRecords\(\{ limit: 100 \}\)/u);
   assert.match(appSource, /正式紀錄目前無法載入；沒有改用本機 fixture/u);
   assert.match(appSource, /canonicalRecordCatalog\.records = \[\]/u);
