@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const taxonomy = require("../../src/recording-taxonomy.js");
 const commandApi = require("../../src/record-command.js");
-const { createClient } = require("../../src/canonical-api.js");
+const { CanonicalApiError, createClient } = require("../../src/canonical-api.js");
 
 function response(payload, status = 201) {
   return { ok: status >= 200 && status < 300, status, async json() { return payload; } };
@@ -87,4 +87,33 @@ test("Guided Web representative commands use the shared canonical API in explici
   ]);
   assert.equal(JSON.parse(calls[10].init.body).command.record.correctionOfId, commands[5].record.id);
   assert.equal(JSON.parse(calls[11].init.body).command.record.reversalOfId, commands[5].record.id);
+});
+
+test("create, correction, and reversal share the same error normalizer", async () => {
+  const calls = [];
+  const client = createClient({
+    base: "https://worker.example.test",
+    fetchImpl: async (url) => {
+      const pathname = new URL(url).pathname;
+      calls.push(pathname);
+      if (pathname.endsWith("/correct")) return response({ error: { code: "CANONICAL_RELATION_TARGET_MISMATCH", message: "nested detail" } }, 400);
+      if (pathname.endsWith("/reverse")) return response({ error: "not_found", message: "flat detail" }, 404);
+      return response({ error: "duplicate_client_operation", message: "replay" }, 409);
+    },
+  });
+  const base = recordFor("O9", 200);
+
+  for (const [operation, expectedPath, expectedCode, expectedStatus] of [
+    [() => client.createRecord(base), "/api/records", "duplicate_client_operation", 409],
+    [() => client.correctRecord(base.record.id, base), `/api/records/${base.record.id}/correct`, "CANONICAL_RELATION_TARGET_MISMATCH", 400],
+    [() => client.reverseRecord(base.record.id, base), `/api/records/${base.record.id}/reverse`, "not_found", 404],
+  ]) {
+    await assert.rejects(operation, (error) => {
+      assert.equal(error instanceof CanonicalApiError, true);
+      assert.equal(error.code, expectedCode);
+      assert.equal(error.status, expectedStatus);
+      return true;
+    });
+    assert.equal(calls.at(-1), expectedPath);
+  }
 });

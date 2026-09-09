@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { CanonicalApiError, createClient } = require("../../src/canonical-api.js");
+const { CanonicalApiError, createClient, normalizeCanonicalApiError } = require("../../src/canonical-api.js");
 
 function response(payload, status = 200) {
   return { ok: status >= 200 && status < 300, status, async json() { return payload; } };
@@ -38,6 +38,68 @@ function command(id = "record-1", overrides = {}) {
     },
   };
 }
+
+test("canonical API error normalizer accepts flat and nested envelopes and fails closed", () => {
+  assert.deepEqual(normalizeCanonicalApiError(
+    { error: "invalid_credentials", message: "管理密碼錯誤。" },
+    401,
+  ), {
+    code: "invalid_credentials",
+    message: "管理密碼錯誤。",
+    status: 401,
+  });
+  assert.deepEqual(normalizeCanonicalApiError(
+    { error: { code: "invalid_credentials", message: "管理密碼錯誤。" } },
+    401,
+  ), {
+    code: "invalid_credentials",
+    message: "管理密碼錯誤。",
+    status: 401,
+  });
+  assert.deepEqual(normalizeCanonicalApiError(
+    { error: "future_worker_code", message: "server detail is not UI copy" },
+    409,
+  ), {
+    code: "future_worker_code",
+    message: "server detail is not UI copy",
+    status: 409,
+  });
+  assert.deepEqual(normalizeCanonicalApiError(
+    { error: { code: "future_nested_code", message: "nested detail" } },
+    500,
+  ), {
+    code: "future_nested_code",
+    message: "nested detail",
+    status: 500,
+  });
+
+  const missingMessage = normalizeCanonicalApiError({ error: "invalid_credentials" }, 400);
+  assert.deepEqual(missingMessage, {
+    code: "invalid_credentials",
+    message: "Canonical API rejected the request.",
+    status: 400,
+  });
+  const nestedMissingMessage = normalizeCanonicalApiError({ error: { code: "unauthorized" } }, 401);
+  assert.deepEqual(nestedMissingMessage, {
+    code: "unauthorized",
+    message: "Canonical API rejected the request.",
+    status: 401,
+  });
+
+  for (const [payload, status] of [
+    [{ message: "missing error" }, 403],
+    [{ error: { code: 42, message: "non-string code" } }, 404],
+    [null, 409],
+    ["not-json-object", 429],
+    [[], 500],
+  ]) {
+    const normalized = normalizeCanonicalApiError(payload, status);
+    assert.equal(normalized.code, `CANONICAL_API_HTTP_${status}`);
+    assert.equal(normalized.message, "Canonical API rejected the request.");
+    assert.equal(normalized.status, status);
+  }
+  assert.equal(normalizeCanonicalApiError({ error: "invalid_credentials" }, "401").status, null);
+});
 
 test("canonical API uses one records boundary for create, correction, reversal, and reads", async () => {
   const calls = [];
@@ -133,6 +195,50 @@ test("browser auth keeps the session token in memory and gates Test scope behind
   assert.equal(calls[2].init.headers.authorization, `Bearer ${"A".repeat(43)}`);
   assert.equal(client.isAuthenticated(), false);
   assert.equal(Object.prototype.hasOwnProperty.call(client.state(), "token"), false);
+});
+
+test("flat Worker login rejection preserves code/status without creating auth state", async () => {
+  const client = createClient({
+    base: "https://worker.example.test",
+    fetchImpl: async () => response({ error: "invalid_credentials", message: "管理密碼錯誤。" }, 401),
+  });
+
+  await assert.rejects(() => client.login("browser-only-password"), (error) => {
+    assert.equal(error instanceof CanonicalApiError, true);
+    assert.equal(error.code, "invalid_credentials");
+    assert.equal(error.status, 401);
+    assert.equal(error.message, "管理密碼錯誤。");
+    return true;
+  });
+  assert.equal(client.isAuthenticated(), false);
+  assert.deepEqual(client.authState(), { authenticated: false, expiresAt: null, organization: null });
+});
+
+test("malformed and non-JSON errors remain bounded, while protected 401 clears auth", async () => {
+  let call = 0;
+  const client = createClient({
+    base: "https://worker.example.test",
+    fetchImpl: async (url) => {
+      call += 1;
+      const pathname = new URL(url).pathname;
+      if (pathname === "/api/web/auth/login") return response({ authenticated: true, token: "B".repeat(43) });
+      if (call === 2) return response({ error: { message: "missing code" } }, 400);
+      return { ok: false, status: 401, async json() { throw new Error("not-json"); } };
+    },
+  });
+
+  await client.login("browser-only-password");
+  await assert.rejects(() => client.createRecord(command("malformed")), (error) => {
+    assert.equal(error.code, "CANONICAL_API_HTTP_400");
+    assert.equal(error.status, 400);
+    return true;
+  });
+  await assert.rejects(() => client.createRecord(command("non-json")), (error) => {
+    assert.equal(error.code, "CANONICAL_API_HTTP_401");
+    assert.equal(error.status, 401);
+    return true;
+  });
+  assert.equal(client.isAuthenticated(), false);
 });
 
 test("Pages runtime is allowlisted and unknown hosted origins fail closed", () => {

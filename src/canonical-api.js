@@ -119,10 +119,45 @@
     return { command };
   }
 
-  function errorPayload(payload) {
-    if (!payload || typeof payload !== "object") return null;
-    if (payload.error && typeof payload.error === "object") return payload.error;
-    return null;
+  const ERROR_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/u;
+  const DEFAULT_API_ERROR_MESSAGE = "Canonical API rejected the request.";
+
+  function httpErrorCode(httpStatus) {
+    return Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599
+      ? `CANONICAL_API_HTTP_${httpStatus}`
+      : "CANONICAL_API_HTTP_ERROR";
+  }
+
+  /**
+   * Worker versions in the wild have used both of these equivalent envelopes:
+   *   { error: "invalid_credentials", message: "..." }
+   *   { error: { code: "invalid_credentials", message: "..." } }
+   * Keep the transport compatibility here so every Web operation shares one
+   * failure contract. UI code must map the resulting code to bounded copy and
+   * must not render the server-provided message directly.
+   */
+  function normalizeCanonicalApiError(payload, httpStatus) {
+    const status = Number.isInteger(httpStatus) ? httpStatus : null;
+    const fallbackCode = httpErrorCode(httpStatus);
+    const fallback = { code: fallbackCode, message: DEFAULT_API_ERROR_MESSAGE, status };
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) return fallback;
+
+    const envelope = payload.error;
+    let code = null;
+    let message = null;
+    if (typeof envelope === "string") {
+      code = envelope.trim();
+      message = payload.message;
+    } else if (envelope && typeof envelope === "object" && !Array.isArray(envelope)) {
+      code = envelope.code;
+      message = envelope.message;
+    }
+    if (typeof code !== "string" || !ERROR_CODE_PATTERN.test(code.trim())) return fallback;
+    return {
+      code: code.trim(),
+      message: typeof message === "string" && message.trim() ? message.trim() : DEFAULT_API_ERROR_MESSAGE,
+      status,
+    };
   }
 
   function createClient(options = {}) {
@@ -181,8 +216,8 @@
       try { payload = await response.json(); } catch (_) {}
       if (!response.ok) {
         if (response.status === 401 && pathname !== "/api/web/auth/login" && pathname !== "/api/web/auth/session") clearAuth();
-        const detail = errorPayload(payload);
-        throw new CanonicalApiError(String(detail?.code || `CANONICAL_API_HTTP_${response.status}`), String(detail?.message || "Canonical API rejected the request."), { status: response.status, payload });
+        const detail = normalizeCanonicalApiError(payload, response.status);
+        throw new CanonicalApiError(detail.code, detail.message, { status: detail.status, payload });
       }
       return payload;
     }
@@ -259,5 +294,5 @@
     });
   }
 
-  return Object.freeze({ CanonicalApiError, createClient, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH });
+  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH });
 });

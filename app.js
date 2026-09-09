@@ -281,7 +281,7 @@
       state.canonicalApiError = "";
       state.page = INITIAL_MANAGEMENT_ENTRY ? "today" : "record-portal";
     } catch (error) {
-      state.webAuthError = canonicalApiErrorMessage(error);
+      state.webAuthError = canonicalApiErrorMessage(error, "login");
     } finally {
       state.webAuthSubmitting = false;
       render();
@@ -1913,13 +1913,16 @@
     return messages[error?.message] || "主檔資料格式不完整，請檢查後再試。";
   }
 
-  function canonicalApiErrorMessage(error) {
+  function canonicalApiErrorMessage(error, context = "business") {
     const messages = {
       CANONICAL_API_NOT_CONFIGURED: "目前未設定 canonical API；這個頁面仍維持 Lab local overlay。",
       CANONICAL_API_ENV_INVALID: "API environment 不明，已 fail closed，沒有送出資料。",
       CANONICAL_API_TEST_AUTH_REQUIRED: "Test scope 必須在已登入後由操作人明確選取，沒有送出資料。",
       CANONICAL_API_INVALID_LOGIN: "請輸入管理密碼。",
       CANONICAL_API_AUTH_RESPONSE_INVALID: "登入服務回傳無效 session，沒有送出資料。",
+      invalid_credentials: "登入未通過，請確認管理密碼後再試。",
+      organization_unavailable: "登入服務目前無法提供組織資訊，請稍後再試。",
+      origin_not_allowed: "此執行來源未獲授權，沒有送出資料。",
       unauthorized: "登入 session 已失效，請重新登入；沒有建立本機替代紀錄。",
       CANONICAL_API_NETWORK_ERROR: "canonical API 無法連線；沒有建立本機替代紀錄。",
       CANONICAL_COMMAND_REQUIRED: "這個操作沒有可驗證的 RecordCommand，沒有送出資料。",
@@ -1927,7 +1930,10 @@
       CANONICAL_SCOPE_INVALID: "資料範圍無效，沒有送出資料。",
       CANONICAL_RELATION_TARGET_MISMATCH: "修正／撤銷關聯目標不一致，沒有送出資料。",
     };
-    return messages[error?.code] || error?.message || "canonical API 拒絕了這筆資料，沒有建立本機替代紀錄。";
+    if (messages[error?.code]) return messages[error.code];
+    return context === "login"
+      ? "登入未通過，請確認管理密碼後再試。"
+      : "canonical API 拒絕了這筆資料，沒有建立本機替代紀錄。";
   }
 
   function submitCanonicalBoundary(command, relation, successText, { onSuccess, onError } = {}) {
