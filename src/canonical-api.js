@@ -199,6 +199,136 @@
     "abnormal_events",
   ]);
 
+  const CANONICAL_EFFECTIVE_STATUSES = new Set(["active", "corrected", "reversed", "replacement"]);
+  const CANONICAL_LEGACY_READ_ERROR = "CANONICAL_RECORD_LEGACY_SHAPE";
+
+  function nullableCanonicalId(value) {
+    if (value === undefined || value === null || value === "") return null;
+    const normalized = String(value).trim();
+    return normalized || null;
+  }
+
+  function canonicalLegacyRelation(row) {
+    const relations = [
+      ["correction", nullableCanonicalId(row.correctionOfId)],
+      ["reversal", nullableCanonicalId(row.reversalOfId)],
+      ["replacement", nullableCanonicalId(row.replacementOfId)],
+    ].filter(([, id]) => id);
+    return relations.length === 1 ? { kind: relations[0][0], id: relations[0][1] } : null;
+  }
+
+  function canonicalLegacyFields(row) {
+    const fields = [
+      "maleCount", "femaleCount", "totalCount", "condition", "sex", "averageWeight", "totalWeight", "weightUnit",
+      "chickInDate", "content", "vendor", "weight", "submittedAt", "workflowStatus", "result", "completedAt",
+      "reminderDueAt", "maintenanceContent", "extent", "linkedMortalityEventId", "detail", "measuredTemperature",
+      "measurement", "evidence", "quantity", "unit",
+    ];
+    return Object.fromEntries(fields
+      .filter((field) => row[field] !== undefined && row[field] !== null && row[field] !== "")
+      .map((field) => [field, row[field]]));
+  }
+
+  function canonicalLegacyDerivedFields(row) {
+    const derivedFields = row.derivedFields && typeof row.derivedFields === "object" && !Array.isArray(row.derivedFields)
+      ? row.derivedFields
+      : {};
+    const knownDerivedFields = {
+      O1: ["totalCount"],
+      O3: ["averageWeight"],
+      O4: ["ageDays"],
+      O6: ["reminderDueAt"],
+    }[row.taxonomyId] || [];
+    return Object.fromEntries([...new Set([...knownDerivedFields, ...Object.keys(derivedFields)])]
+      .map((field) => [field, row[field] ?? derivedFields[field]])
+      .filter(([, value]) => value !== undefined && value !== null && value !== ""));
+  }
+
+  function canonicalLegacyRecord(row) {
+    const relation = canonicalLegacyRelation(row);
+    const relationStatus = relation?.kind === "reversal"
+      ? "reversed"
+      : relation
+        ? "replacement"
+        : null;
+    const rawStatus = typeof row.lifecycleStatus === "string" ? row.lifecycleStatus.trim() : "";
+    const effectiveStatus = relationStatus || (CANONICAL_EFFECTIVE_STATUSES.has(rawStatus) ? rawStatus : "active");
+    const occurredAt = typeof row.occurredAt === "string" && row.occurredAt
+      ? row.occurredAt
+      : typeof row.createdAt === "string" ? row.createdAt : "";
+    const createdAt = typeof row.createdAt === "string" && row.createdAt
+      ? row.createdAt
+      : occurredAt;
+    const lineage = {
+      correctionOfId: nullableCanonicalId(row.correctionOfId),
+      reversalOfId: nullableCanonicalId(row.reversalOfId),
+      replacementOfId: nullableCanonicalId(row.replacementOfId),
+      correctedById: null,
+      reversedById: null,
+      replacedById: null,
+    };
+    return {
+      ...row,
+      id: String(row.id).trim(),
+      taxonomyId: String(row.taxonomyId).trim(),
+      family: typeof row.family === "string" ? row.family : "",
+      type: typeof row.type === "string" ? row.type : "",
+      subtype: typeof row.subtype === "string" && row.subtype ? row.subtype : typeof row.intent === "string" ? row.intent : "",
+      occurredAt,
+      createdAt,
+      farmId: nullableCanonicalId(row.farmId) || "",
+      houseId: nullableCanonicalId(row.houseId),
+      flockId: nullableCanonicalId(row.flockId),
+      sourceChannel: typeof row.sourceChannel === "string" ? row.sourceChannel : "",
+      sourceMessageId: nullableCanonicalId(row.sourceMessageId),
+      sourceCandidateId: nullableCanonicalId(row.sourceCandidateId),
+      rawText: typeof row.rawText === "string" ? row.rawText : "",
+      actorId: nullableCanonicalId(row.actorId),
+      confirmedBy: nullableCanonicalId(row.confirmedBy),
+      clientOperationId: nullableCanonicalId(row.clientOperationId || row.sourceEventId) || String(row.id).trim(),
+      lifecycleStatus: effectiveStatus,
+      effectiveStatus,
+      isEffective: effectiveStatus === "active",
+      readStatus: "unsafe",
+      readErrorCode: CANONICAL_LEGACY_READ_ERROR,
+      correctionSafe: false,
+      reversalSafe: false,
+      correctionBlockReason: "CANONICAL_RECORD_READ_MODEL_REQUIRED",
+      reversalBlockReason: "CANONICAL_RECORD_READ_MODEL_REQUIRED",
+      lineage,
+      record: null,
+      correctionSeed: null,
+      reversalSeed: null,
+      fields: canonicalLegacyFields(row),
+      derivedFields: canonicalLegacyDerivedFields(row),
+    };
+  }
+
+  function applyCanonicalLegacyLineage(records) {
+    const byId = new Map(records.map((record) => [record.id, record]));
+    for (const child of records) {
+      if (child.readErrorCode !== CANONICAL_LEGACY_READ_ERROR) continue;
+      const relation = canonicalLegacyRelation(child);
+      if (!relation) continue;
+      const parent = byId.get(relation.id);
+      if (!parent || parent.readErrorCode !== CANONICAL_LEGACY_READ_ERROR) continue;
+      const field = relation.kind === "correction"
+        ? "correctedById"
+        : relation.kind === "reversal"
+          ? "reversedById"
+          : "replacedById";
+      parent.lineage[field] = child.id;
+      parent.effectiveStatus = relation.kind === "reversal" ? "reversed" : "corrected";
+      parent.lifecycleStatus = parent.effectiveStatus;
+      parent.isEffective = false;
+      parent.correctionSafe = false;
+      parent.reversalSafe = false;
+      parent.correctionBlockReason = "CANONICAL_RECORD_NOT_EFFECTIVE";
+      parent.reversalBlockReason = "CANONICAL_RECORD_NOT_EFFECTIVE";
+    }
+    return records;
+  }
+
   function canonicalRecordsPayload(payload, environment) {
     if (!payload || typeof payload !== "object" || Array.isArray(payload) || !Array.isArray(payload.records)) {
       throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical records response must contain an array.", { payload });
@@ -216,6 +346,12 @@
       if (!id || !taxonomyId || seen.has(id) || !CANONICAL_RECORD_DESTINATIONS.has(row.destination)) {
         throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical record identity or destination is invalid.", { payload });
       }
+      const hasReadModelStatus = Object.prototype.hasOwnProperty.call(row, "readStatus");
+      const hasDomainRecord = Object.prototype.hasOwnProperty.call(row, "record");
+      if (!hasReadModelStatus && !hasDomainRecord) {
+        seen.add(id);
+        return canonicalLegacyRecord(row);
+      }
       if (row.readStatus !== "valid" && row.readStatus !== "unsafe") {
         throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical record safety status is invalid.", { payload });
       }
@@ -225,7 +361,7 @@
       seen.add(id);
       return { ...row, id, taxonomyId };
     });
-    return { ...payload, environment: payload.environment || environment, records };
+    return { ...payload, environment: payload.environment || environment, records: applyCanonicalLegacyLineage(records) };
   }
 
   const ERROR_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/u;

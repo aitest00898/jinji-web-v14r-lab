@@ -408,6 +408,156 @@ test("canonical record reads validate identity, authority, safety, and environme
   });
 });
 
+test("canonical record reads normalize the deployed legacy envelope without enabling writes", () => {
+  const payload = canonicalRecordsPayload({
+    environment: "test",
+    records: [
+      {
+        id: "o4-record",
+        taxonomyId: "O4",
+        family: "operational_event",
+        type: "event",
+        subtype: "weigh",
+        destination: "recording_events",
+        occurredAt: "2026-09-10T01:00:00.000Z",
+        createdAt: "2026-09-10T01:00:00.000Z",
+        farmId: "test-farm",
+        houseId: "test-house",
+        flockId: "test-flock",
+        sourceChannel: "web",
+        clientOperationId: "o4-client",
+        averageWeight: 1.8,
+        weightUnit: "kg",
+        ageDays: 39,
+        sex: "mixed",
+      },
+      {
+        id: "o2-original",
+        taxonomyId: "O2",
+        family: "operational_action",
+        type: "action",
+        subtype: "medication",
+        destination: "operational_actions",
+        occurredAt: "2026-09-10T02:00:00.000Z",
+        createdAt: "2026-09-10T02:00:00.000Z",
+        farmId: "test-farm",
+        houseId: "test-house",
+        flockId: "test-flock",
+        sourceChannel: "web",
+        clientOperationId: "o2-client",
+        content: "original medication",
+        lifecycleStatus: "active",
+      },
+      {
+        id: "o2-correction",
+        taxonomyId: "O2",
+        family: "operational_action",
+        type: "action",
+        subtype: "medication",
+        destination: "operational_actions",
+        occurredAt: "2026-09-10T03:00:00.000Z",
+        createdAt: "2026-09-10T03:00:00.000Z",
+        farmId: "test-farm",
+        houseId: "test-house",
+        flockId: "test-flock",
+        sourceChannel: "web",
+        clientOperationId: "o2-correction-client",
+        correctionOfId: "o2-original",
+        content: "corrected medication",
+      },
+      {
+        id: "a8-record",
+        taxonomyId: "A8",
+        family: "operational_observation",
+        type: "observation",
+        subtype: "foot_odor",
+        destination: "abnormal_events",
+        occurredAt: "2026-09-10T04:00:00.000Z",
+        createdAt: "2026-09-10T04:00:00.000Z",
+        farmId: "test-farm",
+        houseId: "test-house",
+        flockId: "test-flock",
+        sourceChannel: "web",
+        clientOperationId: "a8-client",
+        extent: "small",
+        detail: "test detail",
+      },
+      {
+        id: "o3-original",
+        taxonomyId: "O3",
+        family: "operational_event",
+        type: "event",
+        subtype: "shipment",
+        destination: "operational_events",
+        occurredAt: "2026-09-10T05:00:00.000Z",
+        createdAt: "2026-09-10T05:00:00.000Z",
+        farmId: "test-farm",
+        houseId: "test-house",
+        flockId: "test-flock",
+        sourceChannel: "web",
+        clientOperationId: "o3-client",
+        quantity: 1,
+        unit: "隻",
+        sex: "male",
+        totalWeight: 2,
+        weightUnit: "kg",
+      },
+      {
+        id: "o3-reversal",
+        taxonomyId: "O3",
+        family: "operational_event",
+        type: "event",
+        subtype: "shipment",
+        destination: "operational_events",
+        occurredAt: "2026-09-10T06:00:00.000Z",
+        createdAt: "2026-09-10T06:00:00.000Z",
+        farmId: "test-farm",
+        houseId: "test-house",
+        flockId: "test-flock",
+        sourceChannel: "web",
+        clientOperationId: "o3-reversal-client",
+        reversalOfId: "o3-original",
+        quantity: 1,
+        unit: "隻",
+        sex: "male",
+      },
+    ],
+  }, "test");
+
+  assert.deepEqual(payload.records.map((record) => record.taxonomyId).sort(), ["A8", "O2", "O2", "O3", "O3", "O4"]);
+  assert.equal(payload.records.every((record) => record.readStatus === "unsafe" && record.record === null), true);
+  assert.equal(payload.records.find((record) => record.id === "o4-record").fields.averageWeight, 1.8);
+  assert.equal(payload.records.find((record) => record.id === "o4-record").derivedFields.ageDays, 39);
+  assert.equal(payload.records.find((record) => record.id === "a8-record").fields.extent, "small");
+
+  const o2Original = payload.records.find((record) => record.id === "o2-original");
+  const o2Correction = payload.records.find((record) => record.id === "o2-correction");
+  assert.equal(o2Original.effectiveStatus, "corrected");
+  assert.equal(o2Original.isEffective, false);
+  assert.equal(o2Original.lineage.correctedById, "o2-correction");
+  assert.equal(o2Correction.effectiveStatus, "replacement");
+  assert.equal(o2Correction.lineage.correctionOfId, "o2-original");
+
+  const o3Original = payload.records.find((record) => record.id === "o3-original");
+  const o3Reversal = payload.records.find((record) => record.id === "o3-reversal");
+  assert.equal(o3Original.effectiveStatus, "reversed");
+  assert.equal(o3Original.isEffective, false);
+  assert.equal(o3Original.lineage.reversedById, "o3-reversal");
+  assert.equal(o3Reversal.effectiveStatus, "reversed");
+  assert.equal(o3Reversal.lineage.reversalOfId, "o3-original");
+  assert.equal(o3Original.correctionSafe, false);
+  assert.equal(o3Original.reversalSafe, false);
+});
+
+test("canonical record reads distinguish valid empty responses from malformed responses", () => {
+  assert.deepEqual(canonicalRecordsPayload({ environment: "test", records: [] }, "test").records, []);
+  assert.throws(() => canonicalRecordsPayload({ environment: "test", records: [{ id: "broken", destination: "recording_events" }] }, "test"), (error) => {
+    assert.equal(error instanceof CanonicalApiError, true);
+    assert.equal(error.code, "CANONICAL_RECORD_READ_INVALID");
+    return true;
+  });
+});
+
 test("canonical master-data reads fail closed on duplicate, wrong-parent, and wrong-environment rows", async () => {
   const invalidPayloads = [
     { farms: [{ id: "farm-test", name: "金雞測試場", environment: "test" }, { id: "farm-test", name: "重複", environment: "test" }] },

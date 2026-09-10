@@ -42,6 +42,108 @@ function jsonResponse(route, payload, status = 200) {
   return route.fulfill(response);
 }
 
+function legacyRecords() {
+  const scope = {
+    farmId: "test-farm",
+    houseId: "test-house",
+    flockId: "test-flock",
+    sourceChannel: "web",
+  };
+  return [
+    {
+      ...scope,
+      id: "o4-record",
+      taxonomyId: "O4",
+      family: "operational_event",
+      type: "event",
+      subtype: "weigh",
+      destination: "recording_events",
+      occurredAt: "2026-09-10T01:00:00.000Z",
+      createdAt: "2026-09-10T01:00:00.000Z",
+      clientOperationId: "o4-client",
+      averageWeight: 1.8,
+      weightUnit: "kg",
+      ageDays: 39,
+      sex: "mixed",
+    },
+    {
+      ...scope,
+      id: "o2-original",
+      taxonomyId: "O2",
+      family: "operational_action",
+      type: "action",
+      subtype: "medication",
+      destination: "operational_actions",
+      occurredAt: "2026-09-10T02:00:00.000Z",
+      createdAt: "2026-09-10T02:00:00.000Z",
+      clientOperationId: "o2-client",
+      content: "original medication",
+      lifecycleStatus: "active",
+    },
+    {
+      ...scope,
+      id: "o2-correction",
+      taxonomyId: "O2",
+      family: "operational_action",
+      type: "action",
+      subtype: "medication",
+      destination: "operational_actions",
+      occurredAt: "2026-09-10T03:00:00.000Z",
+      createdAt: "2026-09-10T03:00:00.000Z",
+      clientOperationId: "o2-correction-client",
+      correctionOfId: "o2-original",
+      content: "corrected medication",
+    },
+    {
+      ...scope,
+      id: "a8-record",
+      taxonomyId: "A8",
+      family: "operational_observation",
+      type: "observation",
+      subtype: "foot_odor",
+      destination: "abnormal_events",
+      occurredAt: "2026-09-10T04:00:00.000Z",
+      createdAt: "2026-09-10T04:00:00.000Z",
+      clientOperationId: "a8-client",
+      extent: "small",
+      detail: "test detail",
+    },
+    {
+      ...scope,
+      id: "o3-original",
+      taxonomyId: "O3",
+      family: "operational_event",
+      type: "event",
+      subtype: "shipment",
+      destination: "operational_events",
+      occurredAt: "2026-09-10T05:00:00.000Z",
+      createdAt: "2026-09-10T05:00:00.000Z",
+      clientOperationId: "o3-client",
+      quantity: 1,
+      unit: "隻",
+      sex: "male",
+      totalWeight: 2,
+      weightUnit: "kg",
+    },
+    {
+      ...scope,
+      id: "o3-reversal",
+      taxonomyId: "O3",
+      family: "operational_event",
+      type: "event",
+      subtype: "shipment",
+      destination: "operational_events",
+      occurredAt: "2026-09-10T06:00:00.000Z",
+      createdAt: "2026-09-10T06:00:00.000Z",
+      clientOperationId: "o3-reversal-client",
+      reversalOfId: "o3-original",
+      quantity: 1,
+      unit: "隻",
+      sex: "male",
+    },
+  ];
+}
+
 async function installCanonicalStub(page, stockMode, calls) {
   await page.route(`${workerBase}/**`, async (route) => {
     const request = route.request();
@@ -83,7 +185,7 @@ async function installCanonicalStub(page, stockMode, calls) {
         },
       });
     }
-    if (url.pathname === "/api/records") return jsonResponse(route, { environment, records: [] });
+    if (url.pathname === "/api/records") return jsonResponse(route, { environment, records: environment === "test" ? legacyRecords() : [] });
     return jsonResponse(route, { error: "unexpected_test_route" }, 404);
   });
 }
@@ -137,6 +239,19 @@ async function main() {
       const calls = [];
       await installCanonicalStub(page, scenario.mode, calls);
       await loginAndSelectTestScope(page, scenario.expected, scenario.mode, calls);
+      await page.locator('.bottom-nav [data-nav="records"]').click();
+      await page.locator('[data-testid="canonical-record-status"]').waitFor();
+      await page.waitForFunction(() => !document.querySelector('[data-testid="canonical-record-status"]')?.textContent.includes("正在載入"));
+      const recordsPage = page.locator('[data-testid="canonical-records-page"]');
+      assert.equal(await recordsPage.count(), 1);
+      assert.equal(await recordsPage.locator('.list-row').count(), 6);
+      const recordsText = await recordsPage.innerText();
+      for (const taxonomyId of ["O4", "A8"]) assert.match(recordsText, new RegExp(taxonomyId));
+      assert.ok((recordsText.match(/O2/g) || []).length >= 2);
+      assert.ok((recordsText.match(/O3/g) || []).length >= 2);
+      assert.match(recordsText, /已修正/);
+      assert.match(recordsText, /已撤銷/);
+      assert.doesNotMatch(recordsText, /讀取契約無效/);
       assert.ok(calls.some((call) => call.pathname === "/api/ai/live-status" && call.environment === "test"));
       assert.ok(calls.some((call) => call.pathname === "/api/farms" && call.environment === "test"));
       assert.ok(calls.some((call) => call.pathname === "/api/houses" && call.environment === "test"));
