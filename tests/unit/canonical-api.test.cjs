@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { CanonicalApiError, canonicalRecordsPayload, createClient, normalizeCanonicalApiError } = require("../../src/canonical-api.js");
+const { CanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, canonicalRecordsPayload, createClient, normalizeCanonicalApiError } = require("../../src/canonical-api.js");
 
 function response(payload, status = 200) {
   return { ok: status >= 200 && status < 300, status, async json() { return payload; } };
@@ -297,6 +297,79 @@ test("canonical master-data reads use the authenticated read boundary and preser
     assert.equal(init.credentials, "omit");
     assert.equal(init.headers.accept, "application/json");
   }
+});
+
+test("canonical stock projection preserves zero and rejects missing or cross-scope values", () => {
+  assert.equal(canonicalCurrentStock({ currentStock: 963, stock: 1000 }), 963);
+  assert.equal(canonicalCurrentStock({ currentStock: 0, stock: 1000 }), 0);
+  assert.equal(canonicalCurrentStock({ stock: 12 }), 12);
+  assert.equal(canonicalCurrentStock({ currentStock: null, stock: 12 }), null);
+  assert.equal(canonicalCurrentStock({ currentStock: -1 }), null);
+  assert.equal(canonicalCurrentStock({ currentStock: "963" }), null);
+
+  const valid = canonicalLiveStatusPayload({
+    aiInvoked: false,
+    context: {
+      scope: { type: "flock", id: "flock-test" },
+      scopeEntity: { id: "flock-test", environment: "test" },
+      flocks: [{ id: "flock-test", currentStock: 963, status: "active" }],
+    },
+  }, "test", "flock", "flock-test");
+  assert.equal(valid.context.flocks[0].currentStock, 963);
+  assert.equal(valid.aiInvoked, false);
+
+  const zero = canonicalLiveStatusPayload({
+    aiInvoked: false,
+    context: {
+      scope: { type: "flock", id: "flock-test" },
+      scopeEntity: { id: "flock-test", environment: "test" },
+      flocks: [{ id: "flock-test", currentStock: 0 }],
+    },
+  }, "test", "flock", "flock-test");
+  assert.equal(zero.context.flocks[0].currentStock, 0);
+
+  for (const [payload, expectedCode] of [
+    [{ aiInvoked: true, context: {} }, "CANONICAL_STOCK_READ_INVALID"],
+    [{ aiInvoked: false, context: { scope: { type: "flock", id: "flock-test" }, scopeEntity: { environment: "test" }, flocks: [{ id: "flock-test" }] } }, "CANONICAL_STOCK_READ_INVALID"],
+    [{ aiInvoked: false, context: { scope: { type: "flock", id: "flock-test" }, scopeEntity: { environment: "production" }, flocks: [{ id: "flock-test", currentStock: 963 }] } }, "CANONICAL_STOCK_SCOPE_INVALID"],
+    [{ aiInvoked: false, context: { scope: { type: "flock", id: "other" }, scopeEntity: { environment: "test" }, flocks: [{ id: "flock-test", currentStock: 963 }] } }, "CANONICAL_STOCK_SCOPE_INVALID"],
+  ]) {
+    assert.throws(() => canonicalLiveStatusPayload(payload, "test", "flock", "flock-test"), (error) => {
+      assert.equal(error instanceof CanonicalApiError, true);
+      assert.equal(error.code, expectedCode);
+      return true;
+    });
+  }
+});
+
+test("canonical flock stock client uses the existing read-only live-status projection", async () => {
+  const calls = [];
+  const client = createClient({
+    base: "https://worker.example.test",
+    environment: "test",
+    testAdmin: true,
+    fetchImpl: async (url, init) => {
+      calls.push({ url: new URL(url), init });
+      return response({
+        aiInvoked: false,
+        context: {
+          scope: { type: "flock", id: "flock-test" },
+          scopeEntity: { id: "flock-test", environment: "test" },
+          flocks: [{ id: "flock-test", currentStock: 963 }],
+        },
+      });
+    },
+  });
+
+  assert.equal(await client.getFlockCurrentStock("flock-test"), 963);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url.pathname, "/api/ai/live-status");
+  assert.equal(calls[0].url.searchParams.get("environment"), "test");
+  assert.equal(calls[0].url.searchParams.get("scopeType"), "flock");
+  assert.equal(calls[0].url.searchParams.get("scopeId"), "flock-test");
+  assert.equal(calls[0].init.method, "GET");
+  assert.equal(calls[0].init.credentials, "omit");
+  assert.equal(calls[0].init.headers.accept, "application/json");
 });
 
 test("canonical record reads validate identity, authority, safety, and environment before UI use", async () => {

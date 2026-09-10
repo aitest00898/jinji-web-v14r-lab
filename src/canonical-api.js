@@ -152,6 +152,46 @@
     });
   }
 
+  function canonicalCurrentStock(row) {
+    if (!row || typeof row !== "object" || Array.isArray(row)) return null;
+    const value = row.currentStock !== undefined ? row.currentStock : row.stock;
+    return Number.isSafeInteger(value) && value >= 0 ? value : null;
+  }
+
+  function canonicalLiveStatusPayload(payload, environment, scopeType, scopeId) {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.aiInvoked !== false) {
+      throw new CanonicalApiError("CANONICAL_STOCK_READ_INVALID", "Canonical stock projection is unavailable.", { payload });
+    }
+    const context = payload.context;
+    const scope = context?.scope;
+    const entity = context?.scopeEntity;
+    if (!context || typeof context !== "object" || Array.isArray(context)
+      || !scope || typeof scope !== "object" || Array.isArray(scope)
+      || scope.type !== scopeType || scope.id !== scopeId
+      || !entity || typeof entity !== "object" || Array.isArray(entity)
+      || entity.environment !== environment
+      || !Array.isArray(context.flocks)) {
+      throw new CanonicalApiError("CANONICAL_STOCK_SCOPE_INVALID", "Canonical stock projection scope is invalid.", { payload });
+    }
+    const seen = new Set();
+    const flocks = context.flocks.map((row) => {
+      if (!row || typeof row !== "object" || Array.isArray(row)) {
+        throw new CanonicalApiError("CANONICAL_STOCK_READ_INVALID", "Canonical stock projection row is invalid.", { payload });
+      }
+      const id = typeof row.id === "string" ? row.id.trim() : "";
+      const currentStock = canonicalCurrentStock(row);
+      if (!id || seen.has(id) || currentStock === null) {
+        throw new CanonicalApiError("CANONICAL_STOCK_READ_INVALID", "Canonical stock projection is missing an authoritative value.", { payload });
+      }
+      seen.add(id);
+      return { ...row, id, currentStock };
+    });
+    if (scopeType === "flock" && (flocks.length !== 1 || flocks[0].id !== scopeId)) {
+      throw new CanonicalApiError("CANONICAL_STOCK_READ_INVALID", "Canonical flock stock projection does not match the requested flock.", { payload });
+    }
+    return { ...payload, context: { ...context, flocks } };
+  }
+
   const CANONICAL_RECORD_DESTINATIONS = new Set([
     "recording_events",
     "operational_actions",
@@ -352,6 +392,17 @@
       return masterDataRows(await request("/api/flocks", { method: "GET", query: { farmId: normalizedFarmId } }), "flocks", environment, normalizedFarmId);
     }
 
+    async function getFlockCurrentStock(flockId) {
+      const normalizedFlockId = typeof flockId === "string" ? flockId.trim() : "";
+      if (!normalizedFlockId) throw new CanonicalApiError("CANONICAL_STOCK_FLOCK_REQUIRED", "A flock is required before loading current stock.");
+      const payload = await request("/api/ai/live-status", {
+        method: "GET",
+        query: { scopeType: "flock", scopeId: normalizedFlockId },
+      });
+      const normalized = canonicalLiveStatusPayload(payload, environment, "flock", normalizedFlockId);
+      return normalized.context.flocks[0].currentStock;
+    }
+
     return Object.freeze({
       enabled,
       base,
@@ -370,6 +421,7 @@
       listFarms,
       listHouses,
       listFlocks,
+      getFlockCurrentStock,
       createRecord: (command) => request("/api/records", { method: "POST", body: commandBody(command) }),
       correctRecord: (id, command) => request(`/api/records/${encodeURIComponent(String(id))}/correct`, { method: "POST", body: commandBody(command) }),
       reverseRecord: (id, command) => request(`/api/records/${encodeURIComponent(String(id))}/reverse`, { method: "POST", body: commandBody(command) }),
@@ -382,5 +434,5 @@
     });
   }
 
-  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, masterDataRows, canonicalRecordsPayload });
+  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, masterDataRows, canonicalRecordsPayload });
 });
