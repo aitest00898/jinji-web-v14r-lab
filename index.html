@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="theme-color" content="#fffdf8">
-    <meta name="description" content="金雞管理中心互動測試版，使用模擬資料，不連線正式系統。">
+    <meta name="description" content="金雞管理中心管理介面；執行環境由核准的 API host 或本機 Lab runtime 明確決定。">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="金雞管理中心">
+    <meta name="jinji-api-base" content="">
     <title>金雞管理中心 V14R Plus r4 Desktop v7（測試版）</title>
 
 
@@ -17,12 +18,16 @@
 </head>
   <body>
     <div id="app"></div>
+    <script src="./src/recording-taxonomy.js?v=foundation-1"></script>
+    <script src="./src/record-command.js?v=foundation-1"></script>
+    <script src="./src/guided-recording.js?v=foundation-1"></script>
     <script src="./src/domain.js?v=preprod-v7-2"></script>
     <script src="./src/storage.js?v=preprod-v7-2"></script>
     <script src="./src/admin.js?v=preprod-v7-2"></script>
     <script src="./src/lab-fixture.js?v=preprod-v7-2"></script>
     <script src="./src/finance-fixture.js?v=preprod-v7-2"></script>
     <script src="./src/ai.js?v=preprod-v7-2"></script>
-    <script src="./app.js?v=preprod-v7-2"></script>
+    <script src="./src/canonical-api.js?v=canonical-records-read-5"></script>
+    <script src="./app.js?v=canonical-records-read-5"></script>
   </body>
 </html>

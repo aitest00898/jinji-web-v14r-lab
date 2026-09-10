@@ -72,6 +72,47 @@ button:focus-visible {
   outline-offset: 3px;
 }
 
+.web-access-boundary {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px max(18px, calc(18px + var(--safe-right))) 24px max(18px, calc(18px + var(--safe-left)));
+  background: radial-gradient(circle at 20% 10%, #f3faf5, transparent 46%), var(--canvas);
+}
+.web-access-card {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 560px);
+  padding: clamp(24px, 5vw, 44px);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+}
+.web-access-card h1 { margin: -4px 0 0; font-size: clamp(26px, 5vw, 38px); letter-spacing: -.035em; }
+.web-access-card p { margin: 0; color: var(--muted); line-height: 1.65; }
+.web-access-symbol { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; color: #fffdf5; background: var(--green-dark); }
+.web-access-symbol .icon { width: 26px; height: 26px; }
+.web-access-meta { display: grid; gap: 6px; padding: 12px 14px; border-radius: 12px; color: var(--green-dark); background: var(--green-soft); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.web-login-form { display: grid; gap: 9px; }
+.web-login-form label { color: var(--ink); font-size: 13px; font-weight: 800; }
+.web-login-form input { width: 100%; min-height: 50px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 13px; color: var(--ink); background: #fff; font-size: 16px; }
+.web-login-form input:focus { outline: 3px solid rgba(239,189,112,.4); border-color: #caa15f; }
+.web-login-form button:disabled { cursor: wait; opacity: .66; }
+.web-access-error { padding: 12px 14px; border-left: 3px solid var(--red); border-radius: 8px; color: #843a34; background: var(--red-soft); font-size: 13px; line-height: 1.5; }
+.web-runtime-controls { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+.web-runtime-controls label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 800; white-space: nowrap; }
+.web-runtime-controls select { min-height: 34px; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 9px; color: var(--ink); background: #fff; font-size: 11px; font-weight: 800; }
+.web-auth-status { color: var(--green-dark); font-size: 10px; font-weight: 800; white-space: nowrap; }
+.web-record-entry { min-height: 34px; padding: 5px 9px; border: 1px solid #b9d6c5; border-radius: 9px; color: var(--green-dark); background: var(--green-soft); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.web-record-entry:hover { border-color: #8fbba0; background: #e1f2e7; }
+.web-logout-button { min-height: 34px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 9px; color: var(--red); background: #fff; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.web-logout-button:hover { border-color: #e7c3bf; background: var(--red-soft); }
+.api-runtime-notice { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 8px max(18px, calc(18px + var(--safe-right))) 8px max(18px, calc(18px + var(--safe-left))); border-bottom: 1px solid #d7e6dd; color: var(--green-dark); background: #f2faf5; font-size: 11px; line-height: 1.45; text-align: center; }
+.api-runtime-notice strong { white-space: nowrap; }
+.api-runtime-notice span { color: var(--muted); }
+.record-portal-note .web-runtime-controls { margin-top: 6px; justify-content: flex-start; }
+
 .app-shell {
   min-height: 100vh;
   min-height: 100dvh;
@@ -564,6 +605,11 @@ button.summary-tile:hover { border-color: #b5c9bf; }
   .topbar-status { font-size: 10px; }
   .topbar-status::before { width: 6px; height: 6px; }
   .content-grid { grid-template-columns: 1fr; }
+  .topbar { gap: 8px; }
+  .topbar .web-runtime-controls { gap: 5px; }
+  .topbar .web-runtime-controls label span, .topbar .web-auth-status { display: none; }
+  .topbar .web-runtime-controls select, .topbar .web-record-entry, .topbar .web-logout-button { min-height: 30px; font-size: 10px; }
+  .api-runtime-notice { display: grid; gap: 3px; padding-top: 7px; padding-bottom: 7px; }
 }
 
 @media (max-width: 520px) {
@@ -1757,6 +1803,91 @@ html, body { background: var(--canvas); }
   .page-shell {
     padding-bottom: calc(var(--mobile-nav-height) + var(--safe-bottom) + 96px);
   }
+}
+
+/* Record Portal + canonical guided recording.  These controls reuse the V14R
+   paper, border, radius, shadow, and green/amber/red tokens above. */
+.portal-mode .page-shell {
+  display: grid;
+  align-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-bottom: 32px;
+}
+.record-portal { width: min(100%, 960px); gap: 24px; }
+.record-portal-intro { max-width: 690px; }
+.record-portal-intro p:last-child { max-width: 620px; margin: 9px 0 0; color: var(--muted); font-size: 15px; line-height: 1.65; }
+.record-portal-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.record-portal-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 13px;
+  min-width: 0;
+  min-height: 132px;
+  padding: 19px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--ink);
+  text-align: left;
+  background: var(--paper);
+  box-shadow: var(--shadow-small);
+}
+.record-portal-card:hover { border-color: #8fb7a5; box-shadow: var(--shadow); transform: translateY(-2px); }
+.record-portal-card.management { grid-column: 1 / -1; min-height: 98px; background: #f8fcf9; }
+.record-portal-card.abnormal .record-portal-icon { color: var(--red); background: var(--red-soft); }
+.record-portal-card.management .record-portal-icon { color: var(--green); background: var(--green-soft); }
+.record-portal-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 15px; color: var(--blue); background: var(--blue-soft); }
+.record-portal-card strong, .record-portal-card small { display: block; }
+.record-portal-card strong { font-size: 17px; }
+.record-portal-card small { margin-top: 7px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.record-portal-arrow { color: var(--green); font-size: 26px; font-weight: 300; text-align: right; }
+.record-portal-note { display: flex; align-items: center; gap: 10px; padding: 13px 15px; border-left: 3px solid var(--blue); color: var(--muted); background: var(--blue-soft); font-size: 12px; line-height: 1.5; }
+.guided-step { display: grid; gap: 15px; }
+.guided-question { display: grid; gap: 5px; }
+.guided-question .kicker { margin-bottom: 0; }
+.guided-question h3 { font-size: 20px; }
+.guided-question p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+.guided-option-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.guided-option { min-width: 0; min-height: 68px; padding: 12px 13px; border: 1px solid var(--line); border-radius: 15px; color: var(--ink); text-align: left; background: #fff; }
+.guided-option:hover { border-color: var(--green); background: var(--green-soft); }
+.guided-option strong, .guided-option span { display: block; }
+.guided-option strong { font-size: 14px; line-height: 1.35; }
+.guided-option span { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.guided-form-stack { display: grid; gap: 12px; }
+.guided-field { display: grid; gap: 7px; }
+.guided-field > span { color: var(--ink); font-size: 14px; font-weight: 800; }
+.guided-field > span b { color: var(--red); font-size: 11px; }
+.guided-field > span em { color: var(--muted); font-size: 11px; font-style: normal; font-weight: 600; }
+.guided-field input, .guided-field select, .guided-field-control input, .guided-field-control select { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 13px; color: var(--ink); background: #fff; }
+.guided-field-control { display: grid; gap: 8px; }
+.guided-field-control input, .guided-field-control select { min-height: 54px; font-size: 16px; }
+.guided-confirm-row { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: start; gap: 9px; padding: 12px; border: 1px solid #e7c98e; border-radius: 13px; background: var(--amber-soft); }
+.guided-confirm-row input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--green); }
+.guided-confirm-row strong, .guided-confirm-row small { display: block; }
+.guided-confirm-row strong { font-size: 13px; }
+.guided-confirm-row small { margin-top: 3px; color: #86500f; font-size: 12px; line-height: 1.45; }
+.guided-actions { display: grid; gap: 9px; }
+.guided-actions .sheet-secondary { width: 100%; min-height: 46px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 13px; color: var(--green-dark); background: #fff; font-size: 14px; font-weight: 800; }
+.guided-actions .text-link { justify-self: start; }
+.guided-review-list { display: grid; gap: 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.guided-review-list .detail-row { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.guided-review-list .detail-row:last-child { border-bottom: 0; }
+.guided-review-list .detail-row span { color: var(--muted); font-size: 12px; }
+.guided-review-list .detail-row strong { font-size: 13px; overflow-wrap: anywhere; }
+
+@media (max-width: 560px) {
+  .portal-mode .page-shell { padding-top: 22px; padding-right: 14px; padding-left: 14px; }
+  .record-portal { gap: 19px; }
+  .record-portal-grid { gap: 9px; }
+  .record-portal-card { grid-template-columns: 34px minmax(0, 1fr) 14px; gap: 7px; min-height: 142px; padding: 12px 10px; border-radius: 16px; }
+  .record-portal-card.management { min-height: 92px; }
+  .record-portal-icon { width: 34px; height: 34px; border-radius: 11px; }
+  .record-portal-card strong { font-size: 14px; }
+  .record-portal-card small { margin-top: 5px; font-size: 11px; line-height: 1.45; }
+  .record-portal-arrow { font-size: 21px; }
+  .record-portal-note { align-items: flex-start; padding: 11px 12px; font-size: 11px; }
+  .guided-option-grid { grid-template-columns: 1fr; }
 }
 
 /* V14R usability remediation: visible Lab master-data management, local

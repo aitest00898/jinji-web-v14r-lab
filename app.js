@@ -24,6 +24,10 @@
   };
 
   const DATA = window.JinjiLabFixture;
+  const CANONICAL_API = window.JinjiCanonicalApi?.createClient?.() || null;
+  const CANONICAL_API_ENABLED = Boolean(CANONICAL_API?.isConfigured?.());
+  const CANONICAL_API_STATE = CANONICAL_API?.state?.() || { runtimeMode: "fixture_local", configurationError: null };
+  const WEB_RUNTIME_BLOCKED = CANONICAL_API_STATE.runtimeMode === "unsupported_host" || Boolean(CANONICAL_API_STATE.configurationError);
 
   const OPERATIONAL_TIMEZONE = "Asia/Taipei";
   const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -58,6 +62,10 @@
   }
 
   const INITIAL_OPERATIONAL_DATE = currentOperationalDate();
+  // Existing deterministic date-based E2E fixtures enter the management view
+  // directly; a normal URL starts at the new record portal.
+  const LEGACY_TEST_ENTRY = new URLSearchParams(window.location.search).has("test-date");
+  const INITIAL_MANAGEMENT_ENTRY = LEGACY_TEST_ENTRY || /#\/(dashboard|today)(?:$|[?])/u.test(window.location.hash);
 
   /* V14R Plus r3 linked test events — every chart point is also a normal scoped record. */
   const PLUS_LINKED_TEST_EVENTS = [{"id":"plus-ra-0825-m","date":"2026-08-25","time":"07:35","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0825-f","date":"2026-08-25","time":"09:10","type":"feed","qty":230,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0825-w","date":"2026-08-25","time":"18:20","type":"water","qty":2400,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0826-m","date":"2026-08-26","time":"07:30","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0826-f","date":"2026-08-26","time":"09:05","type":"feed","qty":232,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0826-w","date":"2026-08-26","time":"18:10","type":"water","qty":2380,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0827-m","date":"2026-08-27","time":"07:42","type":"mortality","qty":2,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0827-w","date":"2026-08-27","time":"18:15","type":"water","qty":2360,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0828-m","date":"2026-08-28","time":"07:38","type":"mortality","qty":2,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0828-f","date":"2026-08-28","time":"09:00","type":"feed","qty":236,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0828-w","date":"2026-08-28","time":"18:12","type":"water","qty":2310,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0829-m","date":"2026-08-29","time":"07:44","type":"mortality","qty":3,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0829-w","date":"2026-08-29","time":"18:00","type":"water","qty":2230,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0830-m","date":"2026-08-30","time":"07:50","type":"mortality","qty":4,"unit":"隻","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0830-f","date":"2026-08-30","time":"09:15","type":"feed","qty":238,"unit":"kg","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-ra-0830-w","date":"2026-08-30","time":"18:05","type":"water","qty":2100,"unit":"L","farmId":"red","houseId":"red-1","flockId":"alpha"},{"id":"plus-rb-0825-f","date":"2026-08-25","time":"09:25","type":"feed","qty":190,"unit":"kg","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0825-w","date":"2026-08-25","time":"18:30","type":"water","qty":1950,"unit":"L","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0827-m","date":"2026-08-27","time":"07:55","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0827-f","date":"2026-08-27","time":"09:20","type":"feed","qty":194,"unit":"kg","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0829-m","date":"2026-08-29","time":"08:02","type":"mortality","qty":1,"unit":"隻","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0829-w","date":"2026-08-29","time":"18:20","type":"water","qty":1900,"unit":"L","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0831-f","date":"2026-08-31","time":"09:18","type":"feed","qty":198,"unit":"kg","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-rb-0831-w","date":"2026-08-31","time":"18:18","type":"water","qty":1930,"unit":"L","farmId":"red","houseId":"red-2","flockId":"beta"},{"id":"plus-ba-0825-f","date":"2026-08-25","time":"09:12","type":"feed","qty":202,"unit":"kg","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0825-w","date":"2026-08-25","time":"18:16","type":"water","qty":1880,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0826-m","date":"2026-08-26","time":"07:48","type":"mortality","qty":1,"unit":"隻","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0826-w","date":"2026-08-26","time":"18:11","type":"water","qty":1900,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0829-f","date":"2026-08-29","time":"09:14","type":"feed","qty":208,"unit":"kg","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0829-w","date":"2026-08-29","time":"18:22","type":"water","qty":1910,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-ba-0831-w","date":"2026-08-31","time":"18:15","type":"water","qty":1940,"unit":"L","farmId":"black","houseId":"black-1","flockId":"black-a"},{"id":"plus-sa-0825-f","date":"2026-08-25","time":"09:35","type":"feed","qty":118,"unit":"kg","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0825-w","date":"2026-08-25","time":"18:10","type":"water","qty":2080,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0827-w","date":"2026-08-27","time":"18:14","type":"water","qty":2010,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0828-f","date":"2026-08-28","time":"09:32","type":"feed","qty":120,"unit":"kg","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0828-w","date":"2026-08-28","time":"18:08","type":"water","qty":1950,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0829-w","date":"2026-08-29","time":"18:05","type":"water","qty":1900,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0831-f","date":"2026-08-31","time":"09:28","type":"feed","qty":116,"unit":"kg","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sa-0831-w","date":"2026-08-31","time":"06:30","type":"water","qty":1680,"unit":"L","farmId":"silkie","houseId":"silkie-1","flockId":"silkie-a"},{"id":"plus-sb-0825-f","date":"2026-08-25","time":"09:42","type":"feed","qty":106,"unit":"kg","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0825-w","date":"2026-08-25","time":"18:25","type":"water","qty":1800,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0827-w","date":"2026-08-27","time":"18:26","type":"water","qty":1760,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0828-w","date":"2026-08-28","time":"18:24","type":"water","qty":1720,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0829-f","date":"2026-08-29","time":"09:38","type":"feed","qty":104,"unit":"kg","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0829-w","date":"2026-08-29","time":"13:55","type":"water","qty":1480,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0830-w","date":"2026-08-30","time":"18:24","type":"water","qty":1710,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-sb-0831-w","date":"2026-08-31","time":"18:21","type":"water","qty":1770,"unit":"L","farmId":"silkie","houseId":"silkie-2","flockId":"silkie-b"},{"id":"plus-na-0825-f","date":"2026-08-25","time":"09:50","type":"feed","qty":72,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0825-w","date":"2026-08-25","time":"18:35","type":"water","qty":980,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0826-f","date":"2026-08-26","time":"09:52","type":"feed","qty":82,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0826-w","date":"2026-08-26","time":"18:34","type":"water","qty":1080,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0827-f","date":"2026-08-27","time":"09:51","type":"feed","qty":92,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0827-w","date":"2026-08-27","time":"18:33","type":"water","qty":1170,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0828-f","date":"2026-08-28","time":"09:49","type":"feed","qty":102,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0828-w","date":"2026-08-28","time":"18:31","type":"water","qty":1280,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0829-f","date":"2026-08-29","time":"09:46","type":"feed","qty":112,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0829-w","date":"2026-08-29","time":"18:28","type":"water","qty":1390,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0830-w","date":"2026-08-30","time":"18:27","type":"water","qty":1480,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0831-f","date":"2026-08-31","time":"09:44","type":"feed","qty":128,"unit":"kg","farmId":"new","houseId":"new-1","flockId":"new-a"},{"id":"plus-na-0831-w","date":"2026-08-31","time":"18:26","type":"water","qty":1560,"unit":"L","farmId":"new","houseId":"new-1","flockId":"new-a"}];
@@ -144,6 +152,7 @@
       abnormalities: [...LAB_FIXTURE.abnormalities, ...(overlay.abnormalities || [])],
       events: [...LAB_FIXTURE.events, ...(overlay.events || [])],
       observations: [...(LAB_FIXTURE.observations || []), ...(overlay.observations || [])],
+      actions: [...(overlay.actions || [])],
     };
   }
 
@@ -191,7 +200,7 @@
   ];
 
   const state = {
-    page: "today",
+    page: INITIAL_MANAGEMENT_ENTRY ? "today" : "record-portal",
     context: { farmId: "all", houseId: null, flockId: null },
     contextDraft: null,
     contextStep: "farm",
@@ -222,6 +231,7 @@
     quickRecordQuantityDraft: "",
     quickRecordScopePrompt: null,
     quickRecordScopeConfirmed: false,
+    guidedRecord: null,
     pendingApproval: null,
     correctionNotice: "",
     resumeAfterFarmSelection: null,
@@ -231,9 +241,259 @@
     masterDataNotice: "",
     masterDataError: "",
     masterDataConfirmation: null,
+    canonicalApiNotice: "",
+    canonicalApiError: "",
+    webAuthError: "",
+    webAuthSubmitting: false,
   };
 
+  // Canonical master data is a separate, memory-only recording scope catalog.
+  // Dashboard and Finance continue to use the clearly-labelled Lab fixture;
+  // no canonical read is ever silently replaced by fixture data.
+  const canonicalScopeCatalog = {
+    environment: null,
+    farms: [],
+    housesByFarm: Object.create(null),
+    flocksByFarm: Object.create(null),
+    loading: false,
+    error: "",
+  };
+  let canonicalScopeLoadId = 0;
+
+  const canonicalRecordCatalog = {
+    environment: null,
+    records: [],
+    loading: false,
+    error: "",
+  };
+  let canonicalRecordLoadId = 0;
+  let canonicalReplayReceipt = null;
+
   const app = document.getElementById("app");
+
+  function canonicalRecordingEnabled() {
+    return Boolean(CANONICAL_API_ENABLED && CANONICAL_API?.isAuthenticated?.());
+  }
+
+  function resetCanonicalScopeCatalog() {
+    canonicalScopeCatalog.environment = CANONICAL_API?.environment || null;
+    canonicalScopeCatalog.farms = [];
+    canonicalScopeCatalog.housesByFarm = Object.create(null);
+    canonicalScopeCatalog.flocksByFarm = Object.create(null);
+    canonicalScopeCatalog.loading = false;
+    canonicalScopeCatalog.error = "";
+  }
+
+  function resetCanonicalRecordCatalog() {
+    canonicalRecordCatalog.environment = CANONICAL_API?.environment || null;
+    canonicalRecordCatalog.records = [];
+    canonicalRecordCatalog.loading = false;
+    canonicalRecordCatalog.error = "";
+    canonicalReplayReceipt = null;
+  }
+
+  function canonicalFlockDisplay(flock) {
+    const stock = window.JinjiCanonicalApi?.canonicalCurrentStock?.(flock) ?? null;
+    return {
+      ...flock,
+      code: flock.batchCode,
+      chickIn: flock.chickInDate || "",
+      initial: flock.initialCount,
+      ship: flock.expectedShipmentDate || flock.actualShipmentDate || "",
+      state: flock.status,
+      stock,
+    };
+  }
+
+  function canonicalFarmDisplay(farm) {
+    const houses = (canonicalScopeCatalog.housesByFarm[farm.id] || []).map((house) => ({
+      ...house,
+      flocks: (canonicalScopeCatalog.flocksByFarm[farm.id] || [])
+        .filter((flock) => flock.houseId === house.id)
+        .map(canonicalFlockDisplay),
+    }));
+    return {
+      ...farm,
+      subtitle: farm.siteName || `${farm.environment === "test" ? "Test" : "Production"} scope · canonical master data`,
+      houses,
+      stock: null,
+    };
+  }
+
+  function canonicalFarmById(id) {
+    const farm = canonicalScopeCatalog.farms.find((candidate) => candidate.id === id);
+    return farm ? canonicalFarmDisplay(farm) : null;
+  }
+
+  function recordingScopeFarms() {
+    return canonicalRecordingEnabled() ? canonicalScopeCatalog.farms.map(canonicalFarmDisplay) : allProductionFarms();
+  }
+
+  function recordingScopeFarmById(id) {
+    return canonicalRecordingEnabled() ? canonicalFarmById(id) : allProductionFarms().find((farm) => farm.id === id) || null;
+  }
+
+  function canonicalScopeSelectionReady(guided) {
+    if (!canonicalRecordingEnabled()) return true;
+    const requirements = window.JinjiGuidedRecording.scopeRequirements(guided);
+    const farm = canonicalFarmById(guided?.scope?.farmId);
+    const house = farm?.houses?.find((candidate) => candidate.id === guided?.scope?.houseId) || null;
+    const flock = house?.flocks?.find((candidate) => candidate.id === guided?.scope?.flockId) || null;
+    return Boolean(farm && (!requirements.houseRequired || house) && (!requirements.flockRequired || flock) && (guided?.scope?.houseId ? house : true) && (guided?.scope?.flockId ? flock : true));
+  }
+
+  async function refreshCanonicalScopeCatalog({ clearSelection = false } = {}) {
+    if (!canonicalRecordingEnabled()) {
+      resetCanonicalScopeCatalog();
+      return;
+    }
+    if (clearSelection) {
+      state.context = { farmId: "all", houseId: null, flockId: null };
+      state.guidedRecord = null;
+      if (state.sheet?.kind === "guided-record") state.sheet = null;
+    }
+    const environment = CANONICAL_API.environment;
+    const loadId = ++canonicalScopeLoadId;
+    resetCanonicalScopeCatalog();
+    canonicalScopeCatalog.environment = environment;
+    canonicalScopeCatalog.loading = true;
+    render();
+    try {
+      const farms = await CANONICAL_API.listFarms();
+      if (loadId !== canonicalScopeLoadId || !canonicalRecordingEnabled() || CANONICAL_API.environment !== environment) return;
+      const housesByFarm = Object.create(null);
+      const flocksByFarm = Object.create(null);
+      await Promise.all(farms.map(async (farm) => {
+        const [houses, flocks] = await Promise.all([
+          CANONICAL_API.listHouses(farm.id),
+          CANONICAL_API.listFlocks(farm.id),
+        ]);
+        const houseIds = new Set(houses.map((house) => house.id));
+        if (houses.some((house) => house.farmId !== farm.id || (house.farmEnvironment !== undefined && house.farmEnvironment !== environment))) {
+          throw new window.JinjiCanonicalApi.CanonicalApiError("CANONICAL_MASTER_DATA_INVALID", "Canonical house scope does not match the selected environment.");
+        }
+        if (flocks.some((flock) => flock.farmId !== farm.id || !houseIds.has(flock.houseId))) {
+          throw new window.JinjiCanonicalApi.CanonicalApiError("CANONICAL_MASTER_DATA_INVALID", "Canonical flock scope does not match the selected house.");
+        }
+        const flocksWithStock = await Promise.all(flocks.map(async (flock) => {
+          try {
+            const currentStock = await CANONICAL_API.getFlockCurrentStock(flock.id);
+            return { ...flock, currentStock };
+          } catch (error) {
+            if (error?.status === 401 || !canonicalRecordingEnabled()) throw error;
+            return { ...flock, currentStock: null };
+          }
+        }));
+        housesByFarm[farm.id] = houses;
+        flocksByFarm[farm.id] = flocksWithStock;
+      }));
+      if (loadId !== canonicalScopeLoadId || !canonicalRecordingEnabled() || CANONICAL_API.environment !== environment) return;
+      canonicalScopeCatalog.environment = environment;
+      canonicalScopeCatalog.farms = farms;
+      canonicalScopeCatalog.housesByFarm = housesByFarm;
+      canonicalScopeCatalog.flocksByFarm = flocksByFarm;
+      canonicalScopeCatalog.error = "";
+    } catch (error) {
+      if (loadId === canonicalScopeLoadId && canonicalRecordingEnabled() && CANONICAL_API.environment === environment) {
+        canonicalScopeCatalog.error = "無法載入正式工作範圍";
+        state.canonicalApiError = error?.code === "CANONICAL_MASTER_DATA_INVALID" ? "正式工作範圍資料無效，已停止載入。" : "正式工作範圍暫時無法載入。";
+      }
+    } finally {
+      if (loadId === canonicalScopeLoadId && CANONICAL_API.environment === environment) {
+        canonicalScopeCatalog.loading = false;
+        render();
+      }
+    }
+  }
+
+  async function refreshCanonicalRecords() {
+    if (!canonicalRecordingEnabled()) {
+      resetCanonicalRecordCatalog();
+      return;
+    }
+    const environment = CANONICAL_API.environment;
+    const loadId = ++canonicalRecordLoadId;
+    canonicalRecordCatalog.environment = environment;
+    canonicalRecordCatalog.loading = true;
+    canonicalRecordCatalog.error = "";
+    render();
+    try {
+      const payload = await CANONICAL_API.listRecords({ limit: 100 });
+      if (loadId !== canonicalRecordLoadId || !canonicalRecordingEnabled() || CANONICAL_API.environment !== environment) return;
+      canonicalRecordCatalog.environment = payload.environment;
+      canonicalRecordCatalog.records = payload.records;
+      canonicalRecordCatalog.error = "";
+    } catch (error) {
+      if (loadId === canonicalRecordLoadId && canonicalRecordingEnabled() && CANONICAL_API.environment === environment) {
+        canonicalRecordCatalog.records = [];
+        canonicalRecordCatalog.error = error?.code === "CANONICAL_RECORD_READ_INVALID"
+          ? "正式紀錄讀取契約無效，已停止顯示。"
+          : "正式紀錄目前無法載入；沒有改用本機 fixture。";
+        state.canonicalApiError = canonicalApiErrorMessage(error);
+      }
+    } finally {
+      if (loadId === canonicalRecordLoadId && CANONICAL_API.environment === environment) {
+        canonicalRecordCatalog.loading = false;
+        render();
+      }
+    }
+  }
+
+  function webApiEnvironmentLabel() {
+    if (!CANONICAL_API) return "本機 Lab";
+    return CANONICAL_API.environment === "test" ? "Test scope" : "Production scope";
+  }
+
+  function webAccessBoundaryMarkup() {
+    if (!WEB_RUNTIME_BLOCKED && !CANONICAL_API_ENABLED) return "";
+    if (WEB_RUNTIME_BLOCKED) {
+      const detail = CANONICAL_API_STATE.configurationError || "此 host 未被允許自動連線 Production API。";
+      return `<main class="web-access-boundary" data-testid="web-runtime-blocked"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · ACCESS BLOCKED</p><h1>此執行位置未獲授權</h1><p>為避免把模擬資料誤當成正式資料，未知 host、錯誤 API scope 或不合法 Pages base 不會載入 fixture，也不會送出 API request。</p><div class="web-access-error" role="alert">${escapeHtml(detail.message || detail)}</div><div class="readonly-note">請從已核准的 Pages host 或 localhost Lab 開啟。</div></section></main>`;
+    }
+    if (CANONICAL_API.isAuthenticated()) return "";
+    return `<main class="web-access-boundary" data-testid="web-auth-gate"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · AUTHENTICATED API</p><h1>登入管理介面</h1><p>此頁會使用核准的 canonical Worker API。密碼只在瀏覽器輸入框送往登入端點；session token 只保留在本次頁面的記憶體，不寫入 localStorage、IndexedDB 或 URL。</p><div class="web-access-meta"><span>API：${escapeHtml(CANONICAL_API.base || "—")}</span><span>預設 scope：Production</span></div><form id="web-login-form" class="web-login-form"><label for="web-admin-password">管理密碼</label><input id="web-admin-password" name="password" type="password" autocomplete="current-password" required ${state.webAuthSubmitting ? "disabled" : ""}><button type="submit" class="sheet-primary" ${state.webAuthSubmitting ? "disabled" : ""}>${state.webAuthSubmitting ? "登入中…" : "登入"}</button></form>${state.webAuthError ? `<div class="web-access-error" role="alert">${escapeHtml(state.webAuthError)}</div>` : ""}<div class="readonly-note">未登入時不會載入或提交正式資料；登入失效時會回到此畫面，不會改用本機 fixture 寫入。</div></section></main>`;
+  }
+
+  async function beginWebLogin() {
+    if (!CANONICAL_API_ENABLED || state.webAuthSubmitting) return;
+    const passwordInput = document.getElementById("web-admin-password");
+    const password = passwordInput?.value || "";
+    if (!password) {
+      state.webAuthError = "請輸入管理密碼。";
+      return render();
+    }
+    state.webAuthSubmitting = true;
+    state.webAuthError = "";
+    render();
+    try {
+      await CANONICAL_API.login(password);
+      state.webAuthError = "";
+      state.canonicalApiError = "";
+      state.page = INITIAL_MANAGEMENT_ENTRY ? "today" : "record-portal";
+      await refreshCanonicalScopeCatalog();
+      await refreshCanonicalRecords();
+    } catch (error) {
+      state.webAuthError = canonicalApiErrorMessage(error, "login");
+    } finally {
+      state.webAuthSubmitting = false;
+      render();
+    }
+  }
+
+  async function beginWebLogout() {
+    if (!CANONICAL_API_ENABLED) return;
+    try { await CANONICAL_API.logout(); } catch (_) {}
+    state.webAuthError = "";
+    state.canonicalApiError = "";
+    state.canonicalApiNotice = "";
+    resetCanonicalScopeCatalog();
+    resetCanonicalRecordCatalog();
+    state.context = { farmId: "all", houseId: null, flockId: null };
+    state.sheet = null;
+    state.guidedRecord = null;
+    state.page = "record-portal";
+    render();
+  }
 
   const DEV_ANALYTICS_KEY = "jinji-v14r-plus-r4-analytics";
   const DEV_NOTE_KEY = "jinji-v14r-plus-r4-developer-note";
@@ -404,6 +664,10 @@
     return value === null || value === undefined ? "—" : Number(value).toLocaleString("zh-TW");
   }
 
+  function stockValue(value) {
+    return Number.isSafeInteger(value) && value >= 0 ? number(value) : "資料不足";
+  }
+
   const MONEY_FORMATTER = new Intl.NumberFormat("zh-TW", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   const MONEY_PRECISE_FORMATTER = new Intl.NumberFormat("zh-TW", { minimumFractionDigits: 0, maximumFractionDigits: 12 });
 
@@ -438,7 +702,11 @@
   }
 
   function currentContext() {
-    const farm = farmById(state.context.farmId);
+    const farm = canonicalRecordingEnabled()
+      ? state.context.farmId === "all"
+        ? { id: "all", name: "全部已授權 scope", subtitle: "canonical read model", houses: [] }
+        : (canonicalFarmById(state.context.farmId) || { id: state.context.farmId, name: "正式雞場未載入", subtitle: "canonical master data unavailable", houses: [] })
+      : farmById(state.context.farmId);
     const house = farm.id === "all" ? null : houseById(farm, state.context.houseId);
     const flock = house ? flockById(house, state.context.flockId) : null;
     return { farm, house, flock };
@@ -481,8 +749,14 @@
     return labData().farms.filter((farm) => farm.id !== "all");
   }
 
+  function allOperationalFarms() {
+    return canonicalRecordingEnabled()
+      ? canonicalScopeCatalog.farms.map(canonicalFarmDisplay)
+      : allProductionFarms();
+  }
+
   function allFlocks() {
-    return allProductionFarms().flatMap((farm) =>
+    return allOperationalFarms().flatMap((farm) =>
       farm.houses.flatMap((house) =>
         house.flocks.map((flock) => ({ ...flock, farmId: farm.id, farm: farm.name, houseId: house.id, house: house.name }))
       )
@@ -546,6 +820,35 @@
     return effectiveLabObservations().filter(matchesContext);
   }
 
+  function actionDefinition(action) {
+    if (!action?.taxonomyId || !window.JinjiRecordingTaxonomy?.taxonomyDefinitionFor) return null;
+    try { return window.JinjiRecordingTaxonomy.taxonomyDefinitionFor(action.taxonomyId); } catch (_) { return null; }
+  }
+
+  function actionDateTime(action) {
+    const occurredAt = String(action?.occurredAt || action?.submittedAt || action?.createdAt || "");
+    return { date: occurredAt.slice(0, 10) || PLUS_AS_OF, time: occurredAt.slice(11, 16) || "09:30" };
+  }
+
+  function actionLabel(action) {
+    const definition = actionDefinition(action);
+    const subtypeLabels = {
+      vaccination: "疫苗", medication: "用藥", supplement: "補充品", shipment: "出雞", weigh: "磅重",
+      feed_order: "叫飼料", lab_test: "送驗", disinfection: "清消", maintenance: "設備維護",
+      chick_in: "入雛", mortality: "死亡", cull: "淘汰", mortality_abnormality: "死亡異常",
+      eye_swelling: "眼腫", white_crown: "白冠", purple_crown: "紫冠", black_crown: "黑冠",
+      respiratory_distress: "喘／呼吸困難", activity_down: "活動下降", growth_delay: "生長遲緩",
+      foot_odor: "臭腳", fever: "發燒", heat_stress: "熱緊迫", catching_stress: "抓雞緊迫",
+      feeding_abnormality: "採食異常", water_abnormality: "飲水異常", high_temperature: "高溫",
+      low_temperature: "低溫", heavy_rain: "大雨", flooding: "淹水", odor: "異味",
+    };
+    return definition ? `${definition.label}${subtypeLabels[action.subtype] ? ` · ${subtypeLabels[action.subtype]}` : ""}` : (action?.subtype || "操作紀錄");
+  }
+
+  function scopedActions() {
+    return labData().actions.filter(matchesContext);
+  }
+
   function scopedMortality() {
     // Keep the V7 fixture display order while still reading the reconstructed
     // append-only event set; runtime events remain appended after the fixture.
@@ -564,9 +867,16 @@
     return scopedEvents("cull", true);
   }
 
+  function stockTotal(flocks, scope) {
+    if (canonicalRecordingEnabled() && (canonicalScopeCatalog.loading || canonicalScopeCatalog.error)) return null;
+    if (!Array.isArray(flocks) || flocks.some((flock) => !Number.isSafeInteger(flock?.stock) || flock.stock < 0)) return null;
+    const base = flocks.reduce((sum, flock) => sum + flock.stock, 0);
+    return canonicalRecordingEnabled() ? base : Math.max(0, base - runtimeStockDelta(scope));
+  }
+
   function contextStock() {
-    const base = scopedFlocks().reduce((sum, flock) => sum + (flock.stock || 0), 0);
-    return Math.max(0, base - runtimeStockDelta(state.context));
+    if (canonicalRecordingEnabled() && (canonicalScopeCatalog.loading || canonicalScopeCatalog.error)) return null;
+    return stockTotal(scopedFlocks(), state.context);
   }
 
   function mortalityValue() {
@@ -626,22 +936,23 @@
   }
 
   function farmStock(farm) {
-    const base = farm.houses.flatMap((house) => house.flocks).filter((flock) => flock.state === "active").reduce((sum, flock) => sum + (flock.stock || 0), 0);
-    return Math.max(0, base - runtimeStockDelta({ farmId: farm.id, houseId: null, flockId: null }));
+    if (canonicalRecordingEnabled() && (canonicalScopeCatalog.loading || canonicalScopeCatalog.error)) return null;
+    const flocks = farm.houses.flatMap((house) => house.flocks).filter((flock) => flock.state === "active");
+    return stockTotal(flocks, { farmId: farm.id, houseId: null, flockId: null });
   }
 
   function displayedFarmStock(farm) {
-    if (farm?.id === "all") {
-      const base = allFlocks().filter((flock) => flock.state === "active").reduce((sum, flock) => sum + (flock.stock || 0), 0);
-      return Math.max(0, base - runtimeStockDelta({ farmId: "all", houseId: null, flockId: null }));
-    }
-    return farmStock(farm);
+    if (canonicalRecordingEnabled() && (canonicalScopeCatalog.loading || canonicalScopeCatalog.error)) return null;
+    const flocks = farm?.id === "all"
+      ? allFlocks().filter((flock) => flock.state === "active")
+      : farm?.houses?.flatMap((house) => house.flocks).filter((flock) => flock.state === "active") || [];
+    return stockTotal(flocks, { farmId: farm?.id || "all", houseId: null, flockId: null });
   }
 
   function houseStock(house) {
-    const base = house.flocks.filter((flock) => flock.state === "active").reduce((sum, flock) => sum + (flock.stock || 0), 0);
-    const farm = labData().farms.find((candidate) => candidate.houses.some((item) => item.id === house.id));
-    return Math.max(0, base - runtimeStockDelta({ farmId: farm?.id || "all", houseId: house.id, flockId: null }));
+    if (canonicalRecordingEnabled() && (canonicalScopeCatalog.loading || canonicalScopeCatalog.error)) return null;
+    const flocks = house?.flocks?.filter((flock) => flock.state === "active") || [];
+    return stockTotal(flocks, { farmId: house?.farmId || "all", houseId: house?.id || null, flockId: null });
   }
 
   function runtimeFinanceIdentities() {
@@ -777,7 +1088,13 @@
   }
 
   function currentPageTitle() {
-    return ({ today: "今日", calendar: "月曆", farms: "場務", records: "紀錄", todo: "待辦", more: "更多", finance: "財務", ai: "AI 助理" })[state.page] || "金雞管理中心";
+    return ({ "record-portal": "開始記錄", today: "今日", calendar: "月曆", farms: "場務", records: "紀錄", todo: "待辦", more: "更多", finance: "財務", ai: "AI 助理" })[state.page] || "金雞管理中心";
+  }
+
+  function webRuntimeControls() {
+    if (!CANONICAL_API_ENABLED || !CANONICAL_API.isAuthenticated()) return "";
+    const environment = CANONICAL_API.environment;
+    return `<div class="web-runtime-controls" data-testid="web-runtime-controls"><button type="button" class="web-record-entry" data-nav="record-portal">開始記錄</button><label><span>資料 scope</span><select id="web-environment-select" data-action="select-api-environment" aria-label="資料 scope"><option value="production" ${environment === "production" ? "selected" : ""}>Production</option><option value="test" ${environment === "test" ? "selected" : ""}>Test（明確選取）</option></select></label><span class="web-auth-status">已登入 · ${escapeHtml(webApiEnvironmentLabel())}</span><button type="button" class="web-logout-button" data-action="web-logout">登出</button></div>`;
   }
 
   function desktopNavMarkup() {
@@ -800,7 +1117,7 @@
         <div class="desktop-nav-group"><span class="desktop-nav-label">主工作</span>${primary.map(item).join("")}</div>
         <div class="desktop-nav-group"><span class="desktop-nav-label">分析與管理</span>${secondary.map(item).join("")}</div>
       </nav>
-      <div class="desktop-sidebar-footer"><span class="desktop-online-dot" aria-hidden="true"></span><span><strong>測試環境</strong><small>模擬資料 · 不連 Production</small></span></div>
+      <div class="desktop-sidebar-footer"><span class="desktop-online-dot" aria-hidden="true"></span><span><strong>${CANONICAL_API_ENABLED ? "Canonical API" : "測試環境"}</strong><small>${CANONICAL_API_ENABLED ? `${escapeHtml(webApiEnvironmentLabel())} · session in memory` : "模擬資料 · 不連 Production"}</small></span></div>
     </aside>`;
   }
 
@@ -864,7 +1181,7 @@
         items.push({
           id:`calendar-ship-plan-${flock.id}`, date:flock.ship, kind:"planned_ship", tone:"milestone", label:"預計出雞",
           farmId:farm.id, houseId:house.id, flockId:flock.id,
-          title:"預計出雞", detail:`目前在養 ${number(flock.stock)} 隻 · 批次 ${flock.code}`,
+          title:"預計出雞", detail:`目前在養 ${stockValue(flock.stock)} 隻 · 批次 ${flock.code}`,
           context:`${farm.name} · ${house.name}`,
         });
       }
@@ -889,6 +1206,23 @@
       farmId:item.farmId, houseId:item.houseId, flockId:item.flockId,
       title:`現場觀察：${observationLabel(item)}`, detail:`${item.time} · 沒有精確數量，不納入死亡／在養統計`, context:contextName(item), sourceObservationId:item.id,
     }));
+    scopedActions().forEach((action) => {
+      const dateTime = actionDateTime(action);
+      const definition = actionDefinition(action);
+      const status = action.workflowStatus || "已保存";
+      items.push({
+        id:`calendar-action-${action.id}`, date:dateTime.date, kind:"action", tone:definition?.todoEffect === "follow_up" ? "weigh" : "info", label:"操作",
+        farmId:action.farmId, houseId:action.houseId, flockId:action.flockId,
+        title:actionLabel(action), detail:`${dateTime.time} · ${status} · 統一 RecordCommand`, context:contextName(action), sourceActionId:action.id,
+      });
+      if (action.taxonomyId === "O6" && action.reminderDueAt && action.workflowStatus === "waiting_result") {
+        items.push({
+          id:`calendar-action-reminder-${action.id}`, date:action.reminderDueAt.slice(0, 10), kind:"action_reminder", tone:"alert", label:"提醒",
+          farmId:action.farmId, houseId:action.houseId, flockId:action.flockId,
+          title:"送驗結果提醒", detail:"送驗後 3 天的本機提醒；不由 Cron 執行", context:contextName(action), sourceActionId:action.id,
+        });
+      }
+    });
     return items;
   }
   function scopedCalendarItems() { return calendarBaseItems().filter(calendarContextMatches); }
@@ -901,7 +1235,7 @@
     return `${year} 年 ${month} 月 ${day} 日（${weekdays[d.getDay()]}）`;
   }
   function calendarCompactRows(items) {
-    const order=["chick_in","weigh","planned_ship","shipment","abnormal","observation","mortality","cull","feed","water"];
+    const order=["chick_in","weigh","planned_ship","shipment","abnormal","observation","action","action_reminder","mortality","cull","feed","water"];
     const rows=[];
     order.forEach((kind) => {
       const group=items.filter((item)=>item.kind===kind);
@@ -927,7 +1261,7 @@
     return `<button type="button" class="calendar-cell ${selected?"selected":""} ${todayKey===dateKey?"today":""}" data-action="calendar-select-date" data-date="${dateKey}" aria-label="${dateKey}，${items.length} 項資料"><span class="calendar-day-head"><span class="calendar-day-number">${day}</span>${items.length?`<span class="calendar-day-count">${items.length} 項</span>`:""}</span><span class="calendar-badges">${rows.slice(0,4).map((row)=>`<span class="calendar-badge ${row.tone}">${escapeHtml(row.label)}</span>`).join("")}${rows.length>4?`<span class="calendar-more">＋${rows.length-4} 項</span>`:""}</span></button>`;
   }
   function calendarDetailMarkup(dateKey) {
-    const items=calendarItemsOn(dateKey).sort((a,b)=>({chick_in:0,weigh:1,planned_ship:2,shipment:3,abnormal:4,observation:5,mortality:6,cull:7,feed:8,water:9}[a.kind]??10)-({chick_in:0,weigh:1,planned_ship:2,shipment:3,abnormal:4,observation:5,mortality:6,cull:7,feed:8,water:9}[b.kind]??10));
+    const items=calendarItemsOn(dateKey).sort((a,b)=>({chick_in:0,weigh:1,planned_ship:2,shipment:3,abnormal:4,observation:5,action:6,action_reminder:7,mortality:8,cull:9,feed:10,water:11}[a.kind]??12)-({chick_in:0,weigh:1,planned_ship:2,shipment:3,abnormal:4,observation:5,action:6,action_reminder:7,mortality:8,cull:9,feed:10,water:11}[b.kind]??12));
     return `<section class="calendar-detail-panel" aria-live="polite"><div class="calendar-detail-head"><div><h2>${calendarSelectedLabel(dateKey)}</h2><p>${escapeHtml(contextLabel())}</p></div><span class="scope-chip">${items.length} 項</span></div><div class="calendar-detail-list">${items.length?items.map((item)=>`<article class="calendar-detail-item ${item.tone}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.context)}</span><small>${escapeHtml(item.detail)}</small></article>`).join(""):`<div class="empty-tab"><strong>這一天沒有資料</strong><p>目前工作範圍在這一天沒有排程、紀錄或異常。</p></div>`}</div></section>`;
   }
   function renderCalendar() {
@@ -954,13 +1288,13 @@
     if (context.flock) {
       return [
         { label: "入雛", value: context.flock.initial || 0, tone: "muted" },
-        { label: "本批在養", value: context.flock.stock || 0, tone: "green" },
+        { label: "本批在養", value: context.flock.stock, tone: "green" },
       ];
     }
     if (context.house) {
       return context.house.flocks.map((flock) => ({
         label: flock.code,
-        value: flock.state === "active" ? (flock.stock || 0) : 0,
+        value: flock.state === "active" ? flock.stock : 0,
         meta: flock.state === "active" ? "進行中" : "已出雞",
         tone: flock.state === "active" ? "green" : "muted",
       }));
@@ -973,7 +1307,7 @@
         tone: "green",
       }));
     }
-    return allProductionFarms().map((farm) => ({
+    return allOperationalFarms().map((farm) => ({
       label: farm.name,
       value: farmStock(farm),
       meta: farm.id === "history" ? "歷史查詢" : farm.risk,
@@ -987,8 +1321,8 @@
     return `<div class="plus-bar-chart" role="img" aria-label="${escapeHtml(contextShortLabel())} 在養分布圖">
       ${rows.map((row) => {
         const width = row.value <= 0 ? 0 : Math.max(3, (row.value / max) * 100);
-        return `<div class="plus-bar-row chart-query-target" tabindex="0" data-chart-tip="${escapeHtml(`${row.label}｜在養 ${number(row.value)} 隻${row.meta ? `｜${row.meta}` : ""}`)}">
-          <div class="plus-bar-head"><span><strong>${escapeHtml(row.label)}</strong>${row.meta ? `<small>${escapeHtml(row.meta)}</small>` : ""}</span><b>${number(row.value)}</b></div>
+        return `<div class="plus-bar-row chart-query-target" tabindex="0" data-chart-tip="${escapeHtml(`${row.label}｜在養 ${stockValue(row.value)} 隻${row.meta ? `｜${row.meta}` : ""}`)}">
+          <div class="plus-bar-head"><span><strong>${escapeHtml(row.label)}</strong>${row.meta ? `<small>${escapeHtml(row.meta)}</small>` : ""}</span><b>${stockValue(row.value)}</b></div>
           <div class="plus-bar-track"><span class="plus-bar-fill ${row.tone || "green"}" style="width:${width.toFixed(1)}%"></span></div>
         </div>`;
       }).join("")}
@@ -1129,7 +1463,7 @@
       <div class="today-date"><span>資料截至 ${escapeHtml(operationalDateLabel(PLUS_AS_OF))}</span><strong>今日</strong></div>
       <div class="desktop-overview-grid">
         <section class="digest" aria-labelledby="digest-title"><div class="digest-head"><p class="kicker">今日摘要</p><span class="digest-mark">${icon("digest")}</span></div><h2 id="digest-title">${digestCopy()}</h2><p>摘要只依目前工作範圍中的測試資料整理，不會自行增加數字。</p></section>
-        <section class="hero-metric" aria-label="目前在養"><div><p class="kicker">目前在養 · ${escapeHtml(contextShortLabel())}</p><strong data-testid="stock-value">${number(contextStock())}</strong><p>${escapeHtml(stockDetail(currentContext()))}</p></div><div class="hero-side"><span class="hero-icon">${icon("flock")}</span><span class="metric-label">${contextCountLabel()}</span><button type="button" class="ghost-light" data-action="open-sheet" data-sheet-kind="flocks">查看批次</button></div></section>
+        <section class="hero-metric" aria-label="目前在養"><div><p class="kicker">目前在養 · ${escapeHtml(contextShortLabel())}</p><strong data-testid="stock-value">${stockValue(contextStock())}</strong><p>${escapeHtml(stockDetail(currentContext()))}</p></div><div class="hero-side"><span class="hero-icon">${icon("flock")}</span><span class="metric-label">${contextCountLabel()}</span><button type="button" class="ghost-light" data-action="open-sheet" data-sheet-kind="flocks">查看批次</button></div></section>
       </div>
       <div class="desktop-main-grid">
         <div class="desktop-action-column">
@@ -1148,17 +1482,17 @@
   function renderFarms() {
     const context = currentContext();
     const flocks = scopedFlocks();
-    const farms = state.context.farmId === "all" ? allProductionFarms() : [context.farm];
+    const farms = state.context.farmId === "all" ? allOperationalFarms() : [context.farm];
     const houses = state.context.farmId === "all" ? [] : context.farm.houses.filter((house) => !state.context.houseId || house.id === state.context.houseId);
     return `<section class="page" data-page="farms">
       ${contextBar()}
       ${pageIntro("", "場務", "查看目前雞場、雞舍與批次狀況。")}
-      <section class="hero-metric" aria-label="場務目前在養"><div><p class="kicker">目前在養</p><strong data-testid="farm-stock-value">${number(contextStock())}</strong><p>${escapeHtml(stockDetail(context))}</p></div><div class="hero-side"><span class="hero-icon">${icon("farm")}</span><span class="metric-label">進行中批次 ${number(flocks.length)}</span></div></section>
+      <section class="hero-metric" aria-label="場務目前在養"><div><p class="kicker">目前在養</p><strong data-testid="farm-stock-value">${stockValue(contextStock())}</strong><p>${escapeHtml(stockDetail(context))}</p></div><div class="hero-side"><span class="hero-icon">${icon("farm")}</span><span class="metric-label">進行中批次 ${number(flocks.length)}</span></div></section>
       <section class="master-data-entry" data-testid="master-data-entry"><div><p class="kicker">管理</p><h2>主檔管理</h2><p>新增雞場、雞舍、批次與照顧者；所有新增資料只進入 Lab runtime overlay。</p></div><button type="button" class="sheet-secondary" data-action="open-master-data">開啟主檔管理</button></section>
       <div class="section-heading"><div><h2>${state.context.farmId === "all" ? "雞場狀況" : "目前雞場"}</h2><p>點雞場可查看詳細資料。</p></div></div>
-      <section class="farm-grid">${farms.map((farm) => `<button type="button" class="farm-item" data-action="open-farm-detail" data-farm-id="${escapeHtml(farm.id)}"><div><h3>${escapeHtml(farm.name)}</h3><p>${escapeHtml(farm.breed || farm.subtitle)} · ${escapeHtml(farm.risk || "全域")}</p></div><div class="farm-metric"><strong>${number(displayedFarmStock(farm))}</strong><span>在養隻數 ›</span></div></button>`).join("")}</section>
+      <section class="farm-grid">${farms.map((farm) => `<button type="button" class="farm-item" data-action="open-farm-detail" data-farm-id="${escapeHtml(farm.id)}"><div><h3>${escapeHtml(farm.name)}</h3><p>${escapeHtml(farm.breed || farm.subtitle)} · ${escapeHtml(farm.risk || "全域")}</p></div><div class="farm-metric"><strong>${stockValue(displayedFarmStock(farm))}</strong><span>在養隻數 ›</span></div></button>`).join("")}</section>
       <div class="desktop-farm-detail-grid ${state.context.farmId === "all" ? "single" : ""}">
-        ${state.context.farmId === "all" ? "" : `<section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>雞舍</h3><p>${escapeHtml(context.farm.name)} · 點雞舍查看詳細</p></div></div><div class="list-stack">${houses.map((house) => `<button type="button" class="list-row" data-action="open-house-detail" data-farm-id="${escapeHtml(context.farm.id)}" data-house-id="${escapeHtml(house.id)}"><span><strong>${escapeHtml(house.name)}</strong><span>${house.flocks.length} 個批次</span></span><span class="row-end"><span class="row-value">${number(houseStock(house))}</span><span>在養隻數 ›</span></span></button>`).join("")}</div></section>`}
+        ${state.context.farmId === "all" ? "" : `<section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>雞舍</h3><p>${escapeHtml(context.farm.name)} · 點雞舍查看詳細</p></div></div><div class="list-stack">${houses.map((house) => `<button type="button" class="list-row" data-action="open-house-detail" data-farm-id="${escapeHtml(context.farm.id)}" data-house-id="${escapeHtml(house.id)}"><span><strong>${escapeHtml(house.name)}</strong><span>${house.flocks.length} 個批次</span></span><span class="row-end"><span class="row-value">${stockValue(houseStock(house))}</span><span>在養隻數 ›</span></span></button>`).join("")}</div></section>`}
         <section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>進行中批次</h3><p>${flocks.length} 批；已出雞的歷史批次不列入。</p></div><button type="button" class="text-link" data-action="open-sheet" data-sheet-kind="flocks">查看全部 →</button></div><div class="list-stack">${flocks.slice(0, 3).map((flock) => flockRow(flock)).join("") || `<div class="empty-tab"><strong>沒有進行中批次</strong><p>這個範圍可能是歷史場或空舍。</p></div>`}</div></section>
       </div>
     </section>`;
@@ -1210,10 +1544,123 @@
     return effectiveLabObservations().filter(recordsAnalysisMatches);
   }
 
+  function recordsAnalysisActions() {
+    return labData().actions.filter(recordsAnalysisMatches);
+  }
+
   function recordActionAttributes(record) {
     if (record.kind === "event") return `data-action="open-event" data-event-id="${escapeHtml(record.id)}"`;
     if (record.kind === "abnormal") return `data-action="open-abnormal" data-abnormal-id="${escapeHtml(record.id)}"`;
+    if (record.kind === "action") return `data-action="open-action" data-action-id="${escapeHtml(record.id)}"`;
     return `data-action="open-observation" data-observation-id="${escapeHtml(record.id)}"`;
+  }
+
+  function canonicalRecordById(id) {
+    return canonicalRecordCatalog.records.find((record) => record.id === id) || null;
+  }
+
+  function canonicalRecordMatchesContext(record) {
+    if (!record || state.context.farmId !== "all" && record.farmId !== state.context.farmId) return false;
+    if (state.context.houseId && record.houseId !== state.context.houseId) return false;
+    if (state.context.flockId && record.flockId !== state.context.flockId) return false;
+    return true;
+  }
+
+  function canonicalRecordRows() {
+    return canonicalRecordCatalog.records.filter(canonicalRecordMatchesContext).sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)) || String(right.id).localeCompare(String(left.id)));
+  }
+
+  function canonicalTaxonomyDefinition(record) {
+    try { return window.JinjiRecordingTaxonomy?.taxonomyDefinitionFor?.(record?.taxonomyId) || null; } catch (_) { return null; }
+  }
+
+  function canonicalSubtypeLabel(subtype) {
+    return ({
+      chick_in: "入雛", vaccination: "疫苗", medication: "用藥", supplement: "補充品", shipment: "出雞", weigh: "磅重",
+      feed_order: "叫飼料", lab_test: "送驗", disinfection: "清消", maintenance: "設備維護", mortality: "死亡", cull: "淘汰",
+      mortality_abnormality: "死亡異常", cough: "咳嗽", respiratory_distress: "喘／呼吸困難", activity_down: "活動下降",
+      eye_swelling: "眼腫", white_crown: "白冠", purple_crown: "紫冠", black_crown: "黑冠", watery: "水樣下痢", white: "白色下痢",
+      green: "綠色下痢", bloody: "血便", growth_delay: "生長遲緩", foot_odor: "臭腳", fever: "發燒", heat_stress: "熱緊迫",
+      catching_stress: "抓雞緊迫", feeding_abnormality: "採食異常", water_abnormality: "飲水異常", feed: "飼料設備", water: "飲水設備",
+      electricity: "電力設備", fan: "風扇", cooling: "降溫設備", heating: "加溫設備", other: "其他", high_temperature: "高溫",
+      low_temperature: "低溫", heavy_rain: "大雨", flooding: "淹水", odor: "異味", attack: "攻擊", infection: "感染", spread: "擴散",
+    })[subtype] || subtype || "未標示";
+  }
+
+  function canonicalRecordStatusLabel(record) {
+    return ({ active: "有效", corrected: "已修正", reversed: "已撤銷", replacement: "修正版本" })[record?.effectiveStatus] || "狀態不明";
+  }
+
+  function canonicalRecordLocation(record) {
+    return [record?.farmName || record?.farmId, record?.houseName || (record?.houseId ? record.houseId : null), record?.flockCode || (record?.flockId ? record.flockId : null)].filter(Boolean).join(" / ");
+  }
+
+  function canonicalRecordTitle(record) {
+    const definition = canonicalTaxonomyDefinition(record);
+    return `${record.taxonomyId} · ${definition?.label || record.family} · ${canonicalSubtypeLabel(record.subtype)}`;
+  }
+
+  function canonicalRecordDateTime(record) {
+    const value = String(record?.occurredAt || record?.createdAt || "");
+    return `${value.slice(0, 10) || "—"} ${value.slice(11, 16) || ""}`.trim();
+  }
+
+  function canonicalFieldLabel(field) {
+    return ({
+      maleCount: "公雞數量", femaleCount: "母雞數量", totalCount: "總數（推導）", condition: "入雛狀況", sex: "性別",
+      quantity: "數量", unit: "單位", averageWeight: "平均體重", totalWeight: "總重量", weightUnit: "重量單位",
+      chickInDate: "入雛日期", ageDays: "日齡（推導）", content: "內容", vendor: "供應商", weight: "重量",
+      submittedAt: "送驗時間", workflowStatus: "流程狀態", result: "檢驗結果", completedAt: "完成時間", reminderDueAt: "提醒時間（推導）",
+      maintenanceContent: "維護內容", extent: "範圍", linkedMortalityEventId: "關聯死亡紀錄", detail: "細節",
+      measuredTemperature: "測得溫度", measurement: "量測", evidence: "證據",
+    })[field] || field;
+  }
+
+  function canonicalFieldValue(value) {
+    if (value === null || value === undefined || value === "") return "—";
+    return typeof value === "number" ? number(value) : String(value);
+  }
+
+  function canonicalRecordFieldRows(record, { includeDerived = true } = {}) {
+    const fields = { ...(record?.fields || {}) };
+    if (includeDerived) Object.assign(fields, record?.derivedFields || {});
+    return Object.entries(fields)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .map(([field, value]) => `<div class="detail-row"><span>${escapeHtml(canonicalFieldLabel(field))}</span><strong>${escapeHtml(canonicalFieldValue(value))}</strong></div>`)
+      .join("");
+  }
+
+  function canonicalRecordActionAttributes(record) {
+    return `data-action="open-canonical-record" data-record-id="${escapeHtml(record.id)}"`;
+  }
+
+  function canonicalAcceptanceReplayEnabled() {
+    const hostname = String(window.location.hostname || "").toLowerCase();
+    const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+    return local && new URLSearchParams(window.location.search).get("acceptance-mode") === "1" && CANONICAL_API?.environment === "test";
+  }
+
+  function canonicalRecordsContextMarkup() {
+    const context = currentContext();
+    const scope = state.context.farmId === "all" ? "全部已授權 scope" : contextLabel(context);
+    return `<section class="context-hub" aria-label="Canonical Records 工作範圍"><div class="context-farm-row"><span class="scope-label">Canonical Records</span><div class="readonly-note">${escapeHtml(scope)} · ${escapeHtml(webApiEnvironmentLabel())}</div></div></section>`;
+  }
+
+  function renderCanonicalRecords() {
+    const rows = canonicalRecordRows();
+    const status = canonicalRecordCatalog.loading
+      ? `<div class="readonly-note" data-testid="canonical-record-status">正在載入 ${escapeHtml(webApiEnvironmentLabel())} canonical records…</div>`
+      : canonicalRecordCatalog.error
+        ? `<div class="lab-write-notice error" role="alert" data-testid="canonical-record-status">${escapeHtml(canonicalRecordCatalog.error)}</div><div class="readonly-note">讀取失敗時不會顯示本機 fixture，也不會從瀏覽器重建紀錄。</div>`
+        : `<div class="readonly-note" data-testid="canonical-record-status">來源：Worker canonical read model · ${escapeHtml(webApiEnvironmentLabel())} · ${rows.length} 筆</div>`;
+    const list = rows.map((record) => `<button type="button" class="list-row" ${canonicalRecordActionAttributes(record)}><span><strong>${escapeHtml(canonicalRecordTitle(record))}</strong><span>${escapeHtml(canonicalRecordLocation(record))} · ${escapeHtml(canonicalRecordDateTime(record))}</span></span><span class="row-end"><span class="status-chip ${record.effectiveStatus === "active" ? "good" : record.effectiveStatus === "reversed" ? "alert" : "warn"}">${escapeHtml(canonicalRecordStatusLabel(record))}</span><span class="row-arrow">›</span></span></button>`).join("");
+    return `<section class="page" data-page="records" data-testid="canonical-records-page">
+      ${canonicalRecordsContextMarkup()}
+      ${pageIntro("CANONICAL READ MODEL", "紀錄", "只顯示目前授權 scope 的 canonical records；時間軸不混入 Lab fixture。")}
+      ${status}
+      <section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>Canonical 紀錄時間軸</h3><p>每筆資料都保留 authority、provenance、derived fields 與 append-only lineage。</p></div><span class="scope-chip">${rows.length} 筆</span></div><div class="list-stack">${list || `<div class="empty-tab"><strong>目前 scope 沒有 canonical 紀錄</strong><p>讀取結果為空，不會補入本機資料。</p></div>`}</div></section>
+      <div class="readonly-note">此頁不做瀏覽器端 stock 計算；O3／O9 的數量效果只由 Worker canonical authority 處理。</div>
+    </section>`;
   }
 
   function recordsAnalysisLabel() {
@@ -1360,10 +1807,12 @@
   }
 
   function renderRecords() {
+    if (canonicalRecordingEnabled()) return renderCanonicalRecords();
     const eventRows = recordsAnalysisEvents().map((event) => ({ kind: "event", id: event.id, sort: `${event.date} ${event.time}`, title: `${eventLabel(event.type)} ${number(event.qty)} ${event.unit}`, detail: `${contextName(event)} · ${event.date} ${event.time}`, tone: ["mortality","cull"].includes(event.type) ? "alert" : "good", state: "有效" }));
     const abnormalRows = recordsAnalysisAbnormalities().map((item) => ({ kind: "abnormal", id: item.id, sort: `${item.date} ${item.time}`, title: `異常：${item.title}`, detail: `${contextName(item)} · ${item.category} · ${item.date} ${item.time}`, tone: item.status === "active" ? "warn" : "good", state: item.state }));
     const observationRows = recordsAnalysisObservations().map((item) => ({ kind: "observation", id: item.id, sort: `${item.date} ${item.time}`, title: `現場觀察：${observationLabel(item)}`, detail: `${contextName(item)} · ${item.date} ${item.time} · 不含精確數量`, tone: "info", state: "已保存" }));
-    const rows = [...eventRows, ...abnormalRows, ...observationRows].sort((a, b) => b.sort.localeCompare(a.sort));
+    const actionRows = recordsAnalysisActions().map((item) => { const dateTime = actionDateTime(item); return { kind: "action", id: item.id, sort: `${dateTime.date} ${dateTime.time}`, title: actionLabel(item), detail: `${contextName(item)} · ${dateTime.date} ${dateTime.time}`, tone: actionDefinition(item)?.todoEffect === "follow_up" ? "warn" : "info", state: item.workflowStatus || "已保存" }; });
+    const rows = [...eventRows, ...abnormalRows, ...observationRows, ...actionRows].sort((a, b) => b.sort.localeCompare(a.sort));
     const listView = `<section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>紀錄時間軸</h3><p>死亡、淘汰、飼料、飲水、出雞、現場觀察與異常都跟著目前範圍切換。</p></div></div><div class="list-stack">${rows.length ? rows.map((record) => `<button type="button" class="list-row" ${recordActionAttributes(record)}><span><strong>${escapeHtml(record.title)}</strong><span>${escapeHtml(record.detail)}</span></span><span class="row-end"><span class="status-chip ${record.tone}">${escapeHtml(record.state)}</span><span class="row-arrow">›</span></span></button>`).join("") : `<div class="empty-tab"><strong>這個範圍沒有紀錄</strong><p>測試版不會用推算值補齊。</p></div>`}</div></section>`;
     return `<section class="page" data-page="records">
       ${contextBar()}
@@ -1379,11 +1828,15 @@
   function renderTodo() {
     const pending = scopedPending();
     const upcoming = upcomingFlocks();
+    const actionFollowUps = scopedActions().filter((item) => {
+      const definition = actionDefinition(item);
+      return definition?.todoEffect === "follow_up" || (item.taxonomyId === "O6" && item.workflowStatus === "waiting_result");
+    });
     return `<section class="page" data-page="todo">
       ${contextBar()}
       ${pageIntro("", "待辦", "只放目前工作範圍真正有下一步的事情。")}
-      <section class="action-list">${pending.length ? `<button type="button" class="action-card" data-action="open-sheet" data-sheet-kind="pending"><span class="action-icon">${icon("check")}</span><span class="action-copy"><strong>${pending.length} 筆需要人工確認</strong><span>${escapeHtml(contextShortLabel())}</span></span><span class="action-count">${pending.length}</span><span class="action-arrow">›</span></button>` : ""}${upcoming.length ? `<button type="button" class="action-card good" data-action="open-sheet" data-sheet-kind="upcoming"><span class="action-icon">${icon("flock")}</span><span class="action-copy"><strong>${upcoming.length} 批 7 日內準備出雞</strong><span>${upcoming.map((flock) => escapeHtml(flock.code)).join("、")}</span></span><span class="action-count">${upcoming.length}</span><span class="action-arrow">›</span></button>` : ""}</section>
-      <section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>待人工確認清單</h3><p>場級資料若還不知道雞舍，會明確標示。</p></div><span class="status-chip warn">${pending.length} 筆</span></div><div class="list-stack">${pending.length ? pending.map((item) => `<button type="button" class="list-row" data-action="open-pending-item" data-pending-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(pendingContextName(item))} · ${escapeHtml(item.detail)}</span></span><span class="row-end"><span class="row-value">${escapeHtml(item.kind)}</span><span class="row-arrow">›</span></span></button>`).join("") : `<div class="empty-tab"><strong>這個範圍沒有待確認項目</strong><p>可切換雞場或雞舍查看其他資料。</p></div>`}</div></section>
+      <section class="action-list">${pending.length ? `<button type="button" class="action-card" data-action="open-sheet" data-sheet-kind="pending"><span class="action-icon">${icon("check")}</span><span class="action-copy"><strong>${pending.length} 筆需要人工確認</strong><span>${escapeHtml(contextShortLabel())}</span></span><span class="action-count">${pending.length}</span><span class="action-arrow">›</span></button>` : ""}${upcoming.length ? `<button type="button" class="action-card good" data-action="open-sheet" data-sheet-kind="upcoming"><span class="action-icon">${icon("flock")}</span><span class="action-copy"><strong>${upcoming.length} 批 7 日內準備出雞</strong><span>${upcoming.map((flock) => escapeHtml(flock.code)).join("、")}</span></span><span class="action-count">${upcoming.length}</span><span class="action-arrow">›</span></button>` : ""}${actionFollowUps.length ? `<button type="button" class="action-card warn" data-action="open-action-followups"><span class="action-icon">${icon("todo")}</span><span class="action-copy"><strong>${actionFollowUps.length} 筆營運待辦</strong><span>送驗、清消或設備維護</span></span><span class="action-count">${actionFollowUps.length}</span><span class="action-arrow">›</span></button>` : ""}</section>
+      <section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>待人工確認與營運待辦</h3><p>場級資料若還不知道雞舍，會明確標示；O6/O7/O8 依其工作流程顯示。</p></div><span class="status-chip warn">${pending.length + actionFollowUps.length} 筆</span></div><div class="list-stack">${pending.map((item) => `<button type="button" class="list-row" data-action="open-pending-item" data-pending-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(pendingContextName(item))} · ${escapeHtml(item.detail)}</span></span><span class="row-end"><span class="row-value">${escapeHtml(item.kind)}</span><span class="row-arrow">›</span></span></button>`).join("")}${actionFollowUps.map((item) => { const dateTime = actionDateTime(item); return `<button type="button" class="list-row" data-action="open-action" data-action-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(actionLabel(item))}</strong><span>${escapeHtml(contextName(item))} · ${escapeHtml(dateTime.date)} · ${escapeHtml(item.workflowStatus || "待處理")}</span></span><span class="row-end"><span class="row-value">${item.taxonomyId === "O6" && item.workflowStatus === "waiting_result" ? "待結果" : "待辦"}</span><span class="row-arrow">›</span></span></button>`; }).join("")}${pending.length + actionFollowUps.length ? "" : `<div class="empty-tab"><strong>這個範圍沒有待辦項目</strong><p>可切換雞場或雞舍查看其他資料。</p></div>`}</div></section>
     </section>`;
   }
 
@@ -1401,7 +1854,7 @@
         <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="audit"><span class="more-item-icon">${icon("records")}</span><span><strong>變更紀錄</strong><span>修改、取消與操作歷程的入口</span></span><span>›</span></button>
         <button type="button" class="more-item" data-action="open-sheet" data-sheet-kind="settings"><span class="more-item-icon">${icon("more")}</span><span><strong>設定</strong><span>操作與管理設定</span></span><span>›</span></button>
       </div>
-      <section class="developer-block"><div class="section-heading"><div><h2>開發者</h2><p>本機測試分析，不上傳操作資料。</p></div><span class="env-chip">${number(totalClicks)} 次點擊</span></div><div class="developer-grid">
+      <section class="developer-block"><div class="section-heading"><div><h2>開發者</h2><p>${CANONICAL_API_ENABLED ? "canonical API candidate；只送出已確認的 RecordCommand。" : "本機測試分析，不上傳操作資料。"}</p></div><span class="env-chip">${number(totalClicks)} 次點擊</span></div><div class="developer-grid">
         <button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-clicks"><span>${icon("todo")}</span><strong>點擊計數</strong><small>查看每個組件／按鈕使用次數</small></button>
         <button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-log"><span>${icon("records")}</span><strong>UI Log</strong><small>最近 ${Math.min(developerAnalytics.log.length, DEV_LOG_LIMIT)} 筆本機互動</small></button>
         <button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-notes"><span>${icon("spark")}</span><strong>開發者筆記</strong><small>只存本機瀏覽器</small></button>
@@ -1572,6 +2025,12 @@
   }
 
   function contextSheet() {
+    if (canonicalRecordingEnabled()) {
+      if (canonicalScopeCatalog.loading) return sheetShell("選擇雞場", "正在載入正式工作範圍。", `<div class="empty-tab"><strong>讀取中…</strong><p>只會顯示目前 ${escapeHtml(webApiEnvironmentLabel())} 的 canonical 主檔。</p></div>`, "context");
+      if (canonicalScopeCatalog.error) return sheetShell("選擇雞場", "正式工作範圍未載入。", `<div class="lab-write-notice error" role="alert">無法載入正式工作範圍</div><div class="readonly-note">未取得正式主檔前不會顯示本機 fixture，也不會建立任何紀錄。</div>`, "context");
+      const farmOptions = recordingScopeFarms().map((option) => `<button type="button" class="option-row ${state.context.farmId === option.id ? "selected" : ""}" data-action="select-farm-direct" data-farm-id="${escapeHtml(option.id)}"><span><strong>${escapeHtml(option.name)}</strong><span>${escapeHtml(option.subtitle || `${webApiEnvironmentLabel()} · canonical master data`)}</span></span><span class="option-check">${state.context.farmId === option.id ? icon("check") : icon("arrow")}</span></button>`).join("");
+      return sheetShell("選擇雞場", "正式工作範圍 · 選好雞場後可在頁面上切換雞舍與批次。", `<div class="option-list">${farmOptions || `<div class="empty-tab"><strong>目前 scope 沒有可選雞場</strong></div>`}</div>`, "context");
+    }
     const farmOptions = labData().farms.map((option) => `<button type="button" class="option-row ${state.context.farmId === option.id ? "selected" : ""}" data-action="select-farm-direct" data-farm-id="${escapeHtml(option.id)}"><span><strong>${escapeHtml(option.name)}</strong><span>${option.id === "all" ? "全域唯讀總覽" : `${option.id === "history" ? "歷史查詢" : escapeHtml(option.subtitle || "Lab 新增雞場")} · 在養隻數 ${number(displayedFarmStock(option))}`}</span></span><span class="option-check">${state.context.farmId === option.id ? icon("check") : icon("arrow")}</span></button>`).join("");
     return sheetShell("選擇雞場", "選好雞場後，雞舍與批次可直接在頁面上用按鈕切換。", `<div class="option-list">${farmOptions}</div>`, "context");
   }
@@ -1617,12 +2076,12 @@
 
   function flocksSheet() {
     const rows = scopedFlocks();
-    return sheetShell(`進行中批次 ${rows.length}`, `${htmlContextLabel()} · 只列進行中批次`, `<div class="sheet-item-list">${rows.length ? rows.map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${escapeHtml(flock.id)}"><span><strong>${escapeHtml(flock.code)}</strong><span>${escapeHtml(flock.farm)} / ${escapeHtml(flock.house)} · 本批在養 ${number(flock.stock)} · ${escapeHtml(flock.status)}</span></span><span class="sheet-item-end">›</span></button>`).join("") : `<div class="empty-tab"><strong>此範圍沒有進行中批次</strong><p>歷史已出雞批次不列入進行中批次。</p></div>`}</div>`, "flocks");
+    return sheetShell(`進行中批次 ${rows.length}`, `${htmlContextLabel()} · 只列進行中批次`, `<div class="sheet-item-list">${rows.length ? rows.map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${escapeHtml(flock.id)}"><span><strong>${escapeHtml(flock.code)}</strong><span>${escapeHtml(flock.farm)} / ${escapeHtml(flock.house)} · 本批在養 ${stockValue(flock.stock)} · ${escapeHtml(flock.status)}</span></span><span class="sheet-item-end">›</span></button>`).join("") : `<div class="empty-tab"><strong>此範圍沒有進行中批次</strong><p>歷史已出雞批次不列入進行中批次。</p></div>`}</div>`, "flocks");
   }
 
   function flockSheet(flockId) {
     const flock = allFlocks().find((item) => item.id === flockId) || allFlocks()[0];
-    return sheetShell("批次詳細", `${escapeHtml(flock.farm)} / ${escapeHtml(flock.house)}`, `<div class="sheet-detail"><div class="detail-hero"><small>${flock.state === "active" ? "進行中" : "已出雞"}</small><strong>${escapeHtml(flock.code)}</strong><span>${escapeHtml(flock.status)}</span></div><div class="detail-block"><h3>本批在養</h3><p>${number(flock.stock)} 隻</p></div><div class="detail-block"><h3>初始入雞</h3><p>${number(flock.initial)} 隻 · 入雛 ${escapeHtml(flock.chickIn)}</p></div><div class="detail-block"><h3>預計／實際出雞</h3><p>${escapeHtml(flock.ship)}</p></div><button type="button" class="sheet-primary" data-action="jump-context" data-farm-id="${escapeHtml(flock.farmId)}" data-house-id="${escapeHtml(flock.houseId)}" data-flock-id="${escapeHtml(flock.id)}">切換到這個批次</button></div>`, "flock");
+    return sheetShell("批次詳細", `${escapeHtml(flock.farm)} / ${escapeHtml(flock.house)}`, `<div class="sheet-detail"><div class="detail-hero"><small>${flock.state === "active" ? "進行中" : "已出雞"}</small><strong>${escapeHtml(flock.code)}</strong><span>${escapeHtml(flock.status)}</span></div><div class="detail-block"><h3>本批在養</h3><p>${stockValue(flock.stock)} 隻</p></div><div class="detail-block"><h3>初始入雞</h3><p>${number(flock.initial)} 隻 · 入雛 ${escapeHtml(flock.chickIn)}</p></div><div class="detail-block"><h3>預計／實際出雞</h3><p>${escapeHtml(flock.ship)}</p></div><button type="button" class="sheet-primary" data-action="jump-context" data-farm-id="${escapeHtml(flock.farmId)}" data-house-id="${escapeHtml(flock.houseId)}" data-flock-id="${escapeHtml(flock.id)}">切換到這個批次</button></div>`, "flock");
   }
 
   function pendingItemSheet(id) {
@@ -1653,9 +2112,90 @@
     return sheetShell("現場觀察", `${escapeHtml(item.date)} ${escapeHtml(item.time)}`, `<div class="detail-hero"><small>質性資料 · 不納入數量統計</small><strong>${escapeHtml(observationLabel(item))}</strong><span>${escapeHtml(contextName(item))}</span></div><div class="detail-block"><h3>位置</h3><p>${escapeHtml(contextName(item))}</p></div><div class="detail-block"><h3>資料邊界</h3><p>這筆是現場觀察，沒有精確數量；不會被計入死亡、淘汰、出雞或目前在養。</p></div>${item.rawText ? `<div class="detail-block"><h3>原始輸入</h3><p>${escapeHtml(item.rawText)}</p></div>` : ""}<div class="readonly-note">來源：${escapeHtml(item.source || "fixture")} · 原文保留於觀察紀錄與 Audit；如需量化，請另建立有明確數量的事件。</div><button type="button" class="sheet-primary" data-action="go-records">前往紀錄</button>`, "observation-item");
   }
 
+  function actionItemSheet(id) {
+    const item = labData().actions.find((candidate) => candidate.id === id);
+    if (!item) return sheetShell("找不到營運操作", "RecordCommand", `<div class="empty-tab"><strong>這筆營運操作已不存在</strong></div>`, "action-item");
+    const definition = actionDefinition(item);
+    const dateTime = actionDateTime(item);
+    const fields = Object.entries(item)
+      .filter(([key, value]) => !["id", "taxonomyId", "family", "type", "subtype", "createdAt", "occurredAt", "sourceChannel", "rawText", "clientOperationId", "confirmedBy", "scopeSelection", "scopeConfirmed"].includes(key) && value !== undefined && value !== null && typeof value !== "object")
+      .map(([key, value]) => `<div class="detail-row"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+    return sheetShell(escapeHtml(actionLabel(item)), `${escapeHtml(dateTime.date)} ${escapeHtml(dateTime.time)} · ${escapeHtml(definition?.id || item.taxonomyId || "")}`, `<div class="detail-hero"><small>營運操作 · 統一 RecordCommand</small><strong>${escapeHtml(item.workflowStatus || "已保存")}</strong><span>${escapeHtml(contextName(item))}</span></div><div class="detail-block"><h3>分類與狀態</h3><p>${escapeHtml(definition?.label || item.family || "營運資料")} · ${escapeHtml(item.subtype || "未標示")} · ${escapeHtml(item.workflowStatus || "已保存")}</p></div>${fields ? `<div class="detail-block"><h3>欄位</h3><div class="detail-list">${fields}</div></div>` : ""}<div class="readonly-note">這筆資料沿用 canonical taxonomy 與 RecordCommand；Web Lab 只保存本機 overlay，不寫入 Production。</div><button type="button" class="sheet-primary" data-action="go-records">前往紀錄</button>`, "action-item");
+  }
+
+  function actionFollowupsSheet() {
+    const rows = scopedActions().filter((item) => actionDefinition(item)?.todoEffect === "follow_up" || (item.taxonomyId === "O6" && item.workflowStatus === "waiting_result"));
+    return sheetShell(`${rows.length} 筆營運待辦`, htmlContextLabel(), `<div class="sheet-item-list">${rows.length ? rows.map((item) => { const dateTime = actionDateTime(item); return `<button type="button" class="sheet-item" data-action="open-action" data-action-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(actionLabel(item))}</strong><span>${escapeHtml(contextName(item))} · ${escapeHtml(dateTime.date)} · ${escapeHtml(item.workflowStatus || "待辦")}</span></span><span class="sheet-item-end">›</span></button>`; }).join("") : `<div class="empty-tab"><strong>沒有營運待辦</strong></div>`}</div><div class="readonly-note">O6 的結果提醒是本機 deterministic Todo/Calendar 顯示，不啟用 Cron。</div>`, "action-followups");
+  }
+
   function abnormalItemSheet(id) {
     const item = labData().abnormalities.find((candidate) => candidate.id === id) || labData().abnormalities[0];
     return sheetShell(escapeHtml(item.title), `${escapeHtml(item.category)} · ${escapeHtml(item.state)}`, `<div class="detail-hero"><small>${escapeHtml(item.state)}</small><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(contextName(item))}</span></div><div class="detail-block"><h3>紀錄</h3><p>${escapeHtml(item.date)} ${escapeHtml(item.time)} · 溫度快照 ${escapeHtml(item.temp)}°C</p></div><div class="detail-block"><h3>說明</h3><p>這個畫面只展示既有異常資料，不會自行產生健康評分或產業比較。</p></div><button type="button" class="sheet-primary" data-action="go-records">查看紀錄</button>`, "abnormal-item");
+  }
+
+  function canonicalEditableFields(record) {
+    const definition = canonicalTaxonomyDefinition(record);
+    if (!definition || !record?.record) return [];
+    const derived = new Set(definition.derivedFields || []);
+    const scope = new Set(["farmId", "houseId", "flockId"]);
+    const candidates = ["subtype", ...(definition.requiredFields || []), ...(definition.optionalFields || []).filter((field) => Object.prototype.hasOwnProperty.call(record.record, field))];
+    return [...new Set(candidates)].filter((field) => !derived.has(field) && !scope.has(field));
+  }
+
+  function canonicalFieldControl(field, value, record) {
+    const normalized = value === null || value === undefined ? "" : String(value);
+    const options = field === "subtype"
+      ? canonicalTaxonomyDefinition(record)?.canonicalSubtypes || []
+      : field === "sex"
+        ? ["male", "female", "mixed", "unspecified"]
+        : field === "extent"
+          ? ["small", "medium", "large"]
+          : field === "condition"
+            ? ["good", "fair", "poor"]
+            : field === "workflowStatus"
+              ? record.taxonomyId === "O6" ? ["waiting_result", "completed"] : ["pending", "completed"]
+              : field === "weightUnit"
+                ? ["kg", "bag"]
+                : null;
+    if (options) return `<select id="canonical-correction-${escapeHtml(field)}" data-canonical-correction-field="${escapeHtml(field)}">${options.map((option) => `<option value="${escapeHtml(option)}" ${option === normalized ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select>`;
+    const numeric = new Set(["maleCount", "femaleCount", "quantity", "averageWeight", "totalWeight", "weight", "measuredTemperature"]);
+    const type = numeric.has(field) ? "number" : field === "chickInDate" ? "date" : "text";
+    const step = ["maleCount", "femaleCount", "quantity"].includes(field) ? "1" : "any";
+    return `<input id="canonical-correction-${escapeHtml(field)}" data-canonical-correction-field="${escapeHtml(field)}" type="${type}" step="${step}" value="${escapeHtml(normalized)}">`;
+  }
+
+  function canonicalCorrectionSheet(id) {
+    const record = canonicalRecordById(id);
+    if (!record) return sheetShell("找不到 canonical 紀錄", "Canonical read model", `<div class="empty-tab"><strong>這筆正式紀錄已不存在</strong></div>`, "canonical-correction");
+    if (!record.correctionSafe || !record.correctionSeed) return sheetShell("無法安全更正", canonicalRecordTitle(record), `<div class="detail-hero"><small>Fail closed</small><strong>缺少安全更正所需資訊</strong><span>讀取模型沒有完整、可驗證的 source-backed seed；沒有猜值，也沒有建立本機替代紀錄。</span></div><div class="readonly-note">readStatus：${escapeHtml(record.readStatus)} · ${escapeHtml(record.readErrorCode || record.correctionBlockReason || "unsafe")}</div><button type="button" class="sheet-secondary" data-action="close-sheet">返回</button>`, "canonical-correction");
+    const fields = canonicalEditableFields(record).map((field) => {
+      const control = canonicalFieldControl(field, record.correctionSeed[field], record);
+      return `<label class="quick-record-label" for="canonical-correction-${escapeHtml(field)}">${escapeHtml(canonicalFieldLabel(field))}${canonicalTaxonomyDefinition(record)?.requiredFields?.includes(field) ? "（必填）" : ""}</label>${control}`;
+    }).join("");
+    return sheetShell("修正 canonical 紀錄", `${escapeHtml(canonicalRecordTitle(record))} · ${escapeHtml(canonicalRecordDateTime(record))}`, `<div class="detail-hero"><small>append-only correction</small><strong>${escapeHtml(canonicalRecordTitle(record))}</strong><span>${escapeHtml(canonicalRecordLocation(record))}</span></div><div class="detail-block"><h3>原始資料保留</h3><p>原紀錄 ${escapeHtml(record.id)} 不會 UPDATE／DELETE；送出後只新增一筆 correction child。</p></div><div class="canonical-correction-fields">${fields}</div>${state.correctionNotice ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.correctionNotice)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-canonical-correction" data-record-id="${escapeHtml(record.id)}">新增修正紀錄</button><button type="button" class="sheet-secondary" data-action="close-sheet">取消</button></div>`, "canonical-correction");
+  }
+
+  function canonicalDetailReplayMarkup(record) {
+    const eligible = canonicalAcceptanceReplayEnabled() && canonicalReplayReceipt?.command?.record?.id === record.id && canonicalReplayReceipt.environment === CANONICAL_API.environment;
+    if (!eligible) return "";
+    return `<div class="developer-actions"><button type="button" class="sheet-secondary" data-action="replay-canonical-command" data-record-id="${escapeHtml(record.id)}">重播本次成功命令（Test acceptance）</button></div><div class="readonly-note">只保留本次頁面記憶體中的完整成功 RecordCommand；沿用相同 clientOperationId，沒有從 GET 結果重建。</div>`;
+  }
+
+  function canonicalRecordDetailSheet(id) {
+    const record = canonicalRecordById(id);
+    if (!record) return sheetShell("找不到 canonical 紀錄", "Canonical read model", `<div class="empty-tab"><strong>這筆正式紀錄不在目前 read model</strong><p>沒有改用本機 fixture。</p></div>`, "canonical-record-detail");
+    const lineageRows = Object.entries({
+      "原 correction": record.lineage.correctionOfId,
+      "原 reversal": record.lineage.reversalOfId,
+      "原 replacement": record.lineage.replacementOfId,
+      "被 correction": record.lineage.correctedById,
+      "被 reversal": record.lineage.reversedById,
+      "被 replacement": record.lineage.replacedById,
+    }).filter(([, value]) => value).map(([label, value]) => `<div class="detail-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("");
+    const actions = record.isEffective && record.effectiveStatus === "active"
+      ? `<button type="button" class="sheet-primary" data-action="open-canonical-correction" data-record-id="${escapeHtml(record.id)}" ${record.correctionSafe ? "" : "disabled"}>修正紀錄</button><button type="button" class="sheet-secondary" data-action="reverse-canonical-record" data-record-id="${escapeHtml(record.id)}" ${record.reversalSafe ? "" : "disabled"}>撤銷紀錄</button>`
+      : `<div class="readonly-note">這筆資料已經有 append-only lineage，不能再次當作目前有效原紀錄更正或撤銷。</div>`;
+    return sheetShell("Canonical 紀錄詳細", `${escapeHtml(canonicalRecordTitle(record))} · ${escapeHtml(canonicalRecordStatusLabel(record))}`, `<div class="detail-hero"><small>${escapeHtml(record.destination)} · ${escapeHtml(record.sourceChannel)}</small><strong>${escapeHtml(canonicalRecordTitle(record))}</strong><span>${escapeHtml(canonicalRecordLocation(record))} · ${escapeHtml(canonicalRecordDateTime(record))}</span></div><div class="detail-block"><h3>欄位與推導值</h3><div class="detail-list">${canonicalRecordFieldRows(record) || "<div>沒有可顯示的 domain fields。</div>"}</div></div><div class="detail-block"><h3>Provenance</h3><div class="detail-list"><div class="detail-row"><span>clientOperationId</span><strong>${escapeHtml(record.clientOperationId)}</strong></div><div class="detail-row"><span>read status</span><strong>${escapeHtml(record.readStatus)}</strong></div><div class="detail-row"><span>effective status</span><strong>${escapeHtml(canonicalRecordStatusLabel(record))}</strong></div></div></div>${lineageRows ? `<div class="detail-block"><h3>Append-only lineage</h3><div class="detail-list">${lineageRows}</div></div>` : ""}<div class="developer-actions">${actions}</div>${canonicalDetailReplayMarkup(record)}${record.effectiveStatus === "reversed" && ["O3", "O9"].includes(record.taxonomyId) ? `<div class="readonly-note">O3／O9 的 stock effect 由 Worker canonical authority 投影；此頁不重算。</div>` : ""}`, "canonical-record-detail");
   }
 
   function eventItemSheet(id) {
@@ -1681,13 +2221,13 @@
     const financeButton = identity
       ? `<button type="button" class="sheet-secondary" data-action="open-finance-farm" data-farm-id="${escapeHtml(identity.id)}" data-testid="farm-finance-entry">查看財務身份</button>`
       : `<div class="readonly-note">目前沒有可對應的 Finance identity。</div>`;
-    return sheetShell(escapeHtml(farm.name), `${escapeHtml(farm.breed || farm.subtitle || "")} · ${escapeHtml(farm.risk || "")}`, `<div class="detail-hero"><small>雞場</small><strong>${number(farmStock(farm))} 隻</strong><span>${active.length} 批進行中</span></div><div class="detail-block"><h3>雞舍</h3><div class="sheet-item-list">${farm.houses.map((house) => `<button type="button" class="sheet-item" data-action="open-house-detail" data-farm-id="${escapeHtml(farm.id)}" data-house-id="${escapeHtml(house.id)}"><span><strong>${escapeHtml(house.name)}</strong><span>在養隻數 ${number(houseStock(house))} · ${house.flocks.length} 個批次</span></span><span class="sheet-item-end">›</span></button>`).join("")}</div></div><div class="detail-block"><h3>Finance identity</h3><p>${identity?.status === "configured" ? "已連結 synthetic 財務資料。" : "尚未建立財務資料；不補造收入、分配或費用。"}</p>${financeButton}</div><button type="button" class="sheet-primary" data-action="set-farm-scope" data-farm-id="${escapeHtml(farm.id)}">切換到這個雞場</button>`, "farm-detail");
+    return sheetShell(escapeHtml(farm.name), `${escapeHtml(farm.breed || farm.subtitle || "")} · ${escapeHtml(farm.risk || "")}`, `<div class="detail-hero"><small>雞場</small><strong>${stockValue(farmStock(farm))} 隻</strong><span>${active.length} 批進行中</span></div><div class="detail-block"><h3>雞舍</h3><div class="sheet-item-list">${farm.houses.map((house) => `<button type="button" class="sheet-item" data-action="open-house-detail" data-farm-id="${escapeHtml(farm.id)}" data-house-id="${escapeHtml(house.id)}"><span><strong>${escapeHtml(house.name)}</strong><span>在養隻數 ${stockValue(houseStock(house))} · ${house.flocks.length} 個批次</span></span><span class="sheet-item-end">›</span></button>`).join("")}</div></div><div class="detail-block"><h3>Finance identity</h3><p>${identity?.status === "configured" ? "已連結 synthetic 財務資料。" : "尚未建立財務資料；不補造收入、分配或費用。"}</p>${financeButton}</div><button type="button" class="sheet-primary" data-action="set-farm-scope" data-farm-id="${escapeHtml(farm.id)}">切換到這個雞場</button>`, "farm-detail");
   }
 
   function houseDetailSheet(farmId, houseId) {
     const farm = farmById(farmId);
     const house = houseById(farm, houseId);
-    return sheetShell(escapeHtml(house?.name || "雞舍詳細"), escapeHtml(farm.name), `<div class="detail-hero"><small>雞舍</small><strong>${number(house ? houseStock(house) : 0)} 隻</strong><span>${house?.flocks.length || 0} 個批次</span></div><div class="detail-block"><h3>批次</h3><div class="sheet-item-list">${(house?.flocks || []).map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${escapeHtml(flock.id)}"><span><strong>${escapeHtml(flock.code)}</strong><span>${escapeHtml(flock.status)} · 本批在養 ${number(flock.stock)}</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>目前沒有批次</strong></div>`}</div></div><button type="button" class="sheet-primary" data-action="set-house-scope" data-farm-id="${escapeHtml(farm.id)}" data-house-id="${escapeHtml(house?.id || "")}">切換到這個雞舍</button>`, "house-detail");
+    return sheetShell(escapeHtml(house?.name || "雞舍詳細"), escapeHtml(farm.name), `<div class="detail-hero"><small>雞舍</small><strong>${stockValue(house ? houseStock(house) : null)} 隻</strong><span>${house?.flocks.length || 0} 個批次</span></div><div class="detail-block"><h3>批次</h3><div class="sheet-item-list">${(house?.flocks || []).map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${escapeHtml(flock.id)}"><span><strong>${escapeHtml(flock.code)}</strong><span>${escapeHtml(flock.status)} · 本批在養 ${stockValue(flock.stock)}</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>目前沒有批次</strong></div>`}</div></div><button type="button" class="sheet-primary" data-action="set-house-scope" data-farm-id="${escapeHtml(farm.id)}" data-house-id="${escapeHtml(house?.id || "")}">切換到這個雞舍</button>`, "house-detail");
   }
 
   function masterDataFarms() {
@@ -1768,6 +2308,60 @@
       LAB_STORAGE_CONFLICT: "另一個頁面先更新了 Lab，這筆資料尚未寫入；請重新載入後再試。",
     };
     return messages[error?.message] || "主檔資料格式不完整，請檢查後再試。";
+  }
+
+  function canonicalApiErrorMessage(error, context = "business") {
+    const messages = {
+      CANONICAL_API_NOT_CONFIGURED: "目前未設定 canonical API；這個頁面仍維持 Lab local overlay。",
+      CANONICAL_API_ENV_INVALID: "API environment 不明，已 fail closed，沒有送出資料。",
+      CANONICAL_API_TEST_AUTH_REQUIRED: "Test scope 必須在已登入後由操作人明確選取，沒有送出資料。",
+      CANONICAL_API_INVALID_LOGIN: "請輸入管理密碼。",
+      CANONICAL_API_AUTH_RESPONSE_INVALID: "登入服務回傳無效 session，沒有送出資料。",
+      invalid_credentials: "登入未通過，請確認管理密碼後再試。",
+      organization_unavailable: "登入服務目前無法提供組織資訊，請稍後再試。",
+      origin_not_allowed: "此執行來源未獲授權，沒有送出資料。",
+      unauthorized: "登入 session 已失效，請重新登入；沒有建立本機替代紀錄。",
+      CANONICAL_API_NETWORK_ERROR: "canonical API 無法連線；沒有建立本機替代紀錄。",
+      CANONICAL_COMMAND_REQUIRED: "這個操作沒有可驗證的 RecordCommand，沒有送出資料。",
+      CANONICAL_CLIENT_OPERATION_ID_REQUIRED: "缺少 clientOperationId，沒有送出資料。",
+      CANONICAL_SCOPE_INVALID: "資料範圍無效，沒有送出資料。",
+      CANONICAL_RELATION_TARGET_MISMATCH: "修正／撤銷關聯目標不一致，沒有送出資料。",
+    };
+    if (messages[error?.code]) return messages[error.code];
+    return context === "login"
+      ? "登入未通過，請確認管理密碼後再試。"
+      : "canonical API 拒絕了這筆資料，沒有建立本機替代紀錄。";
+  }
+
+  function submitCanonicalBoundary(command, relation, successText, { onSuccess, onError } = {}) {
+    if (!CANONICAL_API_ENABLED) return false;
+    state.canonicalApiError = "";
+    CANONICAL_API.submitRecord(command, relation).then(async (result) => {
+      if (canonicalAcceptanceReplayEnabled()) {
+        canonicalReplayReceipt = { environment: CANONICAL_API.environment, command: structuredClone(command), relation: relation ? { ...relation } : null, result: structuredClone(result) };
+      }
+      state.canonicalApiNotice = `${successText} · ${CANONICAL_API.environment === "test" ? "Test API" : "Production API"}${result?.record?.created === false ? "（idempotent replay）" : ""}`;
+      onSuccess?.(result);
+      await refreshCanonicalRecords();
+      render();
+    }).catch((error) => {
+      state.canonicalApiError = canonicalApiErrorMessage(error);
+      if (error?.status === 401 || error?.code === "unauthorized" || error?.code === "CANONICAL_API_AUTH_REQUIRED") {
+        state.webAuthError = "登入 session 已失效，請重新登入；沒有建立本機替代紀錄。";
+        state.sheet = null;
+        state.guidedRecord = null;
+      }
+      onError?.(error);
+      render();
+    });
+    return true;
+  }
+
+  function replayCanonicalCommand(id) {
+    if (!canonicalAcceptanceReplayEnabled() || canonicalReplayReceipt?.command?.record?.id !== id) return;
+    submitCanonicalBoundary(canonicalReplayReceipt.command, canonicalReplayReceipt.relation, "已重播本次成功命令", {
+      onError: (error) => { state.canonicalApiError = canonicalApiErrorMessage(error); },
+    });
   }
 
   function showMasterDataError(message) {
@@ -2046,13 +2640,15 @@
     const parsed = window.JinjiDomain.parseQuickRecord(state.quickRecordDraft);
     if (parsed.status === "event") {
       const event = parsed.event;
-      return sheetShell("紀錄預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>可寫入 Lab</small><strong>${eventLabel(event.type)} ${number(event.quantity)} ${escapeHtml(event.unit)}</strong><span>${event.note ? `備註：${escapeHtml(event.note)}` : "已辨識類型與數量；這筆會加入目前雞場的事件時間軸。"}</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div><div class="readonly-note">確認後只建立一筆 OperationalEvent，並同步 Today、紀錄、月曆、圖表、趨勢與變更紀錄。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-lab-event">寫入 Lab 紀錄</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+      const target = CANONICAL_API_ENABLED ? "canonical API" : "Lab";
+      const detailText = event.note ? `備註：${escapeHtml(event.note)}` : CANONICAL_API_ENABLED ? "已辨識類型與數量；確認後會沿 canonical RecordCommand 邊界送出。" : "已辨識類型與數量；這筆會加入目前雞場的事件時間軸。";
+      return sheetShell("紀錄預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>${CANONICAL_API_ENABLED ? `可送出 ${target}` : "可寫入 Lab"}</small><strong>${eventLabel(event.type)} ${number(event.quantity)} ${escapeHtml(event.unit)}</strong><span>${detailText}</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div><div class="readonly-note">${CANONICAL_API_ENABLED ? "確認後只送出一筆已驗證的 RecordCommand；Web 不直接存取 D1。" : "確認後只建立一筆 OperationalEvent，並同步 Today、紀錄、月曆、圖表、趨勢與變更紀錄。"}</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="commit-lab-event">${CANONICAL_API_ENABLED ? "送出 canonical API" : "寫入 Lab 紀錄"}</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
     }
     if (parsed.status === "observation") {
       const extent = parsed.observation?.extent || state.quickRecordExtent;
       const observationLabel = [parsed.observation?.text || state.quickRecordDraft, extent ? window.JinjiDomain.OBSERVATION_EXTENT_LABELS?.[extent] : null].filter(Boolean).join("｜");
       const ready = !parsed.needsExtent || Boolean(extent);
-      return sheetShell("觀察預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>現場觀察 · 不納入數量統計</small><strong>${escapeHtml(observationLabel)}</strong><span>沒有精確數字也可以記錄；這筆會保留原文與觀察範圍，不會轉成死亡、淘汰或在養數量。</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div>${!ready ? `<div class="lab-write-notice error" role="alert">請先選擇小範圍、中範圍或大範圍。</div>` : ""}<div class="readonly-note">確認後建立一筆現場觀察，並同步紀錄、月曆、Audit 與本機 outbox。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions">${ready ? `<button type="button" class="sheet-primary" data-action="commit-observation">保存觀察紀錄</button>` : ""}<button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
+      return sheetShell("觀察預覽", escapeHtml(quickRecordContextLabel()), `<div class="detail-hero"><small>現場觀察 · 不納入數量統計</small><strong>${escapeHtml(observationLabel)}</strong><span>沒有精確數字也可以記錄；這筆會保留原文與觀察範圍，不會轉成死亡、淘汰或在養數量。</span></div><div class="detail-block"><h3>明確 Context</h3><p>${escapeHtml(quickRecordContextLabel())}</p></div>${!ready ? `<div class="lab-write-notice error" role="alert">請先選擇小範圍、中範圍或大範圍。</div>` : ""}<div class="readonly-note">${CANONICAL_API_ENABLED ? "確認後只送出一筆已驗證的觀察 RecordCommand；Web 不直接存取 D1。" : "確認後建立一筆現場觀察，並同步紀錄、月曆、Audit 與本機 outbox。"}</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions">${ready ? `<button type="button" class="sheet-primary" data-action="commit-observation">${CANONICAL_API_ENABLED ? "送出 canonical API" : "保存觀察紀錄"}</button>` : ""}<button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
     }
     return sheetShell("紀錄預覽", htmlContextLabel(), `<div class="detail-hero"><small>待人工確認 · 尚未建立正式紀錄</small><strong>${escapeHtml(state.quickRecordDraft || "（沒有內容）")}</strong><span>${escapeHtml(parsed.message)}</span></div><div class="readonly-note">資料不完整或語意不明時，先保留原始輸入與 Context；人工確認後才會建立正式的數字事件或質性觀察。</div>${state.quickRecordError ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.quickRecordError)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-pending-review">送人工確認</button><button type="button" class="sheet-secondary" data-action="back-quick-record">返回修改</button></div>`, "quick-record-preview");
   }
@@ -2065,6 +2661,62 @@
       ? houses.map((house) => `<button type="button" class="option-row" data-action="select-house-for-quick-record" data-house-id="${escapeHtml(house.id)}"><span><strong>${escapeHtml(house.name)}</strong><span>指定這個雞舍；批次保持未選取</span></span><span class="option-check">›</span></button>`).join("")
       : `<div class="empty-tab"><strong>這個雞場目前沒有可選雞舍</strong><p>請先完成雞舍主檔，或取消本次記錄。</p></div>`;
     return sheetShell("確認記錄範圍", `目前：${escapeHtml(quickRecordContextLabel())}`, `<div class="detail-hero"><small>尚未指定雞舍</small><strong>${escapeHtml(context.farm.name)}</strong><span>這筆${actionLabel}前需要明確決定要套用整場，或指定一個雞舍。</span></div><div class="option-list"><button type="button" class="option-row selected" data-action="apply-farm-scope"><span><strong>套用整場</strong><span>這筆資料不屬於單一雞舍，保留為場級紀錄。</span></span><span class="option-check">✓</span></button><div class="quick-record-scope-divider">或選擇雞舍</div>${houseRows}</div><button type="button" class="sheet-secondary" data-action="cancel-quick-record-scope">取消</button>`, "quick-record-scope");
+  }
+
+  function safeRecordCommand(record) {
+    try { return window.JinjiRecordCommand?.createRecordCommand(record) || null; } catch (_) { return null; }
+  }
+
+  function quickEventRecordCommand(event, sourceChannel = "web") {
+    if (!event || !["mortality", "cull"].includes(event.type) || !event.farmId) return null;
+    return safeRecordCommand({
+      id: event.id,
+      taxonomyId: "O9",
+      family: "operational_event",
+      type: "event",
+      subtype: event.type,
+      occurredAt: `${event.date}T${event.time}:00+08:00`,
+      createdAt: event.createdAt,
+      farmId: event.farmId,
+      ...(event.houseId ? { houseId: event.houseId } : {}),
+      ...(event.flockId ? { flockId: event.flockId } : {}),
+      sourceChannel,
+      rawText: event.rawText || `${event.type}${event.quantity}`,
+      clientOperationId: event.clientOperationId,
+      confirmedBy: "human-review",
+      quantity: Number(event.quantity),
+      unit: event.unit || "隻",
+      scopeSelection: event.scopeSelection,
+    });
+  }
+
+  function quickObservationRecordCommand(observation, sourceChannel = "web") {
+    if (!observation || !observation.farmId || !observation.extent) return null;
+    const mapping = {
+      "咳嗽": ["A2", "cough"], "臭腳": ["A8", "foot_odor"], "白冠": ["A5", "white_crown"],
+      "緊迫": ["A10", "heat_stress"], "喘": ["A3", "respiratory_distress"], "異味": ["A15", "odor"],
+    };
+    const mapped = mapping[observation.observationType] || mapping[observation.text];
+    if (!mapped) return null;
+    return safeRecordCommand({
+      id: observation.id,
+      taxonomyId: mapped[0],
+      family: "operational_observation",
+      type: "observation",
+      subtype: mapped[1],
+      occurredAt: `${observation.date}T${observation.time}:00+08:00`,
+      createdAt: observation.createdAt,
+      farmId: observation.farmId,
+      ...(observation.houseId ? { houseId: observation.houseId } : {}),
+      ...(observation.flockId ? { flockId: observation.flockId } : {}),
+      sourceChannel,
+      rawText: observation.rawText || observation.text,
+      clientOperationId: observation.clientOperationId,
+      confirmedBy: "human-review",
+      extent: observation.extent,
+      ...(observation.text ? { detail: observation.text } : {}),
+      scopeSelection: observation.scopeSelection,
+    });
   }
 
   function labEventFromDraft() {
@@ -2122,12 +2774,33 @@
     }
     const { parsed, event } = labEventFromDraft();
     if (parsed.status !== "event" || !event) return openSheet({ kind: "quick-record-preview" });
+    const recordCommand = quickEventRecordCommand(event);
+    if (CANONICAL_API_ENABLED) {
+      if (!recordCommand) {
+        state.quickRecordError = "這個 Quick Record 沒有可驗證的 canonical RecordCommand；Production API 模式不會走 local fallback。";
+        return openSheet({ kind: "quick-record-preview" });
+      }
+      submitCanonicalBoundary(recordCommand, null, `已送出 ${eventLabel(event.type)} ${number(event.quantity)} ${event.unit} · ${contextLabel()}`, {
+        onSuccess: () => {
+          resetQuickRecordFlow();
+          state.calendarYear = Number(PLUS_AS_OF.slice(0, 4));
+          state.calendarMonth = Number(PLUS_AS_OF.slice(5, 7));
+          state.selectedCalendarDate = PLUS_AS_OF;
+          state.sheet = null;
+        },
+        onError: (error) => {
+          state.quickRecordError = canonicalApiErrorMessage(error);
+          state.sheet = { kind: "quick-record-preview" };
+        },
+      });
+      return;
+    }
     const audit = window.JinjiDomain.createAuditEntry({ entityId: event.id, operation: "create", source: "quick_record", newEventIds: [event.id], metadata: { scopeSelection: event.scopeSelection, scopeConfirmed: event.scopeConfirmed, rawText: event.rawText } });
     try {
       const { sync } = commitLabLocalOperation({
         events: [event],
         auditEntries: [audit],
-        operation: { clientOperationId: event.clientOperationId, type: "create_event", eventId: event.id, source: "quick_record", scopeSelection: event.scopeSelection, rawText: event.rawText },
+        operation: { clientOperationId: event.clientOperationId, type: "create_event", eventId: event.id, source: "quick_record", scopeSelection: event.scopeSelection, rawText: event.rawText, ...(recordCommand ? { recordCommand } : {}) },
       });
       state.quickRecordNotice = operationNotice(`已寫入 Lab：${eventLabel(event.type)} ${number(event.quantity)} ${event.unit} · ${contextLabel()}`, sync);
     } catch (error) {
@@ -2150,6 +2823,27 @@
     }
     const { parsed, observation } = labObservationFromDraft();
     if (!observation) return openSheet({ kind: "quick-record-preview" });
+    const recordCommand = quickObservationRecordCommand(observation);
+    if (CANONICAL_API_ENABLED) {
+      if (!recordCommand) {
+        state.quickRecordError = "這個現場觀察沒有可驗證的 canonical RecordCommand；Production API 模式不會走 local fallback。";
+        return openSheet({ kind: "quick-record-preview" });
+      }
+      submitCanonicalBoundary(recordCommand, null, `已送出現場觀察：${observation.text} · ${contextLabel()}`, {
+        onSuccess: () => {
+          resetQuickRecordFlow();
+          state.calendarYear = Number(PLUS_AS_OF.slice(0, 4));
+          state.calendarMonth = Number(PLUS_AS_OF.slice(5, 7));
+          state.selectedCalendarDate = PLUS_AS_OF;
+          state.sheet = null;
+        },
+        onError: (error) => {
+          state.quickRecordError = canonicalApiErrorMessage(error);
+          state.sheet = { kind: "quick-record-preview" };
+        },
+      });
+      return;
+    }
     const audit = window.JinjiDomain.createAuditEntry({
       entityType: "OperationalObservation",
       entityId: observation.id,
@@ -2162,7 +2856,7 @@
       const { sync } = commitLabLocalOperation({
         observations: [observation],
         auditEntries: [audit],
-        operation: { clientOperationId: observation.clientOperationId, type: "create_observation", observationId: observation.id, source: "quick_record", scopeSelection: observation.scopeSelection, rawText: observation.rawText },
+        operation: { clientOperationId: observation.clientOperationId, type: "create_observation", observationId: observation.id, source: "quick_record", scopeSelection: observation.scopeSelection, rawText: observation.rawText, ...(recordCommand ? { recordCommand } : {}) },
       });
       state.quickRecordNotice = operationNotice(`已保存現場觀察：${observation.text}${observation.extent ? `（${window.JinjiDomain.OBSERVATION_EXTENT_LABELS?.[observation.extent] || observation.extent}）` : ""} · ${contextLabel()}`, sync);
     } catch (error) {
@@ -2177,6 +2871,89 @@
     render();
   }
 
+  function canonicalCommandFromSeed(record, relationKind, relationId) {
+    if (!record?.record) return null;
+    const next = structuredClone(record.record);
+    const definition = canonicalTaxonomyDefinition(record);
+    for (const field of definition?.derivedFields || []) delete next[field];
+    delete next.correctionOfId;
+    delete next.reversalOfId;
+    delete next.replacementOfId;
+    next.id = window.JinjiDomain.id(`canonical-${relationKind}`);
+    next.clientOperationId = window.JinjiDomain.clientOperationId(`canonical-${relationKind}`);
+    next.createdAt = new Date().toISOString();
+    next.sourceChannel = "web";
+    next.confirmedBy = "human-review";
+    next.lifecycleStatus = "active";
+    if (relationKind === "correction") next.correctionOfId = relationId;
+    if (relationKind === "reversal") next.reversalOfId = relationId;
+    return safeRecordCommand(next);
+  }
+
+  function canonicalFormRecord(record) {
+    const next = structuredClone(record.record);
+    const numericFields = new Set(["maleCount", "femaleCount", "quantity", "averageWeight", "totalWeight", "weight", "measuredTemperature"]);
+    document.querySelectorAll("[data-canonical-correction-field]").forEach((input) => {
+      const field = input.dataset.canonicalCorrectionField;
+      const raw = String(input.value ?? "").trim();
+      if (!field) return;
+      if (!raw) {
+        delete next[field];
+      } else if (numericFields.has(field)) {
+        next[field] = Number(raw);
+      } else {
+        next[field] = raw;
+      }
+    });
+    return next;
+  }
+
+  function commitCanonicalCorrection(id) {
+    const original = canonicalRecordById(id);
+    if (!original?.correctionSafe || !original.correctionSeed) return openSheet({ kind: "canonical-correction", id });
+    const nextRecord = canonicalFormRecord(original);
+    for (const field of canonicalTaxonomyDefinition(original)?.derivedFields || []) delete nextRecord[field];
+    delete nextRecord.correctionOfId;
+    delete nextRecord.reversalOfId;
+    delete nextRecord.replacementOfId;
+    nextRecord.id = window.JinjiDomain.id("canonical-correction");
+    nextRecord.clientOperationId = window.JinjiDomain.clientOperationId("canonical-correction");
+    nextRecord.createdAt = new Date().toISOString();
+    nextRecord.sourceChannel = "web";
+    nextRecord.confirmedBy = "human-review";
+    nextRecord.lifecycleStatus = "active";
+    nextRecord.correctionOfId = original.id;
+    const command = safeRecordCommand(nextRecord);
+    if (!command) {
+      state.correctionNotice = "修正欄位沒有形成可驗證的 canonical RecordCommand；沒有建立本機替代紀錄。";
+      return openSheet({ kind: "canonical-correction", id });
+    }
+    submitCanonicalBoundary(command, { kind: "correction", id: original.id }, `已送出修正：${canonicalRecordTitle(original)}`, {
+      onSuccess: () => {
+        state.correctionNotice = "";
+        state.sheet = null;
+      },
+      onError: (error) => {
+        state.correctionNotice = canonicalApiErrorMessage(error);
+        state.sheet = { kind: "canonical-correction", id };
+      },
+    });
+  }
+
+  function commitCanonicalReversal(id) {
+    const original = canonicalRecordById(id);
+    if (!original?.reversalSafe || !original.reversalSeed) return;
+    const command = canonicalCommandFromSeed(original, "reversal", original.id);
+    if (!command) {
+      state.canonicalApiError = "這筆紀錄沒有可驗證的撤銷 seed；沒有建立本機替代紀錄。";
+      return render();
+    }
+    submitCanonicalBoundary(command, { kind: "reversal", id: original.id }, `已送出撤銷：${canonicalRecordTitle(original)}`, {
+      onSuccess: () => { state.sheet = null; },
+      onError: (error) => { state.canonicalApiError = canonicalApiErrorMessage(error); },
+    });
+  }
+
   function commitCorrection(eventId) {
     const original = effectiveLabEvents().find((event) => event.id === eventId);
     const rawQuantity = String(document.getElementById("correction-qty")?.value ?? "").trim();
@@ -2184,6 +2961,35 @@
     if (!original || !rawQuantity || !Number.isFinite(nextQuantity) || nextQuantity < 0) {
       state.correctionNotice = rawQuantity ? "請輸入有效的零或正數。" : "請填寫修正後數量；若要改成零，請明確輸入 0。";
       return openSheet({ kind: "correction", id: eventId });
+    }
+    if (CANONICAL_API_ENABLED) {
+      const baseCommand = quickEventRecordCommand(original, "web");
+      const correctionCommand = baseCommand
+        ? safeRecordCommand({
+            ...baseCommand.record,
+            id: window.JinjiDomain.id("web-correction"),
+            clientOperationId: window.JinjiDomain.clientOperationId("web-correction"),
+            createdAt: new Date().toISOString(),
+            rawText: `${baseCommand.record.rawText} · correction`,
+            quantity: nextQuantity,
+            correctionOfId: original.id,
+          })
+        : null;
+      if (!correctionCommand) {
+        state.correctionNotice = "這個項目沒有可驗證的 canonical correction RecordCommand；沒有建立本機替代紀錄。";
+        return openSheet({ kind: "correction", id: eventId });
+      }
+      submitCanonicalBoundary(correctionCommand, { kind: "correction", id: original.id }, `已送出修正：${eventLabel(original.type)} ${number(nextQuantity)} ${original.unit}`, {
+        onSuccess: () => {
+          state.correctionNotice = "";
+          state.sheet = null;
+        },
+        onError: (error) => {
+          state.correctionNotice = canonicalApiErrorMessage(error);
+          state.sheet = { kind: "correction", id: eventId };
+        },
+      });
+      return;
     }
     const ledger = window.JinjiDomain.createCorrectionLedger(original, {
       operation: "replacement",
@@ -2330,6 +3136,7 @@
       originalRawText: rawText,
       resolvedAt: now.toISOString(),
     };
+    const recordCommand = resultType === "event" ? quickEventRecordCommand(result, "web") : quickObservationRecordCommand(result, "web");
     const audit = window.JinjiDomain.createAuditEntry({
       entityType: resultType === "event" ? "OperationalEvent" : "OperationalObservation",
       entityId: result.id,
@@ -2345,6 +3152,24 @@
         sourcePendingReview: true,
       },
     }, now);
+    if (CANONICAL_API_ENABLED) {
+      if (!recordCommand) {
+        state.quickRecordError = "人工確認結果沒有可驗證的 canonical RecordCommand；沒有建立本機替代紀錄。";
+        return openSheet({ kind: "pending-approval", id: item.id });
+      }
+      submitCanonicalBoundary(recordCommand, null, `已送出人工確認：已建立${resultType === "event" ? "數字事件" : "現場觀察"}。`, {
+        onSuccess: () => {
+          state.pendingApproval = null;
+          state.quickRecordError = "";
+          state.sheet = null;
+        },
+        onError: (error) => {
+          state.quickRecordError = canonicalApiErrorMessage(error);
+          state.sheet = { kind: "pending-approval", id: item.id };
+        },
+      });
+      return;
+    }
     try {
       const { sync } = commitLabLocalOperation({
         ...(resultType === "event" ? { events: [result] } : { observations: [result] }),
@@ -2358,6 +3183,7 @@
           resultId: result.id,
           source: "pending_review",
           rawText,
+          ...(recordCommand ? { recordCommand } : {}),
         },
       });
       state.quickRecordNotice = operationNotice(`已完成人工確認：已建立${resultType === "event" ? "數字事件" : "現場觀察"}。`, sync);
@@ -2378,11 +3204,11 @@
     const feedCount = scopedEvents("feed").length;
     const waterCount = scopedEvents("water").length;
     const activeAbnormal = scopedAbnormalities({ activeOnly: true }).length;
-    return sheetShell("洞察", htmlContextLabel(), `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-insight-detail" data-insight-key="stock"><span><strong>目前在養與批次</strong><span>${number(contextStock())} 隻 · ${scopedFlocks().length} 批進行中</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-sheet" data-sheet-kind="mortality"><span><strong>今日死亡</strong><span>${number(mortalityValue())} 隻</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-sheet" data-sheet-kind="cull"><span><strong>今日淘汰</strong><span>${number(cullValue())} 隻</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-sheet" data-sheet-kind="abnormal"><span><strong>異常追蹤</strong><span>${activeAbnormal} 筆追蹤中</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-insight-detail" data-insight-key="feed"><span><strong>飼料紀錄</strong><span>${feedCount} 筆</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-insight-detail" data-insight-key="water"><span><strong>飲水紀錄</strong><span>${waterCount} 筆</span></span><span class="sheet-item-end">›</span></button></div>`, "insights");
+    return sheetShell("洞察", htmlContextLabel(), `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-insight-detail" data-insight-key="stock"><span><strong>目前在養與批次</strong><span>${stockValue(contextStock())} 隻 · ${scopedFlocks().length} 批進行中</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-sheet" data-sheet-kind="mortality"><span><strong>今日死亡</strong><span>${number(mortalityValue())} 隻</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-sheet" data-sheet-kind="cull"><span><strong>今日淘汰</strong><span>${number(cullValue())} 隻</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-sheet" data-sheet-kind="abnormal"><span><strong>異常追蹤</strong><span>${activeAbnormal} 筆追蹤中</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-insight-detail" data-insight-key="feed"><span><strong>飼料紀錄</strong><span>${feedCount} 筆</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-insight-detail" data-insight-key="water"><span><strong>飲水紀錄</strong><span>${waterCount} 筆</span></span><span class="sheet-item-end">›</span></button></div>`, "insights");
   }
 
   function insightDetailSheet(key) {
-    if (key === "stock") return sheetShell("目前在養與批次", htmlContextLabel(), `<div class="detail-hero"><small>目前在養</small><strong>${number(contextStock())} 隻</strong><span>${scopedFlocks().length} 批進行中</span></div><div class="sheet-item-list">${scopedFlocks().map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${escapeHtml(flock.id)}"><span><strong>${escapeHtml(flock.code)}</strong><span>${escapeHtml(flock.farm)} · ${escapeHtml(flock.house)} · ${number(flock.stock)} 隻</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>沒有進行中批次</strong></div>`}</div>`, "insight-detail");
+    if (key === "stock") return sheetShell("目前在養與批次", htmlContextLabel(), `<div class="detail-hero"><small>目前在養</small><strong>${stockValue(contextStock())} 隻</strong><span>${scopedFlocks().length} 批進行中</span></div><div class="sheet-item-list">${scopedFlocks().map((flock) => `<button type="button" class="sheet-item" data-action="open-flock" data-flock-id="${escapeHtml(flock.id)}"><span><strong>${escapeHtml(flock.code)}</strong><span>${escapeHtml(flock.farm)} · ${escapeHtml(flock.house)} · ${stockValue(flock.stock)} 隻</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>沒有進行中批次</strong></div>`}</div>`, "insight-detail");
     const type = key === "feed" ? "feed" : "water";
     const rows = scopedEvents(type);
     return sheetShell(key === "feed" ? "飼料紀錄" : "飲水紀錄", htmlContextLabel(), `<div class="sheet-item-list">${rows.map((item) => `<button type="button" class="sheet-item" data-action="open-event" data-event-id="${escapeHtml(item.id)}"><span><strong>${eventLabel(item.type)} ${number(item.qty)} ${escapeHtml(item.unit)}</strong><span>${escapeHtml(contextName(item))} · ${escapeHtml(item.date)} ${escapeHtml(item.time)}</span></span><span class="sheet-item-end">›</span></button>`).join("") || `<div class="empty-tab"><strong>目前沒有相關紀錄</strong></div>`}</div>`, "insight-detail");
@@ -2391,7 +3217,7 @@
   function systemSheet() {
     const farms = allProductionFarms();
     const houses = farms.flatMap((farm) => farm.houses);
-    return sheetShell("系統", "測試版資訊", `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="farms"><span><strong>雞場</strong><span>${farms.length} 場</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="houses"><span><strong>雞舍</strong><span>${houses.length} 舍</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="flocks"><span><strong>批次</strong><span>${allFlocks().length} 批</span></span><span class="sheet-item-end">›</span></button><div class="sheet-item static"><span><strong>正式服務</strong><span>這個公開測試版沒有連線 LINE、資料庫或正式後端</span></span></div></div>`, "system");
+    return sheetShell("系統", "測試版資訊", `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="farms"><span><strong>雞場</strong><span>${farms.length} 場</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="houses"><span><strong>雞舍</strong><span>${houses.length} 舍</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-system-detail" data-system-key="flocks"><span><strong>批次</strong><span>${allFlocks().length} 批</span></span><span class="sheet-item-end">›</span></button><div class="sheet-item static"><span><strong>正式服務</strong><span>${CANONICAL_API_ENABLED ? "Web 只透過 canonical API；不直接存取資料庫，LINE、Queue、Cron 與 AI 不由此入口觸發" : "這個公開測試版沒有連線 LINE、資料庫或正式後端"}</span></span></div></div>`, "system");
   }
 
   function systemDetailSheet(key) {
@@ -2556,7 +3382,9 @@
     const overlay = labOverlay();
     const mode = overlay.mode;
     const aiStatus = simulatedAiAvailable() ? "AI_AVAILABLE" : "AI_UNAVAILABLE";
-    return sheetShell("開發者診斷", "V14R Plus r4", `<div class="diagnostic-grid"><div><span>Environment</span><strong>PREPROD LAB</strong></div><div><span>Build SHA</span><strong>${escapeHtml(buildSha)}</strong></div><div><span>Build marker</span><strong>${escapeHtml(root.dataset.buildMarker || "")}</strong></div><div><span>Build time</span><strong>${escapeHtml(buildTime)}</strong></div><div><span>Branch</span><strong>${escapeHtml(buildBranch)}</strong></div><div><span>資料契約</span><strong>PASS（載入時驗證）</strong></div><div><span>連動測試事件</span><strong>${number(PLUS_LINKED_TEST_EVENTS.length)} 筆</strong></div><div><span>Lab backend</span><strong>${escapeHtml(labModeLabel(mode))}</strong></div><div><span>待同步操作</span><strong>${number(overlay.outbox.length)} 筆</strong></div><div><span>點擊資料</span><strong>localStorage</strong></div><div><span>AI 狀態</span><strong>${aiStatus}</strong></div></div><div class="developer-actions"><button type="button" class="sheet-primary" data-action="toggle-ai-simulation">${aiStatus === "AI_AVAILABLE" ? "模擬 AI 不可用" : "恢復 AI 可用"}</button><button type="button" class="sheet-secondary" data-action="export-dev-analytics">匯出本機診斷 JSON</button></div><div class="readonly-note">診斷只顯示 PREPROD LAB 身份、版本與本機 adapter 狀態；不暴露 secret、token 或個人內容。</div>`, "developer-diagnostics");
+    const apiState = CANONICAL_API?.state?.() || { enabled: false, environment: "production", base: null, configurationError: null };
+    const apiDiagnostic = CANONICAL_API_ENABLED ? `<div><span>Canonical API</span><strong>${escapeHtml(apiState.environment)} · configured</strong></div>` : "";
+    return sheetShell("開發者診斷", "V14R Plus r4", `<div class="diagnostic-grid"><div><span>Environment</span><strong>PREPROD LAB</strong></div><div><span>Build SHA</span><strong>${escapeHtml(buildSha)}</strong></div><div><span>Build marker</span><strong>${escapeHtml(root.dataset.buildMarker || "")}</strong></div><div><span>Build time</span><strong>${escapeHtml(buildTime)}</strong></div><div><span>Branch</span><strong>${escapeHtml(buildBranch)}</strong></div><div><span>資料契約</span><strong>PASS（載入時驗證）</strong></div><div><span>連動測試事件</span><strong>${number(PLUS_LINKED_TEST_EVENTS.length)} 筆</strong></div><div><span>Lab backend</span><strong>${escapeHtml(labModeLabel(mode))}</strong></div><div><span>待同步操作</span><strong>${number(overlay.outbox.length)} 筆</strong></div>${apiDiagnostic}<div><span>點擊資料</span><strong>localStorage</strong></div><div><span>AI 狀態</span><strong>${aiStatus}</strong></div></div><div class="developer-actions"><button type="button" class="sheet-primary" data-action="toggle-ai-simulation">${aiStatus === "AI_AVAILABLE" ? "模擬 AI 不可用" : "恢復 AI 可用"}</button><button type="button" class="sheet-secondary" data-action="export-dev-analytics">匯出本機診斷 JSON</button></div><div class="readonly-note">診斷只顯示 PREPROD LAB 身份、版本與本機 adapter 狀態；不暴露 secret、token 或個人內容。</div>`, "developer-diagnostics");
   }
 
   function developerFallbackSheet() {
@@ -2567,6 +3395,312 @@
       <section class="fallback-card alert"><strong>情境 C｜Cloudflare 永久下線</strong><p>把 parser／validator／business／audit 保持 provider-neutral，透過 Storage / Queue / Scheduler / AI adapters 遷移。每日把可還原資料與 migration 版本加密備份到非 Cloudflare 儲存；DNS／網域控制也不得只依賴單一供應商。</p><p><b>遷移目標：</b>可替換為任一標準 Node/Serverless 主機 + PostgreSQL/SQLite 相容資料庫 + queue + scheduler。AI provider 可獨立切換，且永遠不是正式寫入必要條件。</p></section>
       <section class="fallback-card"><strong>建議落地順序</strong><p>1. 先做 AI provider abstraction 與 deterministic fallback → 2. Web IndexedDB outbox + reconnect sync → 3. 非 Cloudflare 加密備份 → 4. 獨立 emergency ingress → 5. 每季演練 permanent migration restore。</p></section>
     </div><div class="detail-block"><h3>Fault injection</h3><p>以下只切換本機 Lab adapter；不呼叫 Production API。</p><div class="developer-actions"><button type="button" class="sheet-secondary" data-action="set-lab-mode" data-mode="ONLINE">ONLINE</button><button type="button" class="sheet-secondary" data-action="set-lab-mode" data-mode="AI_DOWN">AI_DOWN</button><button type="button" class="sheet-secondary" data-action="set-lab-mode" data-mode="BACKEND_TEMP_DOWN">BACKEND_TEMP_DOWN</button><button type="button" class="sheet-secondary" data-action="set-lab-mode" data-mode="BACKEND_LONG_DOWN">BACKEND_LONG_DOWN</button><button type="button" class="sheet-secondary danger" data-action="reset-lab-fixture">Reset fixture</button></div></div><div class="readonly-note">本 r4 只把流程與開發者可見提案做進 Prototype；真正的跨供應商備援需要另外部署與災難復原驗收。</div>`, "developer-fallback");
+  }
+
+  function recordPortalMarkup() {
+    const apiMode = CANONICAL_API_ENABLED;
+    return `<section class="page record-portal" data-page="record-portal" data-testid="record-portal">
+      <div class="record-portal-intro"><p class="kicker">金雞管理中心 · ${apiMode ? "AUTHENTICATED API" : "PREPROD LAB"}</p><h1>今天要記哪一類？</h1><p>${apiMode ? "先選擇入口，再用一步一步的方式建立紀錄。確認後只送出已驗證的 RecordCommand；API 失敗時不會改寫本機 fixture。" : "先選擇入口，再用一步一步的方式建立紀錄。這裡只保存本機 Lab 測試資料，不連線 Production。"}</p></div>
+      <div class="record-portal-grid">
+        <button type="button" class="record-portal-card operational" data-action="start-guided-operational" data-testid="portal-operational"><span class="record-portal-icon">${icon("records")}</span><span><strong>營運資料</strong><small>入雛、用藥、出雞、磅重、飼料、送驗、清消、維護、死亡／淘汰</small></span><span class="record-portal-arrow">›</span></button>
+        <button type="button" class="record-portal-card abnormal" data-action="start-guided-abnormal" data-testid="portal-abnormal"><span class="record-portal-icon">${icon("warning")}</span><span><strong>異常登錄</strong><small>從 A1–A16 選擇現場觀察；範圍只描述小／中／大，不換算隻數</small></span><span class="record-portal-arrow">›</span></button>
+        <button type="button" class="record-portal-card management" data-action="enter-management" data-testid="portal-management"><span class="record-portal-icon">${icon("farm")}</span><span><strong>進入管理中心</strong><small>開啟既有今日、紀錄、月曆、待辦、場務與財務介面</small></span><span class="record-portal-arrow">›</span></button>
+      </div>
+      <div class="record-portal-note"><span class="status-chip good">${apiMode ? `Canonical API · ${escapeHtml(webApiEnvironmentLabel())}` : "本機 Lab"}</span><span>${apiMode ? "確認後只送出 RecordCommand 到已驗證 API；不由瀏覽器直接存取 D1，也不觸發 LINE、Queue、Cron 或 AI。" : "正式資料寫入、LINE、Queue、Cron 與 AI 都不會由這個入口觸發。"}</span>${apiMode ? webRuntimeControls() : ""}</div>
+    </section>`;
+  }
+
+  function guidedState() {
+    return state.guidedRecord;
+  }
+
+  function guidedDefinition() {
+    const guided = guidedState();
+    return guided?.taxonomyId ? window.JinjiGuidedRecording.definitionFor(guided.taxonomyId) : null;
+  }
+
+  function guidedErrorMessage(error) {
+    const code = String(error?.message || error || "");
+    const messages = {
+      GUIDED_RECORDING_FARM_REQUIRED: "請先選擇雞場。",
+      GUIDED_RECORDING_DATE_REQUIRED: "請輸入有效的發生日期。",
+      GUIDED_RECORDING_SELECTION_REQUIRED: "請先完成分類與子類型。",
+      RECORDING_REQUIRED_FIELD: "還有必要欄位尚未填寫。",
+      RECORDING_ENUM_INVALID: "選項不符合既有資料契約。",
+      RECORDING_NUMBER_INVALID: "請輸入有效的數字。",
+      RECORDING_INTEGER_INVALID: "請輸入有效的整數。",
+      RECORDING_DERIVED_FIELD_MISMATCH: "推導欄位與輸入不一致，請回頭檢查。",
+      RECORDING_TIMESTAMP_INVALID: "日期或時間格式無效。",
+    };
+    const key = code.split(":")[0];
+    return messages[key] || "這筆資料尚未符合既有紀錄契約，尚未保存。";
+  }
+
+  function startGuidedRecord(area) {
+    state.guidedRecord = window.JinjiGuidedRecording.createState(area, PLUS_AS_OF);
+    state.quickRecordError = "";
+    return openSheet({ kind: "guided-record" });
+  }
+
+  function guidedScopeFarm() {
+    return recordingScopeFarmById(guidedState()?.scope?.farmId) || null;
+  }
+
+  function guidedScopeHouse() {
+    const farm = guidedScopeFarm();
+    return farm?.houses?.find((house) => house.id === guidedState()?.scope?.houseId) || null;
+  }
+
+  function guidedScopeFlock() {
+    const house = guidedScopeHouse();
+    return house?.flocks?.find((flock) => flock.id === guidedState()?.scope?.flockId) || null;
+  }
+
+  function guidedScopeLabel() {
+    const guided = guidedState();
+    const farm = guidedScopeFarm();
+    const house = guidedScopeHouse();
+    const flock = guidedScopeFlock();
+    return [farm?.name, house?.name, flock?.code].filter(Boolean).join(" · ") || "尚未選擇";
+  }
+
+  function guidedOption(value, label, selected = false, disabled = false) {
+    return `<option value="${escapeHtml(value)}" ${selected ? "selected" : ""} ${disabled ? "disabled" : ""}>${escapeHtml(label)}</option>`;
+  }
+
+  function guidedScopeMarkup() {
+    const guided = guidedState();
+    const definition = guidedDefinition();
+    const requirements = window.JinjiGuidedRecording.scopeRequirements(guided);
+    const farm = guidedScopeFarm();
+    const house = guidedScopeHouse();
+    const canonical = canonicalRecordingEnabled();
+    const farmOptions = recordingScopeFarms().filter((item) => item.id !== "history").map((item) => guidedOption(item.id, item.name, item.id === guided.scope.farmId)).join("");
+    const houseOptions = farm?.houses?.map((item) => guidedOption(item.id, item.name, item.id === guided.scope.houseId)).join("") || "";
+    const flockOptions = house?.flocks?.map((item) => guidedOption(item.id, item.code, item.id === guided.scope.flockId)).join("") || "";
+    const farmOnly = !guided.scope.houseId;
+    const scopeStatus = canonical && canonicalScopeCatalog.loading
+      ? `<div class="readonly-note" data-testid="canonical-scope-status">正在載入 ${escapeHtml(webApiEnvironmentLabel())} 正式工作範圍…</div>`
+      : canonical && canonicalScopeCatalog.error
+        ? `<div class="lab-write-notice error" role="alert" data-testid="canonical-scope-status">無法載入正式工作範圍</div><div class="readonly-note">未取得正式主檔前不會顯示本機 fixture，也不會送出紀錄。</div>`
+        : canonical
+          ? `<div class="readonly-note" data-testid="canonical-scope-status">來源：${escapeHtml(webApiEnvironmentLabel())} canonical master data</div>`
+          : "";
+    const scopeUnavailable = canonical && (canonicalScopeCatalog.loading || canonicalScopeCatalog.error);
+    return `<div class="guided-step" data-testid="guided-scope-step"><div class="sheet-step"><span>第 3 步／4</span><strong>先決定資料位置</strong></div><div class="guided-question"><p class="kicker">${escapeHtml(definition?.label || "記錄")}</p><h3>這筆資料發生在哪裡？</h3><p>雞舍與批次分開選；不會因為選了雞舍就偷偷選取批次。</p></div>${scopeStatus}<div class="guided-form-stack"><label class="guided-field"><span>雞場 <b>必要</b></span><select data-action="guided-scope-farm" aria-label="選擇雞場" ${scopeUnavailable ? "disabled" : ""}><option value="">${scopeUnavailable ? "正式範圍尚未就緒" : "請選擇雞場"}</option>${farmOptions}</select></label><label class="guided-field"><span>雞舍 ${requirements.houseRequired ? "<b>必要</b>" : "<em>可選</em>"}</span><select data-action="guided-scope-house" aria-label="選擇雞舍" ${farm && !scopeUnavailable ? "" : "disabled"}><option value="">${farm ? (requirements.houseRequired ? "請選擇雞舍" : "整場（不指定雞舍）") : "先選雞場"}</option>${houseOptions}</select></label><label class="guided-field"><span>批次 ${requirements.flockRequired ? "<b>必要</b>" : "<em>可選</em>"}</span><select data-action="guided-scope-flock" aria-label="選擇批次" ${house && !scopeUnavailable ? "" : "disabled"}><option value="">${house ? (requirements.flockRequired ? "請選擇批次" : "不指定批次") : "先選雞舍"}</option>${flockOptions}</select></label>${farmOnly && requirements.wholeFarmAllowed ? `<label class="guided-confirm-row"><input type="checkbox" data-action="guided-whole-farm" ${guided.scope.wholeFarmConfirmed ? "checked" : ""} ${scopeUnavailable ? "disabled" : ""}><span><strong>確認這是整場資料</strong><small>未指定雞舍時，必須明確確認範圍；不會默默套用整場。</small></span></label>` : ""}</div>${state.guidedRecord.error ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.guidedRecord.error)}</div>` : ""}<div class="readonly-note">目前範圍：${escapeHtml(guidedScopeLabel())}。${requirements.houseRequired ? "此分類需要雞舍。" : "若不指定雞舍，請明確確認整場。"}</div><div class="guided-actions"><button type="button" class="sheet-primary" data-action="guided-scope-next" ${scopeUnavailable ? "disabled" : ""}>下一步</button><button type="button" class="sheet-secondary" data-action="guided-cancel">取消</button></div></div>`;
+  }
+
+  function guidedSelectOptions(field, current, guided) {
+    const definitions = {
+      condition: [["good", "良好"], ["fair", "普通"], ["poor", "較差"]],
+      sex: [["male", "公"], ["female", "母"], ["mixed", "混合"], ["unspecified", "未指定"]],
+      workflowStatus: guided.taxonomyId === "O6" ? [["waiting_result", "等待結果"], ["completed", "已完成"]] : [["pending", "待處理"], ["completed", "已完成"]],
+      weightUnit: guided.taxonomyId === "O5" ? [["kg", "公斤（kg）"], ["bag", "包／袋（bag）"]] : [["kg", "公斤（kg）"]],
+      extent: [["small", "小範圍"], ["medium", "中範圍"], ["large", "大範圍"]],
+    };
+    if (field === "linkedMortalityEventId") {
+      const events = effectiveLabEvents().filter((item) => item.type === "mortality");
+      return `<option value="">請選擇死亡紀錄</option>${events.map((item) => guidedOption(item.id, `${item.date} · ${contextName(item)} · ${number(item.qty)} 隻`, item.id === current)).join("")}`;
+    }
+    const options = definitions[field];
+    return options ? `<option value="">請選擇</option>${options.map(([value, label]) => guidedOption(value, label, value === current)).join("")}` : null;
+  }
+
+  function guidedFieldControl(field, guided) {
+    const current = guided.values?.[field];
+    const required = window.JinjiGuidedRecording.isRequired(guided, field);
+    const label = window.JinjiGuidedRecording.fieldLabel(field);
+    const options = guidedSelectOptions(field, current, guided);
+    if (options) return `<select data-guided-field="${escapeHtml(field)}" aria-label="${escapeHtml(label)}">${options}</select>`;
+    if (field === "date" || field === "chickInDate" || field === "completedAt") return `<input data-guided-field="${escapeHtml(field)}" type="date" value="${escapeHtml(window.JinjiGuidedRecording.displayValue(field, current))}" aria-label="${escapeHtml(label)}">`;
+    const numberFields = new Set(["maleCount", "femaleCount", "quantity", "totalWeight", "averageWeight", "weight", "measuredTemperature"]);
+    if (numberFields.has(field)) return `<input data-guided-field="${escapeHtml(field)}" type="number" min="0" step="any" inputmode="decimal" value="${escapeHtml(window.JinjiGuidedRecording.displayValue(field, current))}" aria-label="${escapeHtml(label)}" placeholder="請輸入數字">`;
+    return `<input data-guided-field="${escapeHtml(field)}" type="text" value="${escapeHtml(window.JinjiGuidedRecording.displayValue(field, current))}" aria-label="${escapeHtml(label)}" placeholder="${required ? "請輸入" : "可略過"}${escapeHtml(label)}">`;
+  }
+
+  function guidedFieldMarkup() {
+    const guided = guidedState();
+    const definition = guidedDefinition();
+    const fields = window.JinjiGuidedRecording.fieldSequence(guided);
+    const field = fields[guided.fieldIndex];
+    if (!field) {
+      guided.step = "review";
+      return guidedReviewMarkup();
+    }
+    const required = window.JinjiGuidedRecording.isRequired(guided, field) || field === "date";
+    const label = window.JinjiGuidedRecording.fieldLabel(field);
+    return `<div class="guided-step" data-testid="guided-field-step"><div class="sheet-step"><span>第 4 步／4 · ${guided.fieldIndex + 1} / ${fields.length}</span><strong>${escapeHtml(definition?.label || "記錄")}</strong></div><div class="guided-question"><p class="kicker">${escapeHtml(guided.subtype || "")}</p><h3>${escapeHtml(label)}${required ? "" : "（可選）"}</h3><p>${required ? "這是既有 taxonomy 的必要欄位。" : "若目前沒有可靠資料，可以略過，不自行推測。"}</p></div><div class="guided-field-control">${guidedFieldControl(field, guided)}</div>${state.guidedRecord.error ? `<div class="lab-write-notice error" role="alert">${escapeHtml(state.guidedRecord.error)}</div>` : ""}<div class="guided-actions"><button type="button" class="sheet-primary" data-action="guided-next">${guided.fieldIndex + 1 === fields.length ? "查看紀錄前確認" : "下一步"}</button>${required ? "" : `<button type="button" class="sheet-secondary" data-action="guided-skip-field">略過這個欄位</button>`}<button type="button" class="text-link" data-action="guided-back">返回上一步</button></div></div>`;
+  }
+
+  function guidedRecordFieldRows(record) {
+    const hidden = new Set(["id", "taxonomyId", "family", "type", "subtype", "occurredAt", "createdAt", "sourceChannel", "rawText", "clientOperationId", "confirmedBy", "scopeSelection", "scopeConfirmed", "farmId", "houseId", "flockId"]);
+    const labels = { occurredAt: "發生時間", totalCount: "推導總數", averageWeight: "推導平均重量", ageDays: "推導日齡", reminderDueAt: "提醒日期", submittedAt: "送驗時間" };
+    const farm = canonicalRecordingEnabled() ? canonicalFarmById(record.farmId) : farmById(record.farmId);
+    const house = record.houseId ? farm?.houses?.find((item) => item.id === record.houseId) : null;
+    const flock = record.flockId ? house?.flocks?.find((item) => item.id === record.flockId) : null;
+    const scopeRows = [
+      ["雞場", farm?.name || record.farmId],
+      ["雞舍", house?.name || (record.houseId ? record.houseId : "未指定")],
+      ["批次", flock?.code || (record.flockId ? record.flockId : "未指定")],
+      ["範圍確認", record.scopeSelection === "farm" ? "整場（已明確確認）" : record.scopeSelection === "house" ? "指定雞舍" : "指定批次"],
+    ];
+    const rows = scopeRows.map(([label, value]) => `<div class="detail-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`);
+    return rows.concat(Object.entries(record)
+      .filter(([key, value]) => !hidden.has(key) && value !== undefined && value !== null && typeof value !== "object")
+      .map(([key, value]) => `<div class="detail-row"><span>${escapeHtml(labels[key] || window.JinjiGuidedRecording.fieldLabel(key) || key)}</span><strong>${escapeHtml(String(value))}</strong></div>`)).join("");
+  }
+
+  function previewGuidedRecord() {
+    const guided = guidedState();
+    if (!guided) return { record: null, error: new Error("GUIDED_RECORDING_SELECTION_REQUIRED") };
+    try {
+      const record = window.JinjiGuidedRecording.buildRecord(guided, { id: "guided-preview-record", clientOperationId: "guided-preview-operation", createdAt: "2026-01-01T00:00:00.000Z", confirmedBy: "web-guided-review" });
+      return { record, error: null };
+    } catch (error) {
+      return { record: null, error };
+    }
+  }
+
+  function guidedReviewMarkup() {
+    const guided = guidedState();
+    const definition = guidedDefinition();
+    const preview = previewGuidedRecord();
+    const record = preview.record;
+    const target = CANONICAL_API_ENABLED ? "已設定的 canonical API" : "Lab";
+    const reviewCopy = CANONICAL_API_ENABLED ? "分類、位置、原始欄位與推導值都會先通過既有 strict validator；確認後只送到已設定的 canonical API。" : "分類、位置、原始欄位與推導值都會在本機保存；不會寫入 Production。";
+    return `<div class="guided-step" data-testid="guided-review"><div class="sheet-step"><span>最後一步</span><strong>${CANONICAL_API_ENABLED ? "確認後才送出" : "確認後才保存"}</strong></div><div class="guided-question"><p class="kicker">${escapeHtml(definition?.label || "記錄")}</p><h3>請確認這筆資料</h3><p>${reviewCopy}</p></div>${record ? `<div class="detail-hero"><small>${escapeHtml(record.taxonomyId)} · ${escapeHtml(record.family)}</small><strong>${escapeHtml(definition.label)} · ${escapeHtml(record.subtype)}</strong><span>${escapeHtml(guidedScopeLabel())} · ${escapeHtml(record.occurredAt.slice(0, 10))}</span></div><div class="detail-list guided-review-list">${guidedRecordFieldRows(record)}</div>` : `<div class="lab-write-notice error" role="alert">${escapeHtml(guidedErrorMessage(preview.error))}</div>`}<div class="readonly-note">這是 review gate：未通過既有 strict validator 就不會建立事件、觀察、操作或 outbox。</div><div class="guided-actions">${record ? `<button type="button" class="sheet-primary" data-action="guided-confirm">${CANONICAL_API_ENABLED ? "確認並送出 API" : "確認並保存到 Lab"}</button>` : ""}<button type="button" class="sheet-secondary" data-action="guided-back">返回修改</button><button type="button" class="text-link" data-action="guided-cancel">取消</button></div></div>`;
+  }
+
+  function guidedRecordSheet() {
+    const guided = guidedState();
+    if (!guided) return sheetShell("新增紀錄", "逐步輸入", `<div class="empty-tab"><strong>沒有進行中的記錄</strong></div>`, "guided-record");
+    const config = window.JinjiGuidedRecording.AREAS[guided.area];
+    let body = "";
+    if (guided.step === "category") {
+      const definitions = window.JinjiGuidedRecording.definitionsForArea(guided.area);
+      body = `<div class="guided-step" data-testid="guided-category-step"><div class="sheet-step"><span>第 1 步／4</span><strong>先選大類</strong></div><div class="guided-question"><p class="kicker">${escapeHtml(config.label)}</p><h3>你要記錄哪一種資料？</h3><p>分類直接沿用 O1–O9／A1–A16，不建立第二套語意。</p></div><div class="guided-option-grid">${definitions.map((definition) => `<button type="button" class="guided-option" data-action="guided-category" data-taxonomy-id="${escapeHtml(definition.id)}"><strong>${escapeHtml(definition.id)} · ${escapeHtml(definition.label)}</strong><span>${escapeHtml(definition.canonicalSubtypes.join("、"))}</span></button>`).join("")}</div><button type="button" class="sheet-secondary" data-action="guided-cancel">取消</button></div>`;
+    } else if (guided.step === "subtype") {
+      const definition = guidedDefinition();
+      body = `<div class="guided-step" data-testid="guided-subtype-step"><div class="sheet-step"><span>第 2 步／4</span><strong>${escapeHtml(definition?.id || "")}</strong></div><div class="guided-question"><p class="kicker">${escapeHtml(definition?.label || "")}</p><h3>再選具體子類型</h3><p>只選目前能確認的語意，不把觀察誤換算成數量。</p></div><div class="guided-option-grid">${(definition?.canonicalSubtypes || []).map((subtype) => `<button type="button" class="guided-option" data-action="guided-subtype" data-subtype="${escapeHtml(subtype)}"><strong>${escapeHtml(subtype)}</strong><span>使用既有 canonical subtype</span></button>`).join("")}</div><button type="button" class="text-link" data-action="guided-back">返回大類</button></div>`;
+    } else if (guided.step === "scope") {
+      body = guidedScopeMarkup();
+    } else if (guided.step === "field") {
+      body = guidedFieldMarkup();
+    } else {
+      body = guidedReviewMarkup();
+    }
+    return sheetShell("逐步建立紀錄", "每一步都會依既有資料契約檢查；確認前不保存。", body, "guided-record");
+  }
+
+  function legacyEventFromGuided(record) {
+    const type = { O1: "chick_in", O3: "shipment", O4: "weigh", O9: record.subtype }[record.taxonomyId];
+    if (!type) return null;
+    const quantity = type === "chick_in" ? record.totalCount : type === "weigh" ? record.averageWeight : record.quantity;
+    const event = window.JinjiDomain.createOperationalEvent({
+      id: record.id,
+      type,
+      quantity,
+      unit: type === "weigh" ? "kg" : "隻",
+      date: record.occurredAt.slice(0, 10),
+      time: record.occurredAt.slice(11, 16),
+      farmId: record.farmId,
+      houseId: record.houseId || null,
+      flockId: record.flockId || null,
+      source: "guided_record",
+      rawText: record.rawText,
+      scopeSelection: record.scopeSelection,
+      scopeConfirmed: record.scopeConfirmed,
+      clientOperationId: record.clientOperationId,
+      createdAt: record.createdAt,
+    });
+    return { ...event, taxonomyId: record.taxonomyId, canonicalRecord: record };
+  }
+
+  function legacyObservationFromGuided(record) {
+    const definition = guidedDefinition() || window.JinjiGuidedRecording.definitionFor(record.taxonomyId);
+    const observation = window.JinjiDomain.createOperationalObservation({
+      id: record.id,
+      text: `${definition.label} · ${record.subtype}`,
+      observationType: record.subtype,
+      extent: record.extent,
+      rawText: record.rawText,
+      date: record.occurredAt.slice(0, 10),
+      time: record.occurredAt.slice(11, 16),
+      farmId: record.farmId,
+      houseId: record.houseId || null,
+      flockId: record.flockId || null,
+      source: "guided_record",
+      scopeSelection: record.scopeSelection,
+      scopeConfirmed: record.scopeConfirmed,
+      clientOperationId: record.clientOperationId,
+      createdAt: record.createdAt,
+    });
+    return { ...observation, taxonomyId: record.taxonomyId, canonicalRecord: record };
+  }
+
+  function commitGuidedRecord() {
+    const guided = guidedState();
+    if (!guided) return;
+    if (!canonicalScopeSelectionReady(guided)) {
+      guided.error = "請先選擇目前 scope 中有效的雞場、雞舍與批次；正式主檔不完整時不會送出。";
+      return openSheet({ kind: "guided-record" });
+    }
+    let record;
+    try {
+      record = window.JinjiGuidedRecording.buildRecord(guided, {
+        id: window.JinjiDomain.id("guided-record"),
+        clientOperationId: window.JinjiDomain.clientOperationId("guided-record"),
+        confirmedBy: "web-guided-review",
+      });
+      const command = window.JinjiRecordCommand.createRecordCommand(record);
+      const definition = guidedDefinition();
+      if (CANONICAL_API_ENABLED) {
+        submitCanonicalBoundary(command, null, `已送出 ${definition.id} ${definition.label}：${record.subtype} · ${guidedScopeLabel()}`, {
+          onSuccess: () => {
+            state.guidedRecord = null;
+            state.sheet = null;
+            state.page = "records";
+            state.calendarYear = Number(record.occurredAt.slice(0, 4));
+            state.calendarMonth = Number(record.occurredAt.slice(5, 7));
+            state.selectedCalendarDate = record.occurredAt.slice(0, 10);
+          },
+          onError: (error) => {
+            guided.error = canonicalApiErrorMessage(error);
+            state.sheet = { kind: "guided-record" };
+          },
+        });
+        return;
+      }
+      const event = definition.family === "operational_event" ? legacyEventFromGuided(record) : null;
+      const observation = definition.family === "operational_observation" ? legacyObservationFromGuided(record) : null;
+      const audit = window.JinjiDomain.createAuditEntry({
+        entityType: definition.family === "operational_action" ? "OperationalAction" : definition.family === "operational_observation" ? "OperationalObservation" : "OperationalEvent",
+        entityId: record.id,
+        operation: "create_guided_record",
+        source: "guided_record",
+        newEventIds: [record.id],
+        metadata: { taxonomyId: record.taxonomyId, destination: command.destination, scopeSelection: record.scopeSelection, scopeConfirmed: record.scopeConfirmed },
+      });
+      const bundle = {
+        ...(event ? { events: [event] } : {}),
+        ...(observation ? { observations: [observation] } : {}),
+        ...(definition.family === "operational_action" ? { actions: [record] } : {}),
+        auditEntries: [audit],
+        operation: { clientOperationId: record.clientOperationId, type: "create_guided_record", recordId: record.id, taxonomyId: record.taxonomyId, destination: command.destination, source: "guided_record", scopeSelection: record.scopeSelection, recordCommand: command },
+      };
+      const { sync } = commitLabLocalOperation(bundle);
+      state.quickRecordNotice = operationNotice(`已保存 ${definition.id} ${definition.label}：${record.subtype} · ${guidedScopeLabel()}`, sync);
+      state.guidedRecord = null;
+      state.sheet = null;
+      state.page = "records";
+      state.calendarYear = Number(record.occurredAt.slice(0, 4));
+      state.calendarMonth = Number(record.occurredAt.slice(5, 7));
+      state.selectedCalendarDate = record.occurredAt.slice(0, 10);
+      render();
+    } catch (error) {
+      if (guided) guided.error = guidedErrorMessage(error);
+      return openSheet({ kind: "guided-record" });
+    }
   }
 
   function renderSheet() {
@@ -2581,6 +3715,8 @@
     if (state.sheet.kind === "cull") return cullSheet();
     if (state.sheet.kind === "flocks") return flocksSheet();
     if (state.sheet.kind === "flock") return flockSheet(state.sheet.id);
+    if (state.sheet.kind === "canonical-record-detail") return canonicalRecordDetailSheet(state.sheet.id);
+    if (state.sheet.kind === "canonical-correction") return canonicalCorrectionSheet(state.sheet.id);
     if (state.sheet.kind === "event-item") return eventItemSheet(state.sheet.id);
     if (state.sheet.kind === "farm-detail") return farmDetailSheet(state.sheet.farmId);
     if (state.sheet.kind === "house-detail") return houseDetailSheet(state.sheet.farmId, state.sheet.houseId);
@@ -2590,8 +3726,11 @@
     if (state.sheet.kind === "quick-record") return quickRecordSheet();
     if (state.sheet.kind === "quick-record-preview") return quickRecordPreviewSheet();
     if (state.sheet.kind === "quick-record-scope") return quickRecordScopeSheet();
+    if (state.sheet.kind === "guided-record") return guidedRecordSheet();
     if (state.sheet.kind === "pending-approval") return pendingApprovalSheet(state.sheet.id);
     if (state.sheet.kind === "observation-item") return observationItemSheet(state.sheet.id);
+    if (state.sheet.kind === "action-item") return actionItemSheet(state.sheet.id);
+    if (state.sheet.kind === "action-followups") return actionFollowupsSheet();
     if (state.sheet.kind === "correction") return correctionSheet(state.sheet.id);
     if (state.sheet.kind === "insights") return insightsSheet();
     if (state.sheet.kind === "system") return systemSheet();
@@ -2624,7 +3763,7 @@
     const house = context.house;
     const houses = farm.id === "all" ? [] : farm.houses;
     const flocks = house ? house.flocks : [];
-    const menu = state.desktopFarmMenuOpen ? `<div class="desktop-farm-dropdown" role="menu" aria-label="選擇雞場">${labData().farms.map((item) => `<button type="button" role="menuitem" class="desktop-farm-option ${item.id === farm.id ? "active" : ""}" data-action="desktop-select-farm-dropdown" data-farm-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.id === "all" ? "全域唯讀總覽" : item.subtitle)}</small></span><em>${item.id === farm.id ? "✓" : ""}</em></button>`).join("")}</div>` : "";
+    const menu = state.desktopFarmMenuOpen ? `<div class="desktop-farm-dropdown" role="menu" aria-label="選擇雞場">${(canonicalRecordingEnabled() ? recordingScopeFarms() : labData().farms).map((item) => `<button type="button" role="menuitem" class="desktop-farm-option ${item.id === farm.id ? "active" : ""}" data-action="desktop-select-farm-dropdown" data-farm-id="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.id === "all" ? "全域唯讀總覽" : item.subtitle)}</small></span><em>${item.id === farm.id ? "✓" : ""}</em></button>`).join("")}</div>` : "";
     return `<section class="desktop-v2-contextbar" aria-label="桌面工作範圍">
       <div class="desktop-farm-dropdown-wrap"><button type="button" class="desktop-farm-trigger" data-action="toggle-desktop-farm-menu" aria-haspopup="menu" aria-expanded="${state.desktopFarmMenuOpen}"><span class="context-icon">${icon("pin")}</span><span class="desktop-farm-title"><small>目前雞場</small><strong>${escapeHtml(farm.name)}</strong><span>${escapeHtml(farm.id === "all" ? "全域唯讀總覽" : farm.subtitle)}</span></span><span class="desktop-farm-chevron" aria-hidden="true">⌄</span></button>${menu}</div>
       <div class="desktop-context-trail">
@@ -2639,7 +3778,8 @@
     const events = scopedEvents().map((event) => ({ kind:"event", id:event.id, sort:`${event.date} ${event.time}`, title:`${eventLabel(event.type)} ${number(event.qty)} ${event.unit}`, detail:`${contextName(event)} · ${event.date.slice(5).replace('-', '/')} ${event.time}` }));
     const abnormal = scopedAbnormalities().map((item) => ({ kind:"abnormal", id:item.id, sort:`${item.date} ${item.time}`, title:`異常：${item.title}`, detail:`${contextName(item)} · ${item.state}` }));
     const observations = scopedObservations().map((item) => ({ kind:"observation", id:item.id, sort:`${item.date} ${item.time}`, title:`現場觀察：${item.text}`, detail:`${contextName(item)} · ${item.date.slice(5).replace('-', '/')} ${item.time} · 不含精確數量` }));
-    return [...events,...abnormal,...observations].sort((a,b)=>b.sort.localeCompare(a.sort)).slice(0,limit);
+    const actions = scopedActions().map((item) => { const dateTime = actionDateTime(item); return { kind:"action", id:item.id, sort:`${dateTime.date} ${dateTime.time}`, title:actionLabel(item), detail:`${contextName(item)} · ${dateTime.date.slice(5).replace('-', '/')} ${dateTime.time}` }; });
+    return [...events,...abnormal,...observations,...actions].sort((a,b)=>b.sort.localeCompare(a.sort)).slice(0,limit);
   }
 
   function desktopToday() {
@@ -2652,12 +3792,12 @@
     if (pending.length) actions.push(`<button type="button" class="action-card" data-action="open-sheet" data-sheet-kind="pending"><span class="action-icon">${icon("check")}</span><span class="action-copy"><strong>${pending.length} 筆需要人工確認</strong><span>資料尚未完整</span></span><span class="action-count">${pending.length}</span></button>`);
     if (upcoming.length) actions.push(`<button type="button" class="action-card good" data-action="open-sheet" data-sheet-kind="upcoming"><span class="action-icon">${icon("flock")}</span><span class="action-copy"><strong>${upcoming.length} 批 7 日內出雞</strong><span>${upcoming.map(f=>escapeHtml(f.code)).join("、")}</span></span><span class="action-count">${upcoming.length}</span></button>`);
     if (abnormalities.length) actions.push(`<button type="button" class="action-card alert" data-action="open-sheet" data-sheet-kind="abnormal"><span class="action-icon">${icon("warning")}</span><span class="action-copy"><strong>${abnormalities.length} 筆異常追蹤中</strong><span>${escapeHtml(abnormalities.slice(0,2).map(i=>i.title).join("、"))}</span></span><span class="action-count">${abnormalities.length}</span></button>`);
-    const farms = state.context.farmId === "all" ? allProductionFarms() : [currentContext().farm];
+    const farms = state.context.farmId === "all" ? allOperationalFarms() : [currentContext().farm];
     const recent = desktopRecentRows(6);
     return `<section class="desktop-v2-page" data-page="today">
       ${desktopContextToolbar()}
       <div class="desktop-kpi-ribbon" aria-label="核心指標">
-        <button type="button" class="desktop-kpi good" data-action="open-sheet" data-sheet-kind="flocks"><span>目前在養</span><strong>${number(contextStock())}</strong><small>${contextCountLabel()} · 查看批次</small></button>
+        <button type="button" class="desktop-kpi good" data-action="open-sheet" data-sheet-kind="flocks"><span>目前在養</span><strong>${stockValue(contextStock())}</strong><small>${contextCountLabel()} · 查看批次</small></button>
         <button type="button" class="desktop-kpi alert" data-action="open-sheet" data-sheet-kind="mortality"><span>今日死亡</span><strong>${number(mortality)}</strong><small>${mortality ? "查看死亡明細" : "目前無死亡明細"}</small></button>
         <button type="button" class="desktop-kpi warn" data-action="open-sheet" data-sheet-kind="pending"><span>待人工確認</span><strong>${number(pending.length)}</strong><small>需要補齊或確認</small></button>
         <button type="button" class="desktop-kpi ${abnormalities.length ? "alert" : "good"}" data-action="open-sheet" data-sheet-kind="abnormal"><span>異常追蹤</span><strong>${number(abnormalities.length)}</strong><small>目前工作範圍</small></button>
@@ -2665,7 +3805,7 @@
       <div class="desktop-workbench">
         <aside class="desktop-pane desktop-priority-pane"><div class="desktop-pane-head"><div><h2>今日決策</h2><p>只放需要立即判斷的事項</p></div><span class="scope-chip">${actions.length} 項</span></div><div class="desktop-pane-body"><section class="digest"><div class="digest-head"><p class="kicker">摘要</p><span class="digest-mark">${icon("digest")}</span></div><h2>${digestCopy()}</h2><p>只依目前範圍測試資料整理。</p></section><div class="action-list">${actions.length ? actions.join("") : `<div class="desktop-empty"><strong>目前沒有急迫事項</strong>這個範圍沒有待確認、近期出雞或追蹤中異常。</div>`}</div><div class="desktop-section-split"></div><div class="quick-summary"><button type="button" class="summary-tile alert" data-action="open-sheet" data-sheet-kind="mortality"><span class="tile-label">死亡</span><strong>${number(mortality)}</strong><small>今日</small></button><button type="button" class="summary-tile good" data-action="open-sheet" data-sheet-kind="cull"><span class="tile-label">淘汰</span><strong>${number(cull)}</strong><small>今日</small></button></div></div></aside>
         <main class="desktop-pane desktop-analysis-pane"><div class="desktop-pane-head"><div><h2>營運趨勢</h2><p>圖表是桌面工作區主體，可直接切換比較</p></div><span class="status-chip good">即時計算</span></div><div class="desktop-pane-body">${plusChartsSection()}</div></main>
-        <aside class="desktop-pane desktop-live-pane"><div class="desktop-pane-head"><div><h2>場次與最新動態</h2><p>不用離開首頁即可掌握分布</p></div></div><div class="desktop-pane-body"><div><strong style="font-size:11px">雞場概況</strong><div class="desktop-live-list">${farms.map(f=>{const p=labData().pending.filter(x=>x.farmId===f.id).length; const a=labData().abnormalities.filter(x=>x.farmId===f.id && x.status==="active").length; return `<button type="button" class="desktop-live-row" data-action="desktop-set-farm" data-farm-id="${escapeHtml(f.id)}"><span><strong>${escapeHtml(f.name)}</strong><span>待確認 ${p} · 異常 ${a}</span></span><span><b>${number(f.stock)}</b><small>在養</small></span></button>`}).join("")}</div></div><div class="desktop-section-split"></div><div><strong style="font-size:11px">最新紀錄</strong><div class="desktop-live-list">${recent.map(r=>`<button type="button" class="desktop-live-row" ${recordActionAttributes(r)}><span><strong>${escapeHtml(r.title)}</strong><span>${escapeHtml(r.detail)}</span></span><span>›</span></button>`).join("") || `<div class="desktop-empty">沒有近期紀錄。</div>`}</div></div></div></aside>
+        <aside class="desktop-pane desktop-live-pane"><div class="desktop-pane-head"><div><h2>場次與最新動態</h2><p>不用離開首頁即可掌握分布</p></div></div><div class="desktop-pane-body"><div><strong style="font-size:11px">雞場概況</strong><div class="desktop-live-list">${farms.map(f=>{const p=labData().pending.filter(x=>x.farmId===f.id).length; const a=labData().abnormalities.filter(x=>x.farmId===f.id && x.status==="active").length; return `<button type="button" class="desktop-live-row" data-action="desktop-set-farm" data-farm-id="${escapeHtml(f.id)}"><span><strong>${escapeHtml(f.name)}</strong><span>待確認 ${p} · 異常 ${a}</span></span><span><b>${stockValue(displayedFarmStock(f))}</b><small>在養</small></span></button>`}).join("")}</div></div><div class="desktop-section-split"></div><div><strong style="font-size:11px">最新紀錄</strong><div class="desktop-live-list">${recent.map(r=>`<button type="button" class="desktop-live-row" ${recordActionAttributes(r)}><span><strong>${escapeHtml(r.title)}</strong><span>${escapeHtml(r.detail)}</span></span><span>›</span></button>`).join("") || `<div class="desktop-empty">沒有近期紀錄。</div>`}</div></div></div></aside>
       </div>
     </section>`;
   }
@@ -2684,15 +3824,15 @@
   }
 
   function desktopFarms() {
-    const farms=allProductionFarms();
+    const farms=allOperationalFarms();
     const selected=state.context.farmId==="all"?null:currentContext().farm;
     const houses=selected?selected.houses:[];
     const selectedHouse=selected && state.context.houseId ? houseById(selected,state.context.houseId) : null;
     const flocks=selectedHouse ? selectedHouse.flocks : selected ? selected.houses.flatMap(h=>h.flocks.map(f=>({...f,houseName:h.name}))) : [];
-    return `<section class="desktop-v2-page" data-page="farms">${desktopContextToolbar()}<div class="desktop-kpi-ribbon"><div class="desktop-kpi good"><span>目前在養</span><strong>${number(contextStock())}</strong><small>${escapeHtml(contextShortLabel())}</small></div><div class="desktop-kpi"><span>雞場</span><strong>${farms.length}</strong><small>測試資料</small></div><div class="desktop-kpi"><span>進行中批次</span><strong>${scopedFlocks().length}</strong><small>依目前範圍</small></div><div class="desktop-kpi ${scopedAbnormalities({activeOnly:true}).length?"alert":"good"}"><span>追蹤中異常</span><strong>${scopedAbnormalities({activeOnly:true}).length}</strong><small>目前範圍</small></div></div><section class="master-data-entry desktop-master-entry" data-testid="master-data-entry"><div><p class="kicker">管理</p><h2>主檔管理</h2><p>新增雞場、雞舍、批次與照顧者；只寫入 Lab runtime overlay。</p></div><button type="button" class="sheet-secondary" data-action="open-master-data">開啟主檔管理</button></section><div class="desktop-farms-grid">
-      <aside class="desktop-pane"><div class="desktop-pane-head"><div><h2>雞場</h2><p>第一層主清單</p></div></div><div class="desktop-master-list">${farms.map(f=>`<button type="button" class="desktop-master-item ${selected?.id===f.id?"active":""}" data-action="desktop-set-farm" data-farm-id="${escapeHtml(f.id)}"><strong>${escapeHtml(f.name)}</strong><span>${escapeHtml(f.risk||f.subtitle)}</span><div class="desktop-master-metrics"><span>在養 <b>${number(f.stock)}</b></span><span>死亡 <b>${f.mortality}</b></span></div></button>`).join("")}</div></aside>
-      <section class="desktop-pane desktop-farms-detail"><div class="desktop-pane-head"><div><h2>雞舍</h2><p>${selected?escapeHtml(selected.name):"先選擇左側雞場"}</p></div></div><div class="desktop-master-list">${selected?houses.map(h=>`<button type="button" class="desktop-master-item ${state.context.houseId===h.id?"active":""}" data-action="desktop-set-house" data-house-id="${escapeHtml(h.id)}"><strong>${escapeHtml(h.name)}</strong><span>${h.flocks.length} 個批次</span><div class="desktop-master-metrics"><span>在養 <b>${number(houseStock(h))}</b></span></div></button>`).join(""):`<div class="desktop-empty"><strong>選一個雞場</strong>桌面版會在這裡直接展開雞舍，不需要再開另一層視窗。</div>`}</div></section>
-      <section class="desktop-pane desktop-farms-flocks"><div class="desktop-pane-head"><div><h2>批次</h2><p>${selectedHouse?escapeHtml(selectedHouse.name):selected?"目前雞場所有批次":"等待選擇雞場"}</p></div><span class="scope-chip">${flocks.length} 批</span></div><div class="desktop-pane-body"><div class="list-stack">${flocks.map(f=>`<button type="button" class="list-row" data-action="open-flock" data-flock-id="${escapeHtml(f.id)}"><span><strong>${escapeHtml(f.code)}</strong><span>${escapeHtml(f.houseName||selectedHouse?.name||"")} · ${escapeHtml(f.status)}</span></span><span class="row-end"><span class="row-value">${number(f.stock)}</span><span>在養 ›</span></span></button>`).join("") || `<div class="desktop-empty"><strong>沒有批次</strong>選擇雞場或雞舍後在此顯示。</div>`}</div></div></section>
+    return `<section class="desktop-v2-page" data-page="farms">${desktopContextToolbar()}<div class="desktop-kpi-ribbon"><div class="desktop-kpi good"><span>目前在養</span><strong>${stockValue(contextStock())}</strong><small>${escapeHtml(contextShortLabel())}</small></div><div class="desktop-kpi"><span>雞場</span><strong>${farms.length}</strong><small>測試資料</small></div><div class="desktop-kpi"><span>進行中批次</span><strong>${scopedFlocks().length}</strong><small>依目前範圍</small></div><div class="desktop-kpi ${scopedAbnormalities({activeOnly:true}).length?"alert":"good"}"><span>追蹤中異常</span><strong>${scopedAbnormalities({activeOnly:true}).length}</strong><small>目前範圍</small></div></div><section class="master-data-entry desktop-master-entry" data-testid="master-data-entry"><div><p class="kicker">管理</p><h2>主檔管理</h2><p>新增雞場、雞舍、批次與照顧者；只寫入 Lab runtime overlay。</p></div><button type="button" class="sheet-secondary" data-action="open-master-data">開啟主檔管理</button></section><div class="desktop-farms-grid">
+      <aside class="desktop-pane"><div class="desktop-pane-head"><div><h2>雞場</h2><p>第一層主清單</p></div></div><div class="desktop-master-list">${farms.map(f=>`<button type="button" class="desktop-master-item ${selected?.id===f.id?"active":""}" data-action="desktop-set-farm" data-farm-id="${escapeHtml(f.id)}"><strong>${escapeHtml(f.name)}</strong><span>${escapeHtml(f.risk||f.subtitle)}</span><div class="desktop-master-metrics"><span>在養 <b>${stockValue(displayedFarmStock(f))}</b></span><span>死亡 <b>${f.mortality}</b></span></div></button>`).join("")}</div></aside>
+      <section class="desktop-pane desktop-farms-detail"><div class="desktop-pane-head"><div><h2>雞舍</h2><p>${selected?escapeHtml(selected.name):"先選擇左側雞場"}</p></div></div><div class="desktop-master-list">${selected?houses.map(h=>`<button type="button" class="desktop-master-item ${state.context.houseId===h.id?"active":""}" data-action="desktop-set-house" data-house-id="${escapeHtml(h.id)}"><strong>${escapeHtml(h.name)}</strong><span>${h.flocks.length} 個批次</span><div class="desktop-master-metrics"><span>在養 <b>${stockValue(houseStock(h))}</b></span></div></button>`).join(""):`<div class="desktop-empty"><strong>選一個雞場</strong>桌面版會在這裡直接展開雞舍，不需要再開另一層視窗。</div>`}</div></section>
+      <section class="desktop-pane desktop-farms-flocks"><div class="desktop-pane-head"><div><h2>批次</h2><p>${selectedHouse?escapeHtml(selectedHouse.name):selected?"目前雞場所有批次":"等待選擇雞場"}</p></div><span class="scope-chip">${flocks.length} 批</span></div><div class="desktop-pane-body"><div class="list-stack">${flocks.map(f=>`<button type="button" class="list-row" data-action="open-flock" data-flock-id="${escapeHtml(f.id)}"><span><strong>${escapeHtml(f.code)}</strong><span>${escapeHtml(f.houseName||selectedHouse?.name||"")} · ${escapeHtml(f.status)}</span></span><span class="row-end"><span class="row-value">${stockValue(f.stock)}</span><span>在養 ›</span></span></button>`).join("") || `<div class="desktop-empty"><strong>沒有批次</strong>選擇雞場或雞舍後在此顯示。</div>`}</div></div></section>
     </div></section>`;
   }
 
@@ -2721,9 +3861,11 @@
   }
 
   function desktopPageMarkup() {
+    if (state.page === "record-portal") return recordPortalMarkup();
     if (state.page === "today") return desktopToday();
     if (state.page === "calendar") return renderCalendar();
     if (state.page === "farms") return desktopFarms();
+    if (state.page === "records" && canonicalRecordingEnabled()) return renderCanonicalRecords();
     if (state.page === "records") return desktopRecords();
     if (state.page === "todo") return desktopTodo();
     if (state.page === "more") return desktopMore();
@@ -2733,6 +3875,7 @@
   }
 
   function pageMarkup() {
+    if (state.page === "record-portal") return recordPortalMarkup();
     if (desktopWideMode()) return desktopPageMarkup();
     if (state.page === "today") return renderToday();
     if (state.page === "calendar") return renderCalendar();
@@ -2843,6 +3986,12 @@
   function closeSheet() {
     const focusMeta = state.previousFocusMeta;
     const scrollY = state.scrollY;
+    if (state.sheet?.kind === "guided-record") {
+      // Closing the guided flow is an explicit cancel. Do not silently retain
+      // a partially completed record for a later visit to the portal.
+      state.guidedRecord = null;
+      state.page = "record-portal";
+    }
     state.sheet = null;
     state.contextDraft = null;
     state.resumeAfterFarmSelection = null;
@@ -2871,16 +4020,26 @@
   }
 
   function render() {
+    const accessBoundary = webAccessBoundaryMarkup();
+    if (accessBoundary) {
+      app.innerHTML = accessBoundary;
+      unlockBody();
+      window.requestAnimationFrame(() => document.getElementById("web-admin-password")?.focus());
+      return;
+    }
     const desktop = desktopWideMode();
+    const portal = state.page === "record-portal";
     const mode = labOverlay().mode;
     const modeStatus = mode === "ONLINE" ? "" : `<span class="lab-mode-status">${escapeHtml(labModeLabel(mode))}</span>`;
     const desktopQuick = `<div class="desktop-quick-slot" aria-label="快速行動固定區"><button type="button" class="desktop-quick-button" data-action="open-sheet" data-sheet-kind="quick-actions" aria-label="開啟快速行動" title="快速行動">${icon("plus")}</button></div>`;
     const mobileQuick = `<div class="mobile-quick-slot" aria-label="快速行動固定區"><button type="button" class="mobile-quick-button" data-action="open-sheet" data-sheet-kind="quick-actions" aria-label="開啟快速行動" title="快速行動">${icon("plus")}</button></div>`;
-    const header = desktop
-      ? `<header class="topbar desktop-topbar"><div class="desktop-topbar-copy"><span class="desktop-page-kicker">目前頁面</span><strong>${currentPageTitle()}</strong><small>${escapeHtml(contextLabel())}</small></div>${desktopQuick}</header>`
-      : `<header class="topbar"><div class="brand-lockup mobile-brand"><span class="brand-symbol">🐔</span><span class="brand-copy"><strong>金雞管理中心</strong><span>營運管理 · V14R Plus r4</span></span></div><span class="topbar-status">Plus r4${modeStatus}</span></header>`;
-    const globalLabNotice = state.quickRecordNotice ? `<div class="lab-write-notice" role="status">${escapeHtml(state.quickRecordNotice)}</div>` : "";
-    app.innerHTML = `<div class="app-shell">${desktop ? desktopNavMarkup() : ""}<div class="workspace-shell">${header}${globalLabNotice}<main class="page-shell">${pageMarkup()}</main></div>${desktop ? "" : mobileQuick}${navMarkup()}${renderSheet()}</div>`;
+    const header = portal ? "" : desktop
+      ? `<header class="topbar desktop-topbar"><div class="desktop-topbar-copy"><span class="desktop-page-kicker">目前頁面</span><strong>${currentPageTitle()}</strong><small>${escapeHtml(contextLabel())}</small></div>${webRuntimeControls()}${desktopQuick}</header>`
+      : `<header class="topbar"><div class="brand-lockup mobile-brand"><span class="brand-symbol">🐔</span><span class="brand-copy"><strong>金雞管理中心</strong><span>營運管理 · V14R Plus r4</span></span></div><span class="topbar-status">Plus r4${modeStatus}</span>${webRuntimeControls()}</header>`;
+    const globalNotices = [state.quickRecordNotice, state.canonicalApiNotice, state.canonicalApiError ? `Canonical API：${state.canonicalApiError}` : ""].filter(Boolean);
+    const globalLabNotice = globalNotices.map((notice, index) => `<div class="lab-write-notice ${state.canonicalApiError && index === globalNotices.length - 1 ? "error" : ""}" role="${state.canonicalApiError && index === globalNotices.length - 1 ? "alert" : "status"}">${escapeHtml(notice)}</div>`).join("");
+    const apiRuntimeNotice = CANONICAL_API_ENABLED ? `<div class="api-runtime-notice" role="status"><strong>已登入 ${escapeHtml(webApiEnvironmentLabel())}</strong><span>Canonical write 只經 Worker business boundary；畫面中的 Lab／Finance fixture 明確標示為 synthetic，API 失敗不會改用 fixture 寫入或靜默回退。</span></div>` : "";
+    app.innerHTML = `<div class="app-shell ${portal ? "portal-mode" : ""}">${desktop && !portal ? desktopNavMarkup() : ""}<div class="workspace-shell">${header}${apiRuntimeNotice}${globalLabNotice}<main class="page-shell">${pageMarkup()}</main></div>${portal ? "" : (desktop ? "" : mobileQuick)}${portal ? "" : navMarkup()}${renderSheet()}</div>`;
     if (state.sheet) lockBody(); else unlockBody();
   }
 
@@ -2894,12 +4053,109 @@
       state.masterDataConfirmation = null;
       state.settingsError = "";
       state.settingsDraft = null;
+      if (state.page === "records" && canonicalRecordingEnabled()) void refreshCanonicalRecords();
       render();
       return;
     }
     const actionElement = event.target.closest("[data-action]");
     if (!actionElement) return;
     const action = actionElement.dataset.action;
+    if (action === "web-logout") return beginWebLogout();
+    if (action === "start-guided-operational") return startGuidedRecord("operational");
+    if (action === "start-guided-abnormal") return startGuidedRecord("abnormal");
+    if (action === "enter-management") {
+      state.guidedRecord = null;
+      state.sheet = null;
+      state.page = "today";
+      window.history.pushState({ jinjiPage: "management" }, "", "#/dashboard");
+      return render();
+    }
+    if (action === "portal-home") {
+      state.guidedRecord = null;
+      state.sheet = null;
+      state.page = "record-portal";
+      window.history.pushState({ jinjiPage: "portal" }, "", "#/");
+      return render();
+    }
+    if (action === "guided-cancel") {
+      state.guidedRecord = null;
+      state.sheet = null;
+      state.page = "record-portal";
+      return render();
+    }
+    if (action === "guided-category") {
+      const guided = guidedState();
+      if (!guided) return startGuidedRecord("operational");
+      guided.taxonomyId = actionElement.dataset.taxonomyId || null;
+      guided.subtype = null;
+      guided.step = "subtype";
+      guided.fieldIndex = 0;
+      guided.error = "";
+      return openSheet({ kind: "guided-record" });
+    }
+    if (action === "guided-subtype") {
+      const guided = guidedState();
+      if (!guided) return;
+      guided.subtype = actionElement.dataset.subtype || null;
+      guided.step = "scope";
+      guided.error = "";
+      return openSheet({ kind: "guided-record" });
+    }
+    if (action === "guided-scope-next") {
+      const guided = guidedState();
+      if (!guided) return;
+      const requirements = window.JinjiGuidedRecording.scopeRequirements(guided);
+      const scope = guided.scope;
+      if (!scope.farmId) guided.error = "請先選擇雞場。";
+      else if (scope.flockId && !scope.houseId) guided.error = "批次必須隸屬於已選擇的雞舍；系統不會自動猜測。";
+      else if (canonicalRecordingEnabled() && !canonicalScopeSelectionReady(guided)) guided.error = "所選位置不在目前正式 scope，請重新選擇；不會改用本機 fixture。";
+      else if (requirements.houseRequired && !scope.houseId) guided.error = "這個分類需要指定雞舍。";
+      else if (requirements.flockRequired && !scope.flockId) guided.error = "這個分類需要指定批次。";
+      else if (!scope.houseId && requirements.wholeFarmAllowed && !scope.wholeFarmConfirmed) guided.error = "未指定雞舍時，請明確確認這是整場資料。";
+      else {
+        guided.error = "";
+        guided.step = "field";
+        guided.fieldIndex = 0;
+      }
+      return openSheet({ kind: "guided-record" });
+    }
+    if (action === "guided-next" || action === "guided-skip-field") {
+      const guided = guidedState();
+      if (!guided) return;
+      const fields = window.JinjiGuidedRecording.fieldSequence(guided);
+      const field = fields[guided.fieldIndex];
+      const required = field === "date" || window.JinjiGuidedRecording.isRequired(guided, field);
+      const control = document.querySelector("[data-guided-field]");
+      const value = action === "guided-skip-field" ? "" : String(control?.value ?? "").trim();
+      if (action === "guided-skip-field" && required) {
+        guided.error = "這是必要欄位，不能略過。";
+      } else if (required && !value) {
+        guided.error = `請填寫${window.JinjiGuidedRecording.fieldLabel(field)}。`;
+      } else {
+        if (value) guided.values[field] = value;
+        else delete guided.values[field];
+        guided.error = "";
+        guided.fieldIndex += 1;
+        guided.step = guided.fieldIndex >= window.JinjiGuidedRecording.fieldSequence(guided).length ? "review" : "field";
+      }
+      return openSheet({ kind: "guided-record" });
+    }
+    if (action === "guided-back") {
+      const guided = guidedState();
+      if (!guided) return;
+      if (guided.step === "review") {
+        guided.step = "field";
+        guided.fieldIndex = Math.max(0, window.JinjiGuidedRecording.fieldSequence(guided).length - 1);
+      } else if (guided.step === "field") {
+        if (guided.fieldIndex > 0) guided.fieldIndex -= 1;
+        else guided.step = "scope";
+      } else if (guided.step === "scope") guided.step = "subtype";
+      else if (guided.step === "subtype") guided.step = "category";
+      guided.error = "";
+      return openSheet({ kind: "guided-record" });
+    }
+    if (action === "guided-confirm") return commitGuidedRecord();
+    if (action === "open-action-followups") return openSheet({ kind: "action-followups" });
     if (action === "open-context") return openContextPicker();
     if (action === "open-context-for-quick-record") return openContextPicker("quick-record");
     if (action === "close-sheet") return closeSheet();
@@ -2951,7 +4207,7 @@
     if (action === "go-farms") { state.page = "farms"; return render(); }
     if (action === "go-todo") { state.page = "todo"; return render(); }
     if (action === "go-calendar") { state.page = "calendar"; state.sheet = null; return render(); }
-    if (action === "go-records") { state.page = "records"; state.sheet = null; return render(); }
+    if (action === "go-records") { state.page = "records"; state.sheet = null; if (canonicalRecordingEnabled()) void refreshCanonicalRecords(); return render(); }
     if (action === "calendar-select-date") { state.selectedCalendarDate = actionElement.dataset.date; return render(); }
     if (action === "calendar-prev-month") { calendarMoveMonth(-1); return render(); }
     if (action === "calendar-next-month") { calendarMoveMonth(1); return render(); }
@@ -3004,6 +4260,9 @@
     if (action === "approve-pending-review") return approvePendingReview(actionElement.dataset.pendingId);
     if (action === "open-abnormal") return openSheet({ kind: "abnormal-item", id: actionElement.dataset.abnormalId });
     if (action === "open-event") return openSheet({ kind: "event-item", id: actionElement.dataset.eventId });
+    if (action === "open-canonical-record") return openSheet({ kind: "canonical-record-detail", id: actionElement.dataset.recordId });
+    if (action === "open-canonical-correction") return openSheet({ kind: "canonical-correction", id: actionElement.dataset.recordId });
+    if (action === "open-action") return openSheet({ kind: "action-item", id: actionElement.dataset.actionId });
     if (action === "open-observation") return openSheet({ kind: "observation-item", id: actionElement.dataset.observationId });
     if (action === "open-farm-detail") return openSheet({ kind: "farm-detail", farmId: actionElement.dataset.farmId });
     if (action === "open-house-detail") return openSheet({ kind: "house-detail", farmId: actionElement.dataset.farmId, houseId: actionElement.dataset.houseId });
@@ -3111,6 +4370,13 @@
     }
     if (action === "open-correction") return openSheet({ kind: "correction", id: actionElement.dataset.eventId });
     if (action === "commit-correction") return commitCorrection(actionElement.dataset.eventId);
+    if (action === "commit-canonical-correction") return commitCanonicalCorrection(actionElement.dataset.recordId);
+    if (action === "reverse-canonical-record") {
+      const record = canonicalRecordById(actionElement.dataset.recordId);
+      if (record && window.confirm(`確定要撤銷 ${canonicalRecordTitle(record)}？原紀錄會保留，只新增 append-only reversal；不會在瀏覽器重算 stock。`)) return commitCanonicalReversal(record.id);
+      return;
+    }
+    if (action === "replay-canonical-command") return replayCanonicalCommand(actionElement.dataset.recordId);
     if (action === "set-lab-mode") {
       const mode = actionElement.dataset.mode;
       LAB_STORE.setMode(mode);
@@ -3187,8 +4453,49 @@
   }
 
   function handleChange(event) {
+    if (event.target?.id === "web-environment-select") {
+      try {
+        CANONICAL_API.setEnvironment(event.target.value, { explicitChoice: true });
+        state.canonicalApiError = "";
+        void refreshCanonicalScopeCatalog({ clearSelection: true });
+        void refreshCanonicalRecords();
+      } catch (error) {
+        state.canonicalApiError = canonicalApiErrorMessage(error);
+      }
+      return render();
+    }
+    const guidedField = event.target?.dataset?.guidedField;
+    if (guidedField && guidedState()) {
+      guidedState().values[guidedField] = event.target.value;
+      guidedState().error = "";
+      // Text/date inputs are already kept current by input events. Avoid
+      // replacing the focused DOM on blur: WebKit dispatches change before
+      // the subsequent button click, which would otherwise discard that click.
+      if (event.target instanceof HTMLSelectElement) return openSheet({ kind: "guided-record" });
+      return;
+    }
     const target = event.target.closest("[data-action]");
     if (!target) return;
+    if (target.dataset.action === "guided-scope-farm" || target.dataset.action === "guided-scope-house" || target.dataset.action === "guided-scope-flock" || target.dataset.action === "guided-whole-farm") {
+      const guided = guidedState();
+      if (!guided) return;
+      if (target.dataset.action === "guided-scope-farm") {
+        guided.scope.farmId = target.value;
+        guided.scope.houseId = "";
+        guided.scope.flockId = "";
+        guided.scope.wholeFarmConfirmed = false;
+      } else if (target.dataset.action === "guided-scope-house") {
+        guided.scope.houseId = target.value;
+        guided.scope.flockId = "";
+        guided.scope.wholeFarmConfirmed = false;
+      } else if (target.dataset.action === "guided-scope-flock") {
+        guided.scope.flockId = target.value;
+      } else {
+        guided.scope.wholeFarmConfirmed = Boolean(target.checked);
+      }
+      guided.error = "";
+      return openSheet({ kind: "guided-record" });
+    }
     if (target.dataset.action === "select-master-farm") {
       state.masterDataFarmId = target.value;
       state.masterDataHouseId = null;
@@ -3204,12 +4511,22 @@
 
   function handleInput(event) {
     const target = event.target;
+    if (target?.dataset?.guidedField && guidedState()) {
+      guidedState().values[target.dataset.guidedField] = target.value;
+      return;
+    }
     if (!target || target.id !== "quick-record-input") return;
     const status = document.querySelector('[data-testid="quick-record-input-status"]');
     if (!status) return;
     const next = quickRecordInputStatus(target.value);
     status.className = `quick-record-input-status ${next.tone}`;
     status.textContent = next.text;
+  }
+
+  function handleSubmit(event) {
+    if (event.target?.id !== "web-login-form") return;
+    event.preventDefault();
+    beginWebLogin();
   }
 
 
@@ -3246,6 +4563,12 @@
   }
 
   let handleStartY = null;
+  window.addEventListener("popstate", () => {
+    state.sheet = null;
+    state.guidedRecord = null;
+    state.page = /#\/(dashboard|today)(?:$|[?])/u.test(window.location.hash) ? "today" : "record-portal";
+    render();
+  });
   document.addEventListener("click", (event) => {
     const component = event.target.closest("button, [data-action], [data-nav]");
     if (component) recordComponentClick(component);
@@ -3256,6 +4579,7 @@
   });
   document.addEventListener("change", handleChange);
   document.addEventListener("input", handleInput);
+  document.addEventListener("submit", handleSubmit);
   document.addEventListener("pointerover", (event) => {
     const target = event.target.closest("[data-chart-tip]");
     if (target && event.pointerType !== "touch") showChartTooltip(target, event);
