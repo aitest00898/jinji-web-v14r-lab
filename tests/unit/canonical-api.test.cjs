@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { CanonicalApiError, DEV_SESSION_STORAGE_KEY, canonicalCurrentStock, canonicalLiveStatusPayload, canonicalRecordsPayload, createClient, normalizeCanonicalApiError } = require("../../src/canonical-api.js");
+const { CanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, canonicalRecordsPayload, createClient, normalizeCanonicalApiError } = require("../../src/canonical-api.js");
 
 function response(payload, status = 200) {
   return { ok: status >= 200 && status < 300, status, async json() { return payload; } };
@@ -195,91 +195,6 @@ test("browser auth keeps the session token in memory and gates Test scope behind
   assert.equal(calls[2].init.headers.authorization, `Bearer ${"A".repeat(43)}`);
   assert.equal(client.isAuthenticated(), false);
   assert.equal(Object.prototype.hasOwnProperty.call(client.state(), "token"), false);
-});
-
-test("loopback dev-session-persist restores only the Worker session token and logout clears it", async () => {
-  const values = new Map();
-  const storage = {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, String(value)),
-    removeItem: (key) => values.delete(key),
-  };
-  const token = "C".repeat(43);
-  const location = { hostname: "127.0.0.1", protocol: "http:", origin: "http://127.0.0.1", href: "http://127.0.0.1/" };
-  const searchParams = new URLSearchParams("dev-session-persist=1");
-  const calls = [];
-  const fetchImpl = async (url, init) => {
-    calls.push({ url: new URL(url), init });
-    const pathname = new URL(url).pathname;
-    if (pathname === "/api/web/auth/login") return response({ authenticated: true, token, expiresAt: "2026-09-10T02:00:00.000Z", organization: { id: "org-test" } });
-    if (pathname === "/api/web/auth/session") return response({ authenticated: true, expiresAt: "2026-09-10T02:00:00.000Z", organization: { id: "org-test" } });
-    return response({ authenticated: false });
-  };
-  const client = createClient({ base: "https://worker.example.test", location, searchParams, storage, fetchImpl });
-
-  assert.equal(client.state().sessionPersistenceEnabled, true);
-  await client.login("password-is-not-stored");
-  assert.equal(values.get(DEV_SESSION_STORAGE_KEY), token);
-  assert.equal(JSON.stringify([...values.values()]).includes("password-is-not-stored"), false);
-  await client.logout();
-  assert.equal(values.has(DEV_SESSION_STORAGE_KEY), false);
-
-  values.set(DEV_SESSION_STORAGE_KEY, token);
-  const restoredCalls = [];
-  const restoredClient = createClient({
-    base: "https://worker.example.test",
-    location,
-    searchParams,
-    storage,
-    fetchImpl: async (url, init) => {
-      restoredCalls.push({ url: new URL(url), init });
-      return response({ authenticated: true, expiresAt: "2026-09-10T02:00:00.000Z", organization: { id: "org-test" } });
-    },
-  });
-  const restored = await restoredClient.restorePersistedSession();
-  assert.equal(restored.authenticated, true);
-  assert.equal(restoredCalls[0].url.pathname, "/api/web/auth/session");
-  assert.equal(restoredCalls[0].init.headers.authorization, `Bearer ${token}`);
-  await restoredClient.logout();
-  assert.equal(values.has(DEV_SESSION_STORAGE_KEY), false);
-});
-
-test("dev-session-persist is ignored outside loopback hosts", async () => {
-  const values = new Map();
-  const storage = {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, String(value)),
-    removeItem: (key) => values.delete(key),
-  };
-  const client = createClient({
-    base: "https://worker.example.test",
-    location: { hostname: "evil.example.test", protocol: "https:", origin: "https://evil.example.test", href: "https://evil.example.test/" },
-    searchParams: new URLSearchParams("dev-session-persist=1"),
-    storage,
-    fetchImpl: async () => response({ authenticated: true, token: "D".repeat(43) }),
-  });
-  assert.equal(client.state().sessionPersistenceEnabled, false);
-  await client.login("outside-loopback");
-  assert.equal(values.size, 0);
-});
-
-test("invalid persisted session is cleared on 401", async () => {
-  const values = new Map([[DEV_SESSION_STORAGE_KEY, "E".repeat(43)]]);
-  const storage = {
-    getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => values.set(key, String(value)),
-    removeItem: (key) => values.delete(key),
-  };
-  const client = createClient({
-    base: "https://worker.example.test",
-    location: { hostname: "localhost", protocol: "http:", origin: "http://localhost", href: "http://localhost/" },
-    searchParams: new URLSearchParams("dev-session-persist=1"),
-    storage,
-    fetchImpl: async () => ({ ok: false, status: 401, async json() { return { error: "unauthorized" }; } }),
-  });
-  await assert.rejects(() => client.restorePersistedSession(), (error) => error.code === "unauthorized");
-  assert.equal(values.has(DEV_SESSION_STORAGE_KEY), false);
-  assert.equal(client.isAuthenticated(), false);
 });
 
 test("flat Worker login rejection preserves code/status without creating auth state", async () => {

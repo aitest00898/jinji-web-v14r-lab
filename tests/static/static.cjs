@@ -122,11 +122,8 @@ assert.doesNotMatch(guardedSource, /(?:LINE_CHANNEL_SECRET|CHANNEL_ACCESS_TOKEN|
 assert.match(canonicalApi, /\/api\/records/);
 assert.match(canonicalApi, /credentials:\s*"omit"/);
 assert.match(canonicalApi, /headers\.authorization/);
-assert.match(canonicalApi, /dev-session-persist/);
-assert.match(canonicalApi, /DEV_SESSION_STORAGE_KEY/);
-assert.match(canonicalApi, /sessionPersistenceEnabled/);
+assert.doesNotMatch(canonicalApi, /localStorage|indexedDB/i);
 assert.match(canonicalApi, /LOCAL_HOSTNAMES/);
-assert.doesNotMatch(canonicalApi, /password.*localStorage|localStorage.*password/i);
 assert.match(app, /structuredClone\(DATA\)/);
 assert.match(app, /reconstructOperationalEvents\(labData\(\)\.events\)/);
 assert.match(app, /escapeHtml\(state\.quickRecordDraft\)/);
