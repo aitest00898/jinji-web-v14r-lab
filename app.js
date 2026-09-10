@@ -4126,7 +4126,10 @@
       const field = fields[guided.fieldIndex];
       const required = field === "date" || window.JinjiGuidedRecording.isRequired(guided, field);
       const control = document.querySelector("[data-guided-field]");
-      const value = action === "guided-skip-field" ? "" : String(control?.value ?? "").trim();
+      // Input/change handlers mirror guided values into state. Prefer that
+      // stable value so a WebKit blur/re-render race cannot make a valid
+      // numeric entry look empty at the moment the next button is clicked.
+      const value = action === "guided-skip-field" ? "" : String(guided.values?.[field] ?? control?.value ?? "").trim();
       if (action === "guided-skip-field" && required) {
         guided.error = "這是必要欄位，不能略過。";
       } else if (required && !value) {
