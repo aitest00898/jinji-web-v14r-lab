@@ -450,8 +450,14 @@
       const detail = CANONICAL_API_STATE.configurationError || "此 host 未被允許自動連線 Production API。";
       return `<main class="web-access-boundary" data-testid="web-runtime-blocked"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · ACCESS BLOCKED</p><h1>此執行位置未獲授權</h1><p>為避免把模擬資料誤當成正式資料，未知 host、錯誤 API scope 或不合法 Pages base 不會載入 fixture，也不會送出 API request。</p><div class="web-access-error" role="alert">${escapeHtml(detail.message || detail)}</div><div class="readonly-note">請從已核准的 Pages host 或 localhost Lab 開啟。</div></section></main>`;
     }
+    if (CANONICAL_API.isRestoringSession?.()) {
+      return `<main class="web-access-boundary" data-testid="web-auth-restoring"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · AUTHENTICATED API</p><h1>正在恢復本機開發 session</h1><p>正在透過既有 Worker session endpoint 驗證本機開發 session；驗證完成前不會載入或提交正式資料。</p><div class="web-access-meta"><span>API：${escapeHtml(CANONICAL_API.base || "—")}</span><span>僅限 localhost 開發旗標</span></div></section></main>`;
+    }
     if (CANONICAL_API.isAuthenticated()) return "";
-    return `<main class="web-access-boundary" data-testid="web-auth-gate"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · AUTHENTICATED API</p><h1>登入管理介面</h1><p>此 Pages URL 會使用核准的 canonical Worker API。密碼只在瀏覽器輸入框送往登入端點；session token 只保留在本次頁面的記憶體，不寫入 localStorage、IndexedDB 或 URL。</p><div class="web-access-meta"><span>API：${escapeHtml(CANONICAL_API.base || "—")}</span><span>預設 scope：Production</span></div><form id="web-login-form" class="web-login-form"><label for="web-admin-password">管理密碼</label><input id="web-admin-password" name="password" type="password" autocomplete="current-password" required ${state.webAuthSubmitting ? "disabled" : ""}><button type="submit" class="sheet-primary" ${state.webAuthSubmitting ? "disabled" : ""}>${state.webAuthSubmitting ? "登入中…" : "登入"}</button></form>${state.webAuthError ? `<div class="web-access-error" role="alert">${escapeHtml(state.webAuthError)}</div>` : ""}<div class="readonly-note">未登入時不會載入或提交正式資料；登入失效時會回到此畫面，不會改用本機 fixture 寫入。</div></section></main>`;
+    const sessionStorageNotice = CANONICAL_API.sessionPersistenceEnabled?.()
+      ? "目前為 localhost 且帶有 dev-session-persist=1；只暫存 Worker 正常簽發的 session token，換頁前仍會由 Worker 驗證，不儲存密碼或 Authorization header。"
+      : "session token 只保留在本次頁面的記憶體，不寫入 localStorage、IndexedDB 或 URL。";
+    return `<main class="web-access-boundary" data-testid="web-auth-gate"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · AUTHENTICATED API</p><h1>登入管理介面</h1><p>此頁會使用核准的 canonical Worker API。密碼只在瀏覽器輸入框送往登入端點；${sessionStorageNotice}</p><div class="web-access-meta"><span>API：${escapeHtml(CANONICAL_API.base || "—")}</span><span>預設 scope：Production</span></div><form id="web-login-form" class="web-login-form"><label for="web-admin-password">管理密碼</label><input id="web-admin-password" name="password" type="password" autocomplete="current-password" required ${state.webAuthSubmitting ? "disabled" : ""}><button type="submit" class="sheet-primary" ${state.webAuthSubmitting ? "disabled" : ""}>${state.webAuthSubmitting ? "登入中…" : "登入"}</button></form>${state.webAuthError ? `<div class="web-access-error" role="alert">${escapeHtml(state.webAuthError)}</div>` : ""}<div class="readonly-note">未登入時不會載入或提交正式資料；登入失效時會回到此畫面，不會改用本機 fixture 寫入。</div></section></main>`;
   }
 
   async function beginWebLogin() {
@@ -493,6 +499,22 @@
     state.guidedRecord = null;
     state.page = "record-portal";
     render();
+  }
+
+  async function restoreWebSession() {
+    if (!CANONICAL_API_ENABLED || typeof CANONICAL_API.restorePersistedSession !== "function") return;
+    try {
+      const restored = await CANONICAL_API.restorePersistedSession();
+      if (restored?.authenticated) {
+        state.page = INITIAL_MANAGEMENT_ENTRY ? "today" : "record-portal";
+        await refreshCanonicalScopeCatalog();
+        await refreshCanonicalRecords();
+      }
+    } catch (error) {
+      state.webAuthError = canonicalApiErrorMessage(error, "login");
+    } finally {
+      render();
+    }
   }
 
   const DEV_ANALYTICS_KEY = "jinji-v14r-plus-r4-analytics";
@@ -1117,7 +1139,7 @@
         <div class="desktop-nav-group"><span class="desktop-nav-label">主工作</span>${primary.map(item).join("")}</div>
         <div class="desktop-nav-group"><span class="desktop-nav-label">分析與管理</span>${secondary.map(item).join("")}</div>
       </nav>
-      <div class="desktop-sidebar-footer"><span class="desktop-online-dot" aria-hidden="true"></span><span><strong>${CANONICAL_API_ENABLED ? "Canonical API" : "測試環境"}</strong><small>${CANONICAL_API_ENABLED ? `${escapeHtml(webApiEnvironmentLabel())} · session in memory` : "模擬資料 · 不連 Production"}</small></span></div>
+      <div class="desktop-sidebar-footer"><span class="desktop-online-dot" aria-hidden="true"></span><span><strong>${CANONICAL_API_ENABLED ? "Canonical API" : "測試環境"}</strong><small>${CANONICAL_API_ENABLED ? `${escapeHtml(webApiEnvironmentLabel())} · ${CANONICAL_API.sessionPersistenceEnabled?.() ? "local dev session" : "session in memory"}` : "模擬資料 · 不連 Production"}</small></span></div>
     </aside>`;
   }
 
@@ -4628,5 +4650,6 @@
   });
 
   assertDataContract();
+  void restoreWebSession();
   render();
 })();

@@ -9,7 +9,9 @@
   const DEFAULT_PRODUCTION_API_BASE = "https://chicken-line-production.jinji-assistant.workers.dev";
   const PRODUCTION_PAGES_ORIGIN = "https://aitest00898.github.io";
   const PRODUCTION_PAGES_PATH = "/jinji-web-v14r-lab";
-  const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
+  const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+  const DEV_SESSION_STORAGE_KEY = "jinji-dev-web-session-token-v1";
+  const SESSION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32,100}$/u;
 
   class CanonicalApiError extends Error {
     constructor(code, message, options = {}) {
@@ -49,6 +51,12 @@
     }
     if (!hostname) return true;
     return LOCAL_HOSTNAMES.has(String(hostname).toLowerCase()) && /^https?:$/u.test(String(protocol || ""));
+  }
+
+  function devSessionPersistenceAllowed(location, params) {
+    return Boolean(location)
+      && isLocalLocation(location)
+      && params?.get?.("dev-session-persist") === "1";
   }
 
   function normalizeBase(raw, location) {
@@ -343,11 +351,12 @@
       }
       const id = typeof row.id === "string" ? row.id.trim() : "";
       const taxonomyId = typeof row.taxonomyId === "string" ? row.taxonomyId.trim() : "";
-      if (!id || !taxonomyId || seen.has(id) || !CANONICAL_RECORD_DESTINATIONS.has(row.destination)) {
-        throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical record identity or destination is invalid.", { payload });
-      }
       const hasReadModelStatus = Object.prototype.hasOwnProperty.call(row, "readStatus");
       const hasDomainRecord = Object.prototype.hasOwnProperty.call(row, "record");
+      const isExplicitUnsafeReadModel = row.readStatus === "unsafe" && row.record === null;
+      if (!id || seen.has(id) || !CANONICAL_RECORD_DESTINATIONS.has(row.destination) || (!taxonomyId && !isExplicitUnsafeReadModel)) {
+        throw new CanonicalApiError("CANONICAL_RECORD_READ_INVALID", "Canonical record identity or destination is invalid.", { payload });
+      }
       if (!hasReadModelStatus && !hasDomainRecord) {
         seen.add(id);
         return canonicalLegacyRecord(row);
@@ -425,14 +434,38 @@
     const fetchImpl = options.fetchImpl || root?.fetch?.bind(root);
     const enabled = Boolean(base) && !configurationError;
     const runtimeMode = runtimeModeFor(location, base);
+    const sessionPersistenceEnabled = devSessionPersistenceAllowed(location, params);
+    const sessionStorage = sessionPersistenceEnabled ? (options.storage || root?.localStorage || null) : null;
     let token = null;
     let expiresAt = null;
     let organization = null;
+    let restorePromise = null;
+
+    function clearPersistedToken() {
+      if (!sessionStorage) return;
+      try { sessionStorage.removeItem(DEV_SESSION_STORAGE_KEY); } catch (_) {}
+    }
+
+    function readPersistedToken() {
+      if (!sessionStorage) return null;
+      try {
+        const persisted = sessionStorage.getItem(DEV_SESSION_STORAGE_KEY);
+        if (typeof persisted === "string" && SESSION_TOKEN_PATTERN.test(persisted)) return persisted;
+      } catch (_) {}
+      clearPersistedToken();
+      return null;
+    }
+
+    function persistToken() {
+      if (!sessionStorage || !token) return;
+      try { sessionStorage.setItem(DEV_SESSION_STORAGE_KEY, token); } catch (_) {}
+    }
 
     function clearAuth() {
       token = null;
       expiresAt = null;
       organization = null;
+      clearPersistedToken();
     }
 
     async function request(pathname, requestOptions = {}) {
@@ -460,7 +493,7 @@
       let payload = null;
       try { payload = await response.json(); } catch (_) {}
       if (!response.ok) {
-        if (response.status === 401 && pathname !== "/api/web/auth/login" && pathname !== "/api/web/auth/session") clearAuth();
+        if (response.status === 401 && pathname !== "/api/web/auth/login") clearAuth();
         const detail = normalizeCanonicalApiError(payload, response.status);
         throw new CanonicalApiError(detail.code, detail.message, { status: detail.status, payload });
       }
@@ -472,13 +505,14 @@
         throw new CanonicalApiError("CANONICAL_API_INVALID_LOGIN", "登入資料無效。");
       }
       const payload = await request("/api/web/auth/login", { method: "POST", body: { password } });
-      if (payload?.authenticated !== true || typeof payload.token !== "string" || !/^[A-Za-z0-9_-]{32,100}$/u.test(payload.token)) {
+      if (payload?.authenticated !== true || typeof payload.token !== "string" || !SESSION_TOKEN_PATTERN.test(payload.token)) {
         clearAuth();
         throw new CanonicalApiError("CANONICAL_API_AUTH_RESPONSE_INVALID", "登入服務回傳無效 session。");
       }
       token = payload.token;
       expiresAt = typeof payload.expiresAt === "string" ? payload.expiresAt : null;
       organization = payload.organization || null;
+      persistToken();
       return { authenticated: true, expiresAt, organization };
     }
 
@@ -500,6 +534,30 @@
         clearAuth();
       }
       return { authenticated: payload?.authenticated === true && Boolean(token), expiresAt, organization };
+    }
+
+    async function restorePersistedSession() {
+      if (!sessionPersistenceEnabled) return { authenticated: false, restored: false };
+      if (restorePromise) return restorePromise;
+      const persistedToken = readPersistedToken();
+      if (!persistedToken) return { authenticated: false, restored: false };
+      token = persistedToken;
+      restorePromise = (async () => {
+        try {
+          const restored = await session();
+          if (!restored.authenticated) {
+            clearAuth();
+            return { authenticated: false, restored: true };
+          }
+          return { authenticated: true, restored: true, expiresAt, organization };
+        } catch (error) {
+          clearAuth();
+          throw error;
+        } finally {
+          restorePromise = null;
+        }
+      })();
+      return restorePromise;
     }
 
     function setEnvironment(next, { explicitChoice = false } = {}) {
@@ -549,10 +607,13 @@
       isConfigured: () => enabled,
       isAuthenticated: () => Boolean(token),
       authState: () => ({ authenticated: Boolean(token), expiresAt, organization }),
-      state: () => ({ enabled, environment, base, baseSource, runtimeMode, authenticated: Boolean(token), expiresAt, configurationError: configurationError?.code || null }),
+      state: () => ({ enabled, environment, base, baseSource, runtimeMode, authenticated: Boolean(token), expiresAt, sessionPersistenceEnabled, configurationError: configurationError?.code || null }),
+      sessionPersistenceEnabled: () => sessionPersistenceEnabled,
+      isRestoringSession: () => Boolean(restorePromise),
       login,
       logout,
       session,
+      restorePersistedSession,
       setEnvironment,
       listFarms,
       listHouses,
@@ -570,5 +631,5 @@
     });
   }
 
-  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, masterDataRows, canonicalRecordsPayload });
+  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, DEV_SESSION_STORAGE_KEY, masterDataRows, canonicalRecordsPayload });
 });
