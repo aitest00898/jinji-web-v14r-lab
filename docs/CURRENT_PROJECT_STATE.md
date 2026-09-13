@@ -369,3 +369,57 @@ changes project understanding:
 4. verify the remote file and commit SHA.
 
 Do not imply that a metadata ledger publishes or promotes product source.
+
+## Latest controlled-deployment attempt — stopped safe
+
+Observed on 2026-09-13. The deployment was stopped before any Production
+mutation because the required old-schema-compatible write-hold bridge could
+not be identified as a distinct, exact, previously validated artifact.
+
+```text
+DEPLOYMENT_RESULT = STOPPED_SAFE
+STOP_REASON = VALIDATED_BRIDGE_ARTIFACT_NOT_RESOLVED
+BRIDGE_ARTIFACT_PROVEN = NO
+BRIDGE_BRANCH = NOT_RESOLVED
+BRIDGE_SHA = NOT_RESOLVED
+FINAL_RELEASE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+FINAL_RELEASE_REMOTE_SHA_MATCH = YES
+```
+
+Evidence for the stop:
+
+- `CANONICAL_WRITE_HOLD` first appears in the validated `7df261...` release
+  commit.
+- That same commit also introduces migrations `0039` and `0040`; it is the
+  final schema-dependent release, not a separately proven pre-migration
+  bridge.
+- Existing `release/operational-safety-no-schema-20260909` and its corrected
+  `release/operational-safety-8b-base-20260909` source trees do not contain
+  `CANONICAL_WRITE_HOLD`, so they cannot be substituted as the required bridge.
+- No other exact bridge branch, SHA, or validated artifact was found in the
+  existing local worktrees or Git history.
+
+No Production state was changed:
+
+```text
+PRODUCTION_RUNTIME_CHANGED = NO
+REMOTE_MIGRATION_THIS_TURN = NO
+REMOTE_SCHEMA_WRITES = 0
+QUEUE_MUTATION_THIS_TURN = NO
+PRODUCTION_BUSINESS_WRITES = 0
+LINE_SEND = 0
+FINANCE_CHANGES = 0
+MAIN_CHANGED = NO
+SOURCE_CODE_CHANGED = NO
+```
+
+The previously verified provider-backed quiescence capability remains
+recorded as verified. It is not sufficient to continue this deployment
+without the exact bridge artifact. The next permitted action is a bounded
+provenance review for that artifact; do not improvise a bridge, rebuild the
+release, or begin migrations/deployment.
+
+```text
+CURRENT_DEPLOYMENT_PREREQUISITES = BLOCKED_BY_UNRESOLVED_BRIDGE
+CURRENT_NEXT_ACTION = PROVENANCE_REVIEW
+```
