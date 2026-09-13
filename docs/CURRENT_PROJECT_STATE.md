@@ -458,14 +458,13 @@ provisioning, or LINE binding source. Local validation used only migrations
 0001–0038; health/readiness started on that schema with hold states OFF, ON,
 and INVALID observable, and no business or audit rows were created.
 
-## Controlled Production deployment — stopped safe pending explicit deploy authorization
+## Controlled Production deployment — final release active under write hold
 
 Observed on 2026-09-13. This section records the live transition separately
 from the earlier stopped-safe attempt and the packaged-bridge readiness state.
 
 ```text
-CONTROLLED_PRODUCTION_DEPLOYMENT = STOPPED_SAFE
-STOP_REASON = EXACT_FINAL_PRODUCTION_DEPLOY_REQUIRES_TRUSTED_EXPLICIT_AUTHORIZATION
+CONTROLLED_PRODUCTION_DEPLOYMENT = IN_PROGRESS
 INITIAL_WORKER_VERSION = 04afee9d-646f-48c9-94ee-9ac65c4477aa
 INITIAL_SCHEMA_STATE = PRE_0039_0040
 INITIAL_QUEUE_STATE = ACTIVE
@@ -477,7 +476,11 @@ QUEUE_STATE = PAUSED
 REMOTE_0039 = APPLIED
 REMOTE_0040 = APPLIED
 REMOTE_MIGRATIONS_APPLIED_AT = 2026-09-13T09:46Z
-FINAL_RELEASE_DEPLOYED = NO
+FINAL_RELEASE_DEPLOYED = YES
+FINAL_RELEASE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+FINAL_RELEASE_WORKER_VERSION_HOLD_ON = e2fdc41c-94a3-42e0-baca-2dfc0465c7f1
+FINAL_RELEASE_CANONICAL_WRITE_HOLD = ON
+QUEUE_MESSAGE_MUTATION = 0
 PRODUCTION_BUSINESS_WRITES = 0
 FINANCE_CHANGES = 0
 LINE_SEND = 0
@@ -487,6 +490,8 @@ WORKERS_AI_CALLS = 0
 Provider readback confirmed `chicken-line-events Paused`; bridge `/health` and
 `/ready` returned healthy with `canonicalWriteHold=ON` and zero unfinished,
 stalled, retrying, retained, or reply-failure messages. The required bounded
-quiescence wait completed before the remote migrations. The final release was
-not deployed because the exact Production deploy action requires trusted
-explicit authorization beyond the current Wrangler authorization.
+quiescence wait completed before the remote migrations. The final release is
+100% live under the same write hold, with no pending migrations and the new
+operator identity/scope tables present. The hold must remain ON until the
+final release verification is complete and the normal Queue delivery state is
+restored.
