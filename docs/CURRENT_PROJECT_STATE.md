@@ -456,3 +456,31 @@ contract coverage. It contains no 0039/0040 migration, operator-scope
 provisioning, or LINE binding source. Local validation used only migrations
 0001–0038; health/readiness started on that schema with hold states OFF, ON,
 and INVALID observable, and no business or audit rows were created.
+
+## Controlled Production deployment — in progress
+
+Observed on 2026-09-13. This section records the live transition separately
+from the earlier stopped-safe attempt and the packaged-bridge readiness state.
+
+```text
+CONTROLLED_PRODUCTION_DEPLOYMENT = IN_PROGRESS
+INITIAL_WORKER_VERSION = 04afee9d-646f-48c9-94ee-9ac65c4477aa
+INITIAL_SCHEMA_STATE = PRE_0039_0040
+INITIAL_QUEUE_STATE = ACTIVE
+BRIDGE_SHA = ead7640f41b24db838c38ecff604c2ecdab51b33
+BRIDGE_WORKER_VERSION = 72e37935-abb2-4e9f-9eeb-073041d56931
+BRIDGE_CANONICAL_WRITE_HOLD = ON
+CUTOFF_T0 = 2026-09-13T09:29:43Z
+QUEUE_STATE = PAUSED
+REMOTE_0039 = NOT_APPLIED
+REMOTE_0040 = NOT_APPLIED
+PRODUCTION_BUSINESS_WRITES = 0
+FINANCE_CHANGES = 0
+LINE_SEND = 0
+WORKERS_AI_CALLS = 0
+```
+
+Provider readback confirmed `chicken-line-events Paused`; bridge `/health` and
+`/ready` returned healthy with `canonicalWriteHold=ON` and zero unfinished,
+stalled, retrying, retained, or reply-failure messages. The required bounded
+quiescence wait is in progress before remote migrations.
