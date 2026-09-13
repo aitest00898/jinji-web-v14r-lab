@@ -513,10 +513,10 @@ PILOT_SCOPE = PRODUCTION
 PRODUCTION_WEB_SESSION = AUTHENTICATED
 AUTHORIZED_PRODUCTION_FARMS_VISIBLE = 8
 GLOBAL_CANONICAL_HOUSES_VISIBLE = 15
-ACTIVE_PRODUCTION_FLOCKS_VISIBLE = 0
+ACTIVE_PRODUCTION_FLOCKS_VISIBLE = CONFLICTING_SURFACES_NOT_VERIFIED
 PRODUCTION_OPERATOR_BINDING = NOT_VERIFIED
 PRODUCTION_LINE_GROUP_BINDING = NOT_VERIFIED
-BLOCK_REASON = NO_AUTHORITATIVE_PRODUCTION_OPERATOR_BINDING
+BLOCK_REASON = NO_AUTHORITATIVE_PRODUCTION_OPERATOR_BINDING_AND_ACTIVE_FLOCK_NOT_VERIFIED
 CURRENT_LINE_CHAT_EVIDENCE = TEST_GROUP_ONLY
 WEB_LINE_BINDING_SURFACE = NO_PRODUCTION_LINE_CONNECTION_IN_CURRENT_BUILD
 PRODUCTION_PILOT_1A = NOT_EXECUTED
@@ -529,13 +529,15 @@ WORKERS_AI_CALLS = 0
 ```
 
 The Web session showed Production scope and eight authorized farm choices.
-The system read model showed fifteen houses but zero active batches, while the
-current selected authorized farm had no selectable house/flock for a write
-context. The Web LINE settings surface explicitly states that this build does
-not connect to LINE and only retains an information entry point. The visible
-LINE Desktop conversation was the established Test group, not evidence of a
-Production binding. These facts are sufficient to fail closed; they do not
-constitute a Product P0/P1.
+The system read model showed fifteen houses and zero active batches, while the
+house-list surface separately displayed batch rows; the current selected
+authorized farm had no selectable house/flock for a write context. This is a
+conflicting readback, not evidence of a usable active Production flock. The Web
+LINE settings surface explicitly states that this build does not connect to
+LINE and only retains an information entry point. The visible LINE Desktop
+conversation was the established Test group, not evidence of a Production
+binding. These facts are sufficient to fail closed; they do not constitute a
+Product P0/P1.
 
 ```text
 CONFIRMED_P0 = 0
