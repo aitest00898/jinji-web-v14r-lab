@@ -58,22 +58,37 @@ LEDGER_BASE = d52c6197ada186ef5c69caa3548a0b7954b56459
 LEDGER_FILE = docs/CURRENT_PROJECT_STATE.md
 ```
 
-The following validated release source belongs to the separate Production
-repository, not to this Web repository:
+The following validated release source belongs to a separate Production
+repository, not to this Web repository. Repository identity was verified from
+the release checkout's Git common directory and its own `origin`; it was not
+inferred from the directory name:
 
 ```text
+RELEASE_REPOSITORY_IDENTITY = SEPARATE_REPOSITORY
+RELEASE_REPOSITORY = aitest00898/jinji-farm-manager
+RELEASE_ORIGIN = https://github.com/aitest00898/jinji-farm-manager.git
+RELEASE_TOPLEVEL = /Users/joe/Documents/Codex/deployment-prerequisites-20260912
+RELEASE_GIT_COMMON_DIR = /Users/joe/Documents/Codex/2026-08-19/files-pasted-by-the-user-ai/outputs/chicken-line-production/.git
 LOCAL_RELEASE_REPOSITORY = /Users/joe/Documents/Codex/deployment-prerequisites-20260912
 LOCAL_RELEASE_BRANCH = release/deployment-prerequisites-20260912
 LOCAL_RELEASE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
 LOCAL_RELEASE_BASE_SHA = a51e923ac14bf7093ce3080557bee94e2861283d
 VALIDATED_LOCAL_RELEASE_EXISTS = YES
-REMOTE_SOURCE_ALIGNMENT = NOT_YET_PUBLISHED
+VALIDATED_RELEASE_SOURCE_PUBLISHED = YES
+REMOTE_RELEASE_BRANCH = release/deployment-prerequisites-20260912
+REMOTE_RELEASE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+REMOTE_SOURCE_ALIGNMENT = PUBLISHED
 ```
 
+The release branch was absent on its actual remote before publication and was
+created by a normal, non-force push. The remote release SHA now matches the
+validated local SHA. This publication is source alignment only; it did not
+promote the Worker or apply a migration.
+
 The Web repository does not contain the `a51e923...` or `7df261...` objects,
-and GitHub does not currently expose a Web branch named
-`release/deployment-prerequisites-20260912`. This is provenance information,
-not evidence that the separate local Production release does not exist.
+because those objects belong to the separate Production repository. This is
+repository provenance, not evidence that the validated Production release is
+missing.
 
 ## Completed outcomes
 
@@ -150,8 +165,9 @@ SEQ020_LOCAL_MIGRATION_REHEARSAL = 0039 -> 0040 PASS
 ```
 
 The release source and its tests were validated locally in the separate
-Production repository. They have not been automatically published to this
-Web repository or promoted to Production.
+Production repository and are now published on its release branch. They have
+not been promoted to Production. The Web repository remains unchanged except
+for this metadata ledger branch.
 
 ## Provisioning decisions already closed
 
@@ -255,6 +271,7 @@ PRODUCT_CAPABILITY = READY
 PILOT_SUFFICIENCY = MET
 PROVIDER_BACKED_QUIESCENCE = VERIFIED
 DEPLOYMENT_PREREQUISITES_READY = YES
+VALIDATED_RELEASE_SOURCE_PUBLISHED = YES
 REMOTE_0039 = NOT_APPLIED
 REMOTE_0040 = NOT_APPLIED
 CONTROLLED_PRODUCTION_DEPLOYMENT = NOT_YET_RETRIED
@@ -264,10 +281,9 @@ REAL_PRODUCTION_PILOT = NOT_STARTED
 The current action sequence is:
 
 ```text
-1. restore GitHub progress alignment
-2. reconcile local-only source provenance
-3. independently decide whether to publish/promote the validated source
-4. only then consider controlled Production deployment
+1. independently approve controlled Production deployment
+2. execute the canonical deployment fence
+3. perform bounded post-deploy verification
 ```
 
 The sequence is descriptive state, not an automatic action queue. This ledger
@@ -326,6 +342,7 @@ proof must remain distinct from proof of absence or failure.
 
 ```text
 SOURCE_CODE_CHANGED_BY_ALIGNMENT = NO
+MAIN_CHANGED = NO
 PRODUCTION_DEPLOYMENT = NO
 REMOTE_MIGRATION = NO
 REMOTE_SCHEMA_WRITES = NO
