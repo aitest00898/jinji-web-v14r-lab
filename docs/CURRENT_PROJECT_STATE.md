@@ -6,6 +6,63 @@
 > Production source authority, a deployment approval, a migration command, or
 > a replacement for a release decision.
 
+## CURRENT AUTHORITATIVE STATE
+
+Observed on 2026-09-13 from the exact Production release checkout and
+read-only authoritative Production D1 queries. This section supersedes older
+unmarked status snapshots below; those snapshots remain as historical evidence.
+
+```text
+CONTROLLED_PRODUCTION_DEPLOYMENT = COMPLETE
+FINAL_RELEASE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+CURRENT_WORKER_VERSION = f4bd4c6c-8cd0-46a2-9278-f8fc00810bde
+REMOTE_0039 = APPLIED
+REMOTE_0040 = APPLIED
+CANONICAL_WRITE_HOLD = OFF
+QUEUE_STATE = ACTIVE
+QUEUE_DELIVERY_PAUSED = false
+HEALTH = PASS
+READINESS = PASS
+
+PRODUCTION_ORGANIZATION_COUNT = 1
+PRODUCTION_FARM_COUNT = 8
+PRODUCTION_ACTIVE_FARM_COUNT = 8
+PRODUCTION_HOUSE_COUNT = 0
+PRODUCTION_FLOCK_COUNT = 0
+ACTIVE_PRODUCTION_FLOCK_COUNT = 0
+
+PRODUCTION_OPERATOR_COUNT = 0
+PRODUCTION_OPERATOR_SCOPE_COUNT = 0
+PRODUCTION_LINE_GROUP_COUNT = 0
+LINE_GROUP_TOTAL_COUNT = 2
+LINE_GROUP_BOUND_COUNT = 0
+PRODUCTION_LINE_BINDING_COUNT = 0
+VALID_PRODUCTION_BINDING_EXISTS = NO
+VALID_BINDING_SCOPE_READY = NO
+
+WEB_SUMMARY_ACTIVE_BATCHES = 0
+WEB_HOUSE_BATCH_ROWS = 15_NON_PRODUCTION_TEST_SURFACE
+AUTHORITATIVE_ACTIVE_PRODUCTION_FLOCKS = 0
+UI_CONFLICT_CLASSIFICATION = UI_DIFFERENT_SEMANTICS
+
+REAL_PRODUCTION_PILOT = BLOCKED_SAFE_PREFLIGHT
+PILOT_1A = BLOCKED_BY_MISSING_PRODUCTION_OPERATOR_OR_LINE_BINDING
+PILOT_1B = BLOCKED_BY_NO_ACTIVE_PRODUCTION_FLOCK
+CURRENT_NEXT_ACTION = AUTHORIZE_MINIMAL_PRODUCTION_BINDING_PROVISIONING
+CONFIRMED_P0 = 0
+CONFIRMED_P1 = 0
+```
+
+The Production D1 readback is authoritative: the eight Production farms are
+active, but no Production house, flock, operator identity, operator scope, or
+LINE operator binding is currently present. The two existing LINE group rows
+are unbound and cannot be treated as a Production target. The Web house/batch
+rows belong to a different test/synthetic read surface and do not override the
+Production D1 result. Pilot 1A is therefore stopped safely at prerequisite
+resolution; the absence of an active flock independently blocks Pilot 1B but
+does not change the 1A rule. This is a configuration/provisioning state, not a
+confirmed Product P0/P1.
+
 ## Governance
 
 ```text
@@ -149,7 +206,11 @@ re-prove the same fact:
 - O3 reversal exists and is reconciled; and
 - the Test batch and its effective stock remain preserved.
 
-## Sequence 015–020 evidence
+## HISTORICAL_STATE — Sequence 015–020 pre-deployment evidence (SUPERSEDED FOR CURRENT DEPLOYMENT STATUS)
+
+This section is retained as historical local validation evidence. Its
+pre-promotion wording must not be read as the current Production deployment
+state; see `CURRENT AUTHORITATIVE STATE` above.
 
 ```text
 SEQ015 = operator identity / scope provisioning
@@ -264,7 +325,11 @@ PURGE_REQUIRED = NO
 FAKE_ACK_REQUIRED = NO
 ```
 
-## Current project status
+## HISTORICAL_STATE — pre-deployment current project status (SUPERSEDED)
+
+This was the current snapshot before the controlled Production deployment and
+is retained only to preserve the transition record. It is superseded by the
+authoritative state at the top of this document.
 
 ```text
 PRODUCT_CAPABILITY = READY
@@ -339,7 +404,11 @@ An older report may have been correct at the time. The latest source-backed,
 deployment-backed, or readback-backed evidence supersedes it. Absence of
 proof must remain distinct from proof of absence or failure.
 
-## Permanent safety boundaries
+## HISTORICAL_STATE — pre-deployment safety snapshot (SUPERSEDED)
+
+The values below are preserved from the pre-deployment snapshot. Current
+post-deployment safety values are recorded in `CURRENT AUTHORITATIVE STATE` and
+the later deployment receipt.
 
 ```text
 SOURCE_CODE_CHANGED_BY_ALIGNMENT = NO
