@@ -499,3 +499,46 @@ health/readiness checks were normal; the final release was 100% live under
 hold before the hold-off transition, with no pending migrations and the new
 operator identity/scope tables present. Post-resume bounded observation also
 remained normal. No Production pilot was started by this deployment task.
+
+## First controlled real Production pilot — blocked safe at read-only preflight
+
+Observed on 2026-09-13. The authenticated canonical Web session was used for
+read-only preflight only. No LINE message, canonical business write, Queue
+mutation, or Production data mutation was performed.
+
+```text
+PILOT_RESULT = BLOCKED_SAFE
+PILOT_STAGE = 1A_READ_ONLY_PREFLIGHT
+PILOT_SCOPE = PRODUCTION
+PRODUCTION_WEB_SESSION = AUTHENTICATED
+AUTHORIZED_PRODUCTION_FARMS_VISIBLE = 8
+GLOBAL_CANONICAL_HOUSES_VISIBLE = 15
+ACTIVE_PRODUCTION_FLOCKS_VISIBLE = 0
+PRODUCTION_OPERATOR_BINDING = NOT_VERIFIED
+PRODUCTION_LINE_GROUP_BINDING = NOT_VERIFIED
+BLOCK_REASON = NO_AUTHORITATIVE_PRODUCTION_OPERATOR_BINDING
+CURRENT_LINE_CHAT_EVIDENCE = TEST_GROUP_ONLY
+WEB_LINE_BINDING_SURFACE = NO_PRODUCTION_LINE_CONNECTION_IN_CURRENT_BUILD
+PRODUCTION_PILOT_1A = NOT_EXECUTED
+PRODUCTION_PILOT_1B = NOT_EXECUTED
+PRODUCTION_BUSINESS_WRITES = 0
+LINE_SEND = 0
+QUEUE_MESSAGE_MUTATION = 0
+FINANCE_CHANGES = 0
+WORKERS_AI_CALLS = 0
+```
+
+The Web session showed Production scope and eight authorized farm choices.
+The system read model showed fifteen houses but zero active batches, while the
+current selected authorized farm had no selectable house/flock for a write
+context. The Web LINE settings surface explicitly states that this build does
+not connect to LINE and only retains an information entry point. The visible
+LINE Desktop conversation was the established Test group, not evidence of a
+Production binding. These facts are sufficient to fail closed; they do not
+constitute a Product P0/P1.
+
+```text
+CONFIRMED_P0 = 0
+CONFIRMED_P1 = 0
+NEXT_ALLOWED_ACTION = VERIFY_OR_CONFIGURE_AUTHORITATIVE_PRODUCTION_OPERATOR_AND_LINE_BINDING
+```
