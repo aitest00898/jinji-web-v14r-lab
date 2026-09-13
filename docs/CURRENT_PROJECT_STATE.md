@@ -458,13 +458,13 @@ provisioning, or LINE binding source. Local validation used only migrations
 0001–0038; health/readiness started on that schema with hold states OFF, ON,
 and INVALID observable, and no business or audit rows were created.
 
-## Controlled Production deployment — final release active under write hold
+## Controlled Production deployment — complete
 
 Observed on 2026-09-13. This section records the live transition separately
 from the earlier stopped-safe attempt and the packaged-bridge readiness state.
 
 ```text
-CONTROLLED_PRODUCTION_DEPLOYMENT = IN_PROGRESS
+CONTROLLED_PRODUCTION_DEPLOYMENT = COMPLETE
 INITIAL_WORKER_VERSION = 04afee9d-646f-48c9-94ee-9ac65c4477aa
 INITIAL_SCHEMA_STATE = PRE_0039_0040
 INITIAL_QUEUE_STATE = ACTIVE
@@ -473,6 +473,7 @@ BRIDGE_WORKER_VERSION = 72e37935-abb2-4e9f-9eeb-073041d56931
 BRIDGE_CANONICAL_WRITE_HOLD = ON
 CUTOFF_T0 = 2026-09-13T09:29:43Z
 QUEUE_STATE = PAUSED
+QUEUE_DELIVERY_PAUSED = false
 REMOTE_0039 = APPLIED
 REMOTE_0040 = APPLIED
 REMOTE_MIGRATIONS_APPLIED_AT = 2026-09-13T09:46Z
@@ -480,18 +481,21 @@ FINAL_RELEASE_DEPLOYED = YES
 FINAL_RELEASE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
 FINAL_RELEASE_WORKER_VERSION_HOLD_ON = e2fdc41c-94a3-42e0-baca-2dfc0465c7f1
 FINAL_RELEASE_CANONICAL_WRITE_HOLD = ON
+FINAL_RELEASE_WORKER_VERSION_HOLD_OFF = f4bd4c6c-8cd0-46a2-9278-f8fc00810bde
+CURRENT_CANONICAL_WRITE_HOLD = OFF
 QUEUE_MESSAGE_MUTATION = 0
+QUEUE_CONTROL_TRANSITION = PAUSE_THEN_RESUME
 PRODUCTION_BUSINESS_WRITES = 0
 FINANCE_CHANGES = 0
 LINE_SEND = 0
 WORKERS_AI_CALLS = 0
+POST_RESUME_OBSERVATION = PASS
+NEXT_ALLOWED_ACTION = FIRST_CONTROLLED_REAL_PRODUCTION_PILOT
 ```
 
-Provider readback confirmed `chicken-line-events Paused`; bridge `/health` and
-`/ready` returned healthy with `canonicalWriteHold=ON` and zero unfinished,
-stalled, retrying, retained, or reply-failure messages. The required bounded
-quiescence wait completed before the remote migrations. The final release is
-100% live under the same write hold, with no pending migrations and the new
-operator identity/scope tables present. The hold must remain ON until the
-final release verification is complete and the normal Queue delivery state is
-restored.
+The provider readback sequence was `Paused` during the transition and
+`Active` after resume (`delivery_paused=false`). The bridge and final-release
+health/readiness checks were normal; the final release was 100% live under
+hold before the hold-off transition, with no pending migrations and the new
+operator identity/scope tables present. Post-resume bounded observation also
+remained normal. No Production pilot was started by this deployment task.
