@@ -688,3 +688,37 @@ world, frozen ground truth, field matrix, and forensic/standard artifacts. It
 does not change Product source or migrations. The canonical lifecycle label is
 `READY_NEXT_INTAKE`; `CLOSED_COMPLETE` is the acceptance assertion that the
 tested one-water scenario reached stock zero and readiness in disposable D1.
+
+## LINE @All bot wake-up micro test
+
+Recorded on 2026-09-14. This was a bounded Test-environment observation using
+the genuine LINE Desktop client. No source, settings, Production data, Queue,
+Finance, or deployment was changed.
+
+```text
+LINE_ALL_MENTION_WAKE_TEST = COMPLETE
+TEST_ENVIRONMENT_ONLY = YES
+CONTROL_A = QUIET
+CONTROL_A_BOT_VISIBLE_REPLY = NO
+CONTROL_A_MANUAL_DIGEST_TRIGGERED = NO_OBSERVED
+TEST_B_NATIVE_ALL_MENTION = CONFIRMED_BY_LINE_NATIVE_PICKER
+TEST_B_MENTION_PRESENT = YES
+TEST_B_MENTIONEE_TYPE = all
+TEST_B_MENTIONEE_IS_SELF = NOT_PRESENT
+TEST_B_BOT_VISIBLE_REPLY = NO
+TEST_B_MANUAL_DIGEST_TRIGGERED = NO_OBSERVED
+TEST_B_OFFICIAL_WRITE_COUNT = 0_OBSERVED
+ALL_MENTION_WAKE_SUPPORTED = NO
+DESKTOP_CAN_USE_ALL_AS_BOT_WAKE_SUBSTITUTE = NO
+TRUE_BOT_MENTION_TEST_STILL_REQUIRED = YES
+WEBHOOK_HISTORY_TAIL = NO_MATCHING_HISTORICAL_ENTRY_RETURNED
+PRODUCTION_TOUCHED = NO
+LINE_SETTINGS_CHANGED = NO
+LINE_SEND_COUNT = 2_TEST_MESSAGES
+```
+
+The native picker and visible outgoing bubbles prove the client-side All
+mention selection and delivery. The bounded Worker tail did not replay the
+historical events, so webhook metadata is not independently available in this
+receipt. No Bot reply or digest wake was observed; this result does not change
+the Bot wake policy or prove behavior for a true self-mention.
