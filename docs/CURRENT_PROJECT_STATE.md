@@ -423,3 +423,36 @@ release, or begin migrations/deployment.
 CURRENT_DEPLOYMENT_PREREQUISITES = BLOCKED_BY_UNRESOLVED_BRIDGE
 CURRENT_NEXT_ACTION = PROVENANCE_REVIEW
 ```
+
+## Canonical write-hold bridge — packaged and source-aligned
+
+Observed on 2026-09-13. The stopped-safe deployment attempt above remains
+historical evidence. The missing bridge has now been extracted from the
+validated Production base in an isolated worktree, checked against the
+pre-0039 local schema, committed, and published on its own release branch.
+
+```text
+CONTROLLED_PRODUCTION_DEPLOYMENT_ATTEMPT = STOPPED_SAFE
+REASON = independent old-schema bridge artifact had not yet been packaged
+CANONICAL_WRITE_HOLD_BRIDGE = release/canonical-write-hold-bridge-20260913
+BRIDGE_BASE_SHA = a51e923ac14bf7093ce3080557bee94e2861283d
+BRIDGE_SHA = ead7640f41b24db838c38ecff604c2ecdab51b33
+BRIDGE_REMOTE_ALIGNED = YES
+PRE_0039_SCHEMA_COMPATIBILITY = PASS
+BRIDGE_SOURCE_PUBLISHED = YES
+FINAL_RELEASE = 7df2610070518122b1737c62a310ab5492c0e476
+FINAL_RELEASE_REMOTE_ALIGNED = YES
+REMOTE_0039 = NOT_APPLIED
+REMOTE_0040 = NOT_APPLIED
+PRODUCTION_SOURCE = UNCHANGED
+QUEUE_STATE = UNCHANGED
+CURRENT_CONFIRMED_BLOCKER = NONE
+CURRENT_DEPLOYMENT_PREREQUISITES = READY
+CURRENT_NEXT_ACTION = RETRY_CONTROLLED_PRODUCTION_DEPLOYMENT
+```
+
+The bridge contains only the canonical write-hold boundary and its focused
+contract coverage. It contains no 0039/0040 migration, operator-scope
+provisioning, or LINE binding source. Local validation used only migrations
+0001–0038; health/readiness started on that schema with hold states OFF, ON,
+and INVALID observable, and no business or audit rows were created.
