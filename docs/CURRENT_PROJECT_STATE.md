@@ -652,3 +652,39 @@ FINANCE_CHANGE = 0
 AI_CALLS = 0
 ```
 ```
+
+## One-water full LINE AI acceptance — local evidence
+
+Recorded on 2026-09-13. This is disposable local-D1 acceptance evidence only;
+it is not a Production pilot, deployment, migration, or real LINE acceptance.
+
+```text
+BASE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+TEST_BRANCH = test/one-water-line-ai-acceptance-20260913
+TEST_COMMIT_SHA = 42c49f682cc76906b6148b59a53e52c346becfff
+TRANSCRIPT_EVENTS_PER_VARIANT = 108
+VARIANTS = 3
+BASELINE_RUNS = 1
+FINAL_FULL_RUNS = 3_CONSECUTIVE_CLEAN
+FIELD_COVERAGE = 25/25
+TAXONOMY_COVERAGE = 25/25
+SUBTYPE_COVERAGE = 46/46
+GROUND_TRUTH_SHA256 = 48334bd4b604b9b3620464c43916f2d32c9a3224d559ac2194ccae57340338b4
+FINAL_SCORE = 100_PERCENT_OBSERVED_HARNESS_CHECKS
+CRITICAL_SAFETY = PASS
+FINAL_STOCK = 0
+LIFECYCLE_STATE = READY_NEXT_INTAKE
+CLOSED_COMPLETE = YES_LOCAL_DISPOSABLE_D1_ONLY
+PRODUCTION_TOUCHED = NO
+LINE_SEND = 0
+QUEUE_MESSAGE_MUTATION = 0
+WORKERS_AI_PROVIDER_CALLS = 0
+SOURCE_CHANGES_REQUIRED = NO
+REAL_WORLD_PILOT_GATE = CLOSED_PENDING_SEPARATE_DEPLOYMENT_AND_CONTROLLED_PILOT_AUTHORIZATION
+```
+
+The acceptance branch contains only the local acceptance harness, synthetic
+world, frozen ground truth, field matrix, and forensic/standard artifacts. It
+does not change Product source or migrations. The canonical lifecycle label is
+`READY_NEXT_INTAKE`; `CLOSED_COMPLETE` is the acceptance assertion that the
+tested one-water scenario reached stock zero and readiness in disposable D1.
