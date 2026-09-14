@@ -722,3 +722,36 @@ mention selection and delivery. The bounded Worker tail did not replay the
 historical events, so webhook metadata is not independently available in this
 receipt. No Bot reply or digest wake was observed; this result does not change
 the Bot wake policy or prove behavior for a true self-mention.
+
+## LINE non-`@Bot` wake inventory — static closure / current UI boundary
+
+Recorded on 2026-09-14. This is a source-grounded inventory against the exact
+Production source baseline below. It does not claim a new live LINE acceptance.
+
+```text
+SOURCE_BASE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+INVENTORY_ARTIFACT = docs/LINE_NON_BOT_WAKE_INVENTORY.md
+INVENTORY_ARTIFACT_LOCAL_COMMIT = e663fdedd4659afa84e1b1f18ec88dbc3bfb3161
+REAL_LINE_NON_BOT_WAKE_INVENTORY = COMPLETE_STATIC_PARTIAL_RUNTIME
+REAL_LINE_NON_MENTION_E2E = BLOCKED_BY_CURRENT_SCREEN_CAPTURE_TOOLING
+TRUE_BOT_MENTION_TEST = DEFERRED_TO_HUMAN
+TRUNCATED_TASK_STOP = YES
+TRUNCATED_AT = Phase_3A_CLEAN_CONTEXT_WAKE_heading
+CURRENT_LINE_UI_ACCESS = BLOCKED_BY_CURRENT_SCREEN_CAPTURE_TOOLING
+NEW_LINE_SENDS_THIS_TASK = 0
+PRODUCTION_TOUCHED = NO
+TEST_BUSINESS_WRITES_THIS_TASK = 0
+LINE_SETTINGS_CHANGED = NO
+QUEUE_CHANGED = NO
+MIGRATION_APPLIED = NO
+DEPLOYMENT = NO
+WORKERS_AI_CALLS = 0
+```
+
+Historical genuine LINE Desktop evidence remains the two-message `摘要` and
+native `@All + 摘要` observation recorded above; both had visible outgoing
+bubbles, no Bot reply in the bounded window, and zero observed official writes.
+The current Computer Use app binding failed with ScreenCaptureKit error -3811
+before an AX/screenshot surface could be used, so no new outgoing bubble was
+attempted or claimed. Phase 3 was not entered because the supplied task text is
+truncated before its complete instructions and result contract.
