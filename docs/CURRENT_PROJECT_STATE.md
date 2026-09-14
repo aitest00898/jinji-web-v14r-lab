@@ -1203,7 +1203,7 @@ LINE_SEND = 0
 AI_CALLS = 0
 CHAPTER_3 = BLOCKED
 STOP_REASON = STOP_1_INTENDED_PRODUCTION_GROUP_NOT_UNIQUELY_IDENTIFIED
-GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_FINAL_COMMIT_AND_REMOTE_READBACK
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
 ```
 
 No raw provider group identifier is stored in this ledger. The next
@@ -1211,3 +1211,51 @@ human-only input is the name/identity of the real Production LINE group; do
 not select the Test group or the synthetic Web registration. The procedure
 remains un-deployed and migration 0041 remains unapplied until the approved
 Chapter 3 transition order is explicitly authorized.
+
+## 2026-09-14 — Chapter 3B machine preparation for real group identification
+
+The documentation-only alignment inconsistency is corrected. Wrangler remote
+authentication remains valid. The current deployed Worker health and
+readiness endpoints both report normal operation, canonical write hold OFF,
+and no unfinished, stalled, retryable, retained-open, or reply-failure work.
+The remote D1 migration tracker still reports 0041 as pending; no migration
+was applied.
+
+The current remote baseline contains two registered rows. The historical
+human-confirmed Test group has 798 reply-completed LINE events and remains
+Test-only. The second registered row has no LINE events and remains a
+synthetic Web registration. No Production group is inferred from this
+baseline.
+
+Source inspection selected the harmless verification phrase `正式群組驗證`.
+It contains none of the deterministic mutation/query/control markers used by
+the deployed command parser or canonical recording markers reviewed in the
+current source, so it is suitable only for identifying the new real LINE
+event; it is not a business record request.
+
+```text
+CHAPTER_3B_MACHINE_PREPARATION = COMPLETE
+WRANGLER_REMOTE_AUTH = VERIFIED
+CURRENT_DEPLOYED_WORKER = f4bd4c6c-8cd0-46a2-9278-f8fc00810bde
+HEALTH = PASS
+READY = PASS
+REMOTE_D1_LATEST_APPLIED = 0040_line_group_operator_scope_binding.sql
+MIGRATION_0041_REMOTE_STATE = NOT_APPLIED
+REGISTERED_LINE_GROUP_COUNT = 2
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+SAFE_VERIFICATION_PHRASE = 正式群組驗證
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+PRODUCTION_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+AI_CALLS = 0
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+CHAPTER_3 = BLOCKED
+NEXT_HUMAN_ACTION = 在真正 Production LINE 群組邀請機器人後，送出一次正式群組驗證
+```
+
+No raw provider group identifier is stored in this ledger. After the single
+human action, the new event must be attributed by timestamp, group metadata,
+organization, and exclusion of the Test/synthetic rows before any group can
+be considered Production.
