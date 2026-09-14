@@ -974,3 +974,42 @@ performed.
 ```text
 GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_REMOTE_NETWORK_CHECK
 ```
+
+## 2026-09-14 — LINE identity and permission read-only audit
+
+This entry records durable source-grounded permission architecture from the
+exact deployed Worker source. No source, D1, Production, LINE, or deployment
+state was changed by the audit.
+
+- Canonical LINE and Web business writes share the canonical persistence
+  boundary and require a provisioned operator identity plus an active scope.
+  LINE additionally requires the bound group/operator/scope association.
+- Scope authority is environment + farm with optional house/flock narrowing;
+  a null house or flock is a broader scope. The Web admin identity is an
+  organization-level `web-admin` identity, while LINE uses the provider user
+  id. These are not one unified user/RBAC role model.
+- Existing operator, scope, and LINE-group binding APIs are authenticated,
+  create/idempotent, and audit-backed, but no corresponding Web provisioning
+  UI or lifecycle revoke/deactivate/delete API was found.
+- Investor-specific LINE replies require an active linked
+  `line_user_investor_links` row. No investor-link provisioning API, Web UI,
+  or LINE self-service binding command was found; general/farm queries do not
+  require that investor link.
+- Manager/admin access is a separate temporary LINE group+user session after
+  Worker-secret password verification; Web Bearer sessions are a separate
+  organization-scoped authentication system. No persistent manager role model
+  was found.
+- Canonical writes enforce operator scope, but legacy LINE queries and some
+  read paths are organization/environment or bound-group based and do not
+  uniformly apply operator scope. Remote D1 counts were not asserted because
+  noninteractive Wrangler credentials were unavailable.
+
+```text
+LINE_IDENTITY_PERMISSION_AUDIT = COMPLETE_READ_ONLY
+EXACT_DEPLOYED_SOURCE = 7df2610070518122b1737c62a310ab5492c0e476
+REMOTE_DATA_READBACK = NOT_AVAILABLE
+SOURCE_CHANGE = NO
+D1_WRITE = 0
+LINE_SEND = 0
+PRODUCTION_MUTATION = 0
+```
