@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { CanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, canonicalRecordsPayload, createClient, normalizeCanonicalApiError } = require("../../src/canonical-api.js");
+const { CanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, canonicalLineGroupsPayload, canonicalRecordsPayload, createClient, normalizeCanonicalApiError } = require("../../src/canonical-api.js");
 
 function response(payload, status = 200) {
   return { ok: status >= 200 && status < 300, status, async json() { return payload; } };
@@ -297,6 +297,68 @@ test("canonical master-data reads use the authenticated read boundary and preser
     assert.equal(init.credentials, "omit");
     assert.equal(init.headers.accept, "application/json");
   }
+});
+
+test("LINE group management reads candidates separately and keeps claim/auth mutations explicit", async () => {
+  const calls = [];
+  const client = createClient({
+    base: "https://worker.example.test",
+    fetchImpl: async (url, init) => {
+      const parsed = new URL(url);
+      calls.push({ url: parsed, init });
+      if (parsed.pathname === "/api/line-groups") {
+        return response({
+          environment: "production",
+          groups: [{ groupId: "C-real", groupIdShort: "C-re…-real", status: "unbound" }],
+        });
+      }
+      if (parsed.pathname === "/api/line-groups/claim-candidates") {
+        return response({
+          readOnly: true,
+          claimCandidates: [{ groupId: "C-real", groupIdShort: "C-re…-real", status: "unbound", observedEventCount: 2 }],
+        });
+      }
+      if (parsed.pathname.endsWith("/organization-claim")) return response({ group: { groupId: "C-real", organizationId: "org-current", status: "active" }, audit: { action: "organization_claim" } });
+      if (parsed.pathname.endsWith("/operational-authorization")) return response({ group: { groupId: "C-real", organizationId: "org-current", operationalAuthorized: true }, audit: { action: "operational_authorization" } });
+      return response({ error: "unexpected_path" }, 500);
+    },
+  });
+
+  const groups = await client.listLineGroups();
+  assert.equal(groups.groups[0].groupId, "C-real");
+  assert.equal(groups.claimCandidates[0].observedEventCount, 2);
+  await client.claimLineGroupOrganization("C-real", "唯一 webhook 證據，管理者確認 organization claim");
+  await client.setLineGroupOperationalAuthorization("C-real", true, "管理者確認開啟營運操作");
+
+  assert.deepEqual(calls.map(({ url }) => `${url.pathname}?${url.searchParams.toString()}`), [
+    "/api/line-groups?environment=production",
+    "/api/line-groups/claim-candidates?environment=production",
+    "/api/line-groups/C-real/organization-claim?environment=production",
+    "/api/line-groups/C-real/operational-authorization?environment=production",
+  ]);
+  assert.deepEqual(JSON.parse(calls[2].init.body), { confirm: true, reason: "唯一 webhook 證據,管理者確認 organization claim" });
+  assert.deepEqual(JSON.parse(calls[3].init.body), { authorized: true, confirm: true, reason: "管理者確認開啟營運操作" });
+  assert.equal(calls[2].init.method, "POST");
+  assert.equal(calls[3].init.method, "PATCH");
+  for (const { init } of calls) {
+    assert.equal(init.credentials, "omit");
+    assert.equal(init.headers.accept, "application/json");
+  }
+});
+
+test("LINE group client rejects arbitrary targets and missing mutation reasons before sending", async () => {
+  let calls = 0;
+  const client = createClient({
+    base: "https://worker.example.test",
+    fetchImpl: async () => {
+      calls += 1;
+      return response({});
+    },
+  });
+  await assert.rejects(() => client.claimLineGroupOrganization("*", "reason"), (error) => error.code === "CANONICAL_LINE_GROUP_ID_INVALID");
+  await assert.rejects(() => client.setLineGroupOperationalAuthorization("C-real", true, ""), (error) => error.code === "CANONICAL_LINE_GROUP_REASON_REQUIRED");
+  await assert.rejects(() => client.setLineGroupOperationalAuthorization("C-real", "true", "reason"), (error) => error.code === "CANONICAL_LINE_GROUP_AUTHORIZATION_INVALID");
+  assert.equal(calls, 0);
 });
 
 test("canonical stock projection preserves zero and rejects missing or cross-scope values", () => {

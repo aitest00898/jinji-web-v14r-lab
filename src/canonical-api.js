@@ -365,6 +365,29 @@
     return { ...payload, environment: payload.environment || environment, records: applyCanonicalLegacyLineage(records) };
   }
 
+  function canonicalLineGroupsPayload(payload) {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)
+      || !Array.isArray(payload.groups) || !Array.isArray(payload.claimCandidates)) {
+      throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group response is invalid.", { payload });
+    }
+    const normalize = (row) => {
+      if (!row || typeof row !== "object" || Array.isArray(row)) {
+        throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group row is invalid.", { payload });
+      }
+      const groupId = typeof row.groupId === "string" ? row.groupId.trim() : "";
+      const status = typeof row.status === "string" ? row.status.trim() : "";
+      if (!groupId || !status || groupId.includes("*") || groupId.includes("/")) {
+        throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group identity is invalid.", { payload });
+      }
+      return { ...row, groupId, status };
+    };
+    return {
+      ...payload,
+      groups: payload.groups.map(normalize),
+      claimCandidates: payload.claimCandidates.map(normalize),
+    };
+  }
+
   const ERROR_CODE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,119}$/u;
   const DEFAULT_API_ERROR_MESSAGE = "Canonical API rejected the request.";
 
@@ -529,6 +552,52 @@
       return masterDataRows(await request("/api/flocks", { method: "GET", query: { farmId: normalizedFarmId } }), "flocks", environment, normalizedFarmId);
     }
 
+    async function listLineGroups() {
+      const [groupsPayload, candidatesPayload] = await Promise.all([
+        request("/api/line-groups", { method: "GET" }),
+        request("/api/line-groups/claim-candidates", { method: "GET" }),
+      ]);
+      return canonicalLineGroupsPayload({
+        ...groupsPayload,
+        claimCandidates: candidatesPayload?.claimCandidates,
+      });
+    }
+
+    function normalizedLineGroupId(value) {
+      const groupId = typeof value === "string" ? value.trim() : "";
+      if (!groupId || groupId.includes("*") || groupId.includes("/")) {
+        throw new CanonicalApiError("CANONICAL_LINE_GROUP_ID_INVALID", "LINE 群組目標無效，沒有送出資料。");
+      }
+      return groupId;
+    }
+
+    function lineGroupReason(value) {
+      const reason = typeof value === "string" ? value.normalize("NFKC").trim() : "";
+      if (!reason || reason.length > 500 || /[\u0000-\u001F\u007F]/u.test(reason)) {
+        throw new CanonicalApiError("CANONICAL_LINE_GROUP_REASON_REQUIRED", "LINE 群組變更需要明確原因，沒有送出資料。");
+      }
+      return reason;
+    }
+
+    async function claimLineGroupOrganization(groupId, reason) {
+      const target = normalizedLineGroupId(groupId);
+      return request(`/api/line-groups/${encodeURIComponent(target)}/organization-claim`, {
+        method: "POST",
+        body: { confirm: true, reason: lineGroupReason(reason) },
+      });
+    }
+
+    async function setLineGroupOperationalAuthorization(groupId, authorized, reason) {
+      const target = normalizedLineGroupId(groupId);
+      if (typeof authorized !== "boolean") {
+        throw new CanonicalApiError("CANONICAL_LINE_GROUP_AUTHORIZATION_INVALID", "LINE 群組授權目標無效，沒有送出資料。");
+      }
+      return request(`/api/line-groups/${encodeURIComponent(target)}/operational-authorization`, {
+        method: "PATCH",
+        body: { authorized, confirm: true, reason: lineGroupReason(reason) },
+      });
+    }
+
     async function getFlockCurrentStock(flockId) {
       const normalizedFlockId = typeof flockId === "string" ? flockId.trim() : "";
       if (!normalizedFlockId) throw new CanonicalApiError("CANONICAL_STOCK_FLOCK_REQUIRED", "A flock is required before loading current stock.");
@@ -558,6 +627,9 @@
       listFarms,
       listHouses,
       listFlocks,
+      listLineGroups,
+      claimLineGroupOrganization,
+      setLineGroupOperationalAuthorization,
       getFlockCurrentStock,
       createRecord: (command) => request("/api/records", { method: "POST", body: commandBody(command) }),
       correctRecord: (id, command) => request(`/api/records/${encodeURIComponent(String(id))}/correct`, { method: "POST", body: commandBody(command) }),
@@ -571,5 +643,5 @@
     });
   }
 
-  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, masterDataRows, canonicalRecordsPayload });
+  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, canonicalLineGroupsPayload, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, masterDataRows, canonicalRecordsPayload });
 });
