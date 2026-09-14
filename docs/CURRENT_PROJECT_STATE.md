@@ -894,3 +894,83 @@ GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALWAYS_ON
 
 The previous blocked-cleanroom entry remains historical; this is the latest
 authoritative Test-only state. No new non-cleanup wake test was started.
+
+## 2026-09-14 — Post-cleanroom non-`@Bot` wake inventory
+
+This entry is limited to evidence produced after the cleanroom cutoff. The
+exact deployed source was inspected before the bounded genuine LINE Desktop
+run; no source, wake policy, LINE setting, deployment, migration, Queue, or
+Production state was changed.
+
+```text
+POST_CLEANROOM_REAL_LINE_NON_BOT_WAKE_INVENTORY = COMPLETE
+CLEANROOM_CUTOFF_TIMESTAMP = 2026-09-14T02:58:23Z
+EXACT_DEPLOYED_SOURCE = 7df2610070518122b1737c62a310ab5492c0e476
+TEST_GROUP = ++開發++金雞協會Ai助手測試頻道++
+TARGET_SCOPE = 金雞測試場 / 測試1舍 / TEST-BATCH-001
+SAFE_RUNTIME_INPUTS = 37
+FINAL_READBACK_INPUTS = 2
+BOT_MENTION_USED = 0
+ALL_MENTION_USED = 0
+TRUE_BOT_TESTED = 0
+```
+
+The following individual inputs produced visible Bot replies without a Bot
+mention and were classified as deterministic wake/runtime cases: `使用說明`
+(`menu_help`), `測試` (`ping`), `幫助` (`help`), `選單` (`menu`/home),
+`快速紀錄` (`menu_quick_record`), `今日狀況` (`menu_today_summary`),
+`雞場與批次` (`menu_farms`), `最近異常` (`menu_recent_abnormal`),
+`修改紀錄` (`menu_correction_help`), `雲林天氣` (`menu_weather`),
+`AI 分析` (`menu_ai`, menu only), `更多功能` (more navigation),
+`待確認資料` (`menu_pending_candidates`), `歷史紀錄` (`menu_audit`),
+`管理功能`, `開發選單`, `系統狀態`, `顯示待摘要訊息`, `財務摘要`,
+`今日` (`summary`), `今日死亡` (`query_today_mortality`), `目前存欄`
+(`query_inventory`), `1舍日齡` (`query_flock_age`), `近期出雞`
+(`query_upcoming_shipments`), `雞場列表` (`query_farm_list`), `各場持股`
+(`query_equity`), `我的持股` (`query_my_equity`), `各場盈虧`
+(`query_farm_profit_list`), `金雞測試場盈虧` (`query_farm_profit`,
+read-only clarification response), `總盈虧` (`query_portfolio_profit`),
+`我的盈虧` (`query_investor_profit`), `金雞測試場死亡`
+(`query_farm_today_mortality`), `金雞測試場 測試1舍 目前存欄` (farm
+inventory query), and `金雞測試場 測試1舍 日齡` (farm age query).
+
+`管理功能`、`開發選單`、`系統狀態`、`顯示待摘要訊息`、`財務摘要` were
+`AUTH_DENIED_BUT_WOKE`: the runtime woke and returned an authorization
+response, without entering a business write. `AI 分析` returned its menu;
+no AI/provider route was entered.
+
+Negative and quiet controls were individually sent and observed: `摘要`
+was parsed as `ambient_digest_now` but intentionally remained quiet/
+buffered-only; `早安，今天天氣很好` and `這不是最近異常` were ordinary or
+substring-negative controls and remained quiet/buffered-only. No false wake
+was observed. Two final readbacks, `待確認資料` and `目前存欄`, again returned
+`0` pending candidates and `金雞測試場｜測試1舍：963隻 / TEST-BATCH-001：963隻`.
+
+```text
+ALWAYS_WAKE_WITHOUT_BOT_MENTION = deterministic CONTROL/QUERY/navigation cases listed above
+CONTEXT_ONLY_WAKE = 0 observed; controls remained buffered-only
+PARSED_BUT_QUIET_WITHOUT_BOT = 摘要
+NON_TEXT_WAKE_ENTRY_POINTS = source-proven LINE Message Actions/Postbacks; not exercised in this text-only batch
+TRUE_BOT_REQUIRED = true @金雞協會助理Ai deferred to human phone acceptance; prior @All result remains NO
+FALSE_WAKE_COUNT = 0
+BUSINESS_WRITE_DELTA = 0 observed and source-proven for tested safe routes; no mutation-capable complete command sent
+AI_CALL_DELTA = 0; deterministic routes only and no AI analysis invocation
+FINAL_PENDING_CANDIDATES_VISIBLE = 0
+FINAL_AUTHORITATIVE_STOCK_VISIBLE = 963
+PRODUCTION_ROWS_MUTATED = 0
+FINANCE_ROWS_MUTATED = 0
+QUEUE_MUTATIONS = 0
+LINE_SETTINGS_CHANGED = NO
+```
+
+Independent aggregate D1 readback was unavailable in this run because the
+restricted Wrangler environment had no noninteractive API token and its
+OAuth callback/log path could not start. The result therefore does not claim
+an unavailable D1 aggregate; the zero-write conclusion above is limited to
+the source-proven safe routes, visible runtime evidence, and final visible
+Test-scope readbacks. No new business write, AI call, or Production action was
+performed.
+
+```text
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_REMOTE_NETWORK_CHECK
+```
