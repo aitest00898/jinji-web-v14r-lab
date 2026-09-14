@@ -1054,3 +1054,40 @@ D1_WRITE = 0
 LINE_SEND = 0
 PRODUCTION_MUTATION = 0
 ```
+
+## 2026-09-14 — Chapter 2 authorized LINE group operational trust
+
+The Production source feature branch now contains the additive Chapter 2
+trust-boundary implementation. This Web ledger records the source-aligned
+milestone only; the Worker was not deployed and no Production data was
+changed.
+
+```text
+CHAPTER_2_AUTHORIZED_GROUP_TRUST = PASS_LOCAL
+PRODUCTION_SOURCE_BRANCH = feature/chapter-2-authorized-group-trust-20260914
+PRODUCTION_SOURCE_FINAL_SHA = 6e5b2660813046ad6b6d1cc20ebd53c182d67fb8
+PRODUCTION_SOURCE_REMOTE_MATCH = YES
+MIGRATION_0041 = NOT_APPLIED_REMOTE
+PRODUCTION_DEPLOYED = NO
+AUTHORIZED_ORDINARY_MEMBER_WRITE = PASS
+AUTHORIZED_GROUP_MULTI_FARM = PASS
+UNAUTHORIZED_GROUP_DENIED = PASS
+DM_FORMAL_OPERATION_DENIED = PASS
+LEGACY_SCOPE_BYPASS = DENIED
+LOCAL_CANONICAL_RUNTIME = 18/18
+FOCUSED_TESTS = 39/39
+BROAD_TESTS = 916 passed / 11 skipped
+DIFF_CHECK = PASS
+PRODUCTION_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+AI_CALLS = 0
+LINE_SETTINGS_CHANGED = NO
+```
+
+Normal LINE operations now require explicit group authorization with the
+organization/group boundary; ordinary members do not need a separate
+per-user farm scope on this path. Existing operator/scope/binding data is
+retained for legacy/Web consumers and is not silently reinterpreted. The
+next deployment boundary must apply migration 0041 before the compatible
+Worker release, then explicitly provision the intended Production group
+through an authenticated administrative procedure.
