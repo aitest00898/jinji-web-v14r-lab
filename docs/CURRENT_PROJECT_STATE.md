@@ -723,6 +723,33 @@ historical events, so webhook metadata is not independently available in this
 receipt. No Bot reply or digest wake was observed; this result does not change
 the Bot wake policy or prove behavior for a true self-mention.
 
+## LINE non-@Bot wake inventory — restart in progress
+
+Recorded on 2026-09-14. This is the current restart ledger before new
+bounded real-client messages. The exact source under static review is
+`7df2610070518122b1737c62a310ab5492c0e476`.
+
+```text
+REAL_LINE_NON_BOT_WAKE_INVENTORY = IN_PROGRESS
+REAL_LINE_NON_MENTION_E2E = PENDING_WAKE_INVENTORY
+TRUE_BOT_MENTION_TEST = DEFERRED_TO_HUMAN
+STATIC_INVENTORY = COMPLETE
+PARSER_COMMAND_COUNT = 50_RECOGNIZED_KINDS_PLUS_UNKNOWN_FALLBACK
+MENU_ACTION_IDENTITIES = 72
+NEW_LINE_MESSAGES_THIS_RESTART = 0
+PRODUCTION_TOUCHED = NO
+TEST_BUSINESS_WRITES_THIS_RESTART = 0
+WORKERS_AI_CALLS = 0
+LINE_SETTINGS_CHANGED = NO
+QUEUE_CHANGED = NO
+MIGRATION_APPLIED = NO
+DEPLOYMENT = NO
+```
+
+The detailed source-grounded matrix is maintained in the Production
+repository artifact `docs/LINE_NON_BOT_WAKE_INVENTORY.md`; this Web ledger
+stores only progress state and no raw LINE group/user IDs.
+
 ## LINE non-`@Bot` wake inventory — static closure / current UI boundary
 
 Recorded on 2026-09-14. This is a source-grounded inventory against the exact
@@ -755,3 +782,61 @@ The current Computer Use app binding failed with ScreenCaptureKit error -3811
 before an AX/screenshot surface could be used, so no new outgoing bubble was
 attempted or claimed. Phase 3 was not entered because the supplied task text is
 truncated before its complete instructions and result contract.
+
+## Test LINE cleanroom gate — blocked safe (2026-09-14)
+
+The non-`@Bot` wake inventory is paused behind a Test-only cleanroom. This
+entry records only read-only remote reconciliation; it does not claim new
+LINE evidence and does not change the existing historical wake results.
+
+```text
+TEST_LINE_CLEANROOM_GATE = BLOCKED
+REAL_LINE_WAKE_TEST = PAUSED_FOR_CLEANROOM
+TEST_GROUP_CONFIRMED = YES
+TEST_ENVIRONMENT_CONFIRMED = YES
+READBACK_1 = 2026-09-14T01:51:08Z
+READBACK_2 = 2026-09-14T01:52:58Z
+READBACK_STABLE = YES
+NEW_LINE_MESSAGES_DURING_CLEANROOM = 0
+
+TEST_LINE_EVENTS_TOTAL = 750
+TEST_ACTIONABLE_UNFINISHED = 0
+TEST_ACTIONABLE_FAILED = 0
+TEST_RETRYABLE = 0
+TEST_UNRESOLVED_ACTIONABLE = 0
+TEST_UNRECOGNIZED_ACTIONABLE = 0
+TEST_AMBIENT_TOTAL = 19
+TEST_AMBIENT_ACTIONABLE = 0
+TEST_PENDING_CANDIDATES = 4
+TEST_ACTIVE_SESSIONS = 0
+TEST_PENDING_CLARIFICATIONS = 0
+TEST_PENDING_CONFIRMATIONS = 0
+TEST_PENDING_SELECTIONS = 0
+TEST_ACTIVE_DIGEST_RUNS = 0
+TEST_ACTIVE_LEASES = 0
+OLD_AMBIENT_ELIGIBLE_FOR_NEXT_DIGEST = 0
+TEST_AUTHORITATIVE_STOCK = 963
+CANONICAL_RECONCILIATION = PASS
+
+TEST_ROWS_MUTATED = 0
+PRODUCTION_ROWS_MUTATED = 0
+FINANCE_ROWS_MUTATED = 0
+QUEUE_CONTROL_MUTATIONS = 0
+SOURCE_CHANGES = 0
+MIGRATIONS = 0
+DEPLOYMENTS = 0
+WORKERS_AI_CALLS = 0
+CLEANROOM_CUTOFF_TIMESTAMP = 2026-09-14T01:53:37.300Z
+```
+
+The exact deployed source exposes `GET /api/pending-candidates` as
+read-only. Candidate terminalization is available through the existing LINE
+candidate lifecycle, but this cleanroom forbids new LINE messages. The four
+pending candidate rows therefore remain unconfirmed workflow state and block
+the cleanroom; no Web redesign or source change was started. The detailed
+state-surface matrix is maintained in the Production artifact
+`docs/LINE_NON_BOT_WAKE_INVENTORY.md`.
+
+```text
+NEXT_ALLOWED_ACTION = EXISTING_TEST_ONLY_CANDIDATE_CANCEL_OR_IGNORE_PATH; NO_NEW_LINE_MESSAGES_UNTIL_GATE_PASS
+```
