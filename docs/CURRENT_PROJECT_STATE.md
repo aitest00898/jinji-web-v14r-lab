@@ -1091,3 +1091,41 @@ retained for legacy/Web consumers and is not silently reinterpreted. The
 next deployment boundary must apply migration 0041 before the compatible
 Worker release, then explicitly provision the intended Production group
 through an authenticated administrative procedure.
+
+## 2026-09-14 — Chapter 3 controlled Production transition blocked
+
+This is the current cross-project state. Chapter 3 stopped before any
+Production mutation. The authoritative Commander plan is maintained in the
+Worker repository at `aitest00898/jinji-farm-manager/plan.md`; it is not
+duplicated in this Web repository.
+
+```text
+CURRENT_GATE = CHAPTER_3_PRODUCTION_TRANSITION
+CHAPTER_1 = PASS
+CHAPTER_2 = PASS_LOCAL
+CHAPTER_2_PRODUCTION_ACCEPTANCE = NOT_YET_ACCEPTED
+CHAPTER_3 = BLOCKED
+PRODUCTION_CHAPTER_2_AUTHORITY = NOT_ACCEPTED
+READY_FOR_NEXT_FEATURE_CHAPTER = NO
+WRANGLER_REMOTE_AUTH = UNAVAILABLE
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+MIGRATION_0041_REMOTE_STATE = NOT_VERIFIED
+AUTHENTICATED_GROUP_AUTHORIZATION_PROCEDURE = NOT_VERIFIED
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+LINE_SEND = 0
+PRODUCTION_SYNTHETIC_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+STOCK_UNINTENDED_DELTA = 0
+HEALTH = PASS
+READY = PASS
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALWAYS_ON
+```
+
+The fixed transition order remains: identify the intended Production group;
+establish authenticated remote access; capture the authoritative baseline;
+apply migration 0041; read back schema/data; deploy the approved Worker;
+authorize only the intended group; read back authorization; perform safe real
+LINE acceptance; compare integrity deltas; then PASS or rollback. The Test
+group must not be promoted implicitly, and no later feature chapter is ready.
