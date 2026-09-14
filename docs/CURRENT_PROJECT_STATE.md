@@ -1129,3 +1129,37 @@ apply migration 0041; read back schema/data; deploy the approved Worker;
 authorize only the intended group; read back authorization; perform safe real
 LINE acceptance; compare integrity deltas; then PASS or rollback. The Test
 group must not be promoted implicitly, and no later feature chapter is ready.
+
+## 2026-09-14 — Chapter 3 read-only checkpoint after Wrangler login
+
+Wrangler OAuth was completed by the human operator. This clears remote auth
+only; it does not authorize a migration, deployment, group authorization,
+LINE send, or Production business write. Authenticated read-only checks show
+that the remote D1 tracker is applied through 0040, while 0041 is not applied.
+The current 100% Worker deployment is `f4bd4c6c-8cd0-46a2-9278-f8fc00810bde`;
+health/readiness are normal and canonical write hold is OFF.
+
+```text
+WRANGLER_REMOTE_AUTH = VERIFIED
+REMOTE_D1_LATEST_MIGRATION = 0040_line_group_operator_scope_binding.sql
+MIGRATION_0041_REMOTE_STATE = NOT_APPLIED
+REGISTERED_LINE_GROUP_COUNT = 2
+REMOTE_LINE_GROUP_STATUS = 2_UNBOUND_NO_FARM_BINDING
+REMOTE_OPERATIONAL_AUTHORIZATION_COLUMN = ABSENT_BEFORE_0041
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+AUTHENTICATED_GROUP_AUTHORIZATION_PROCEDURE = NOT_VERIFIED
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+LINE_SEND = 0
+PRODUCTION_SYNTHETIC_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+STOCK_UNINTENDED_DELTA = 0
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_COMMIT_AND_REMOTE_READBACK
+```
+
+Both registered LINE group rows are unbound and lack farm context, so they do
+not uniquely identify the intended Production group. The exact provider group
+identity still requires human confirmation. The Test group must not be
+promoted by inference. Chapter 3 remains `BLOCKED` under STOP 1, and no raw
+group id is written to this ledger.
