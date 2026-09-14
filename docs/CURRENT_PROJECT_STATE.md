@@ -63,6 +63,47 @@ resolution; the absence of an active flock independently blocks Pilot 1B but
 does not change the 1A rule. This is a configuration/provisioning state, not a
 confirmed Product P0/P1.
 
+## Chapter 1 — Permission architecture reconciliation — 2026-09-14
+
+This is a read-only, documentation-only reconciliation against the exact
+deployed Production source. It does not change runtime behavior, schema,
+authorization, finance, recovery, or deployment state.
+
+```text
+CHAPTER_1_ARCHITECTURE_RECONCILIATION = PASS
+RECONCILIATION_SOURCE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+ARCHITECTURE_DOC = /Users/joe/Documents/Codex/deployment-prerequisites-20260912/docs/JINJI_PERMISSION_ARCHITECTURE_RECONCILIATION.md
+SOURCE_RUNTIME_CHANGE = NO
+D1_WRITE = NO
+PRODUCTION_MUTATION = NO
+FINANCE_MUTATION = NO
+LINE_SEND = NO
+READY_FOR_CHAPTER_2 = YES
+```
+
+The current canonical write boundary is stricter than the approved target:
+LINE writes require a provisioned LINE identity, a bound group, and an active
+operator scope/binding; the current group context is coupled to one farm. The
+target instead trusts members of an authorized group equally and resolves
+farm/house/flock context separately, including one group operating across
+multiple farms. The current LINE admin is a temporary password/session path,
+not the target fixed singleton system administrator. Web currently has one
+Bearer Web-admin session tier rather than `PUBLIC` / `SHARED_EDIT` / `ADMIN`.
+
+Investor links remain personal-query associations, not general authorization.
+Append-only operational lineage, idempotency, stock authority, entity version
+checks, and immutable audit are retained as migration foundations. Existing
+reliability recovery is not yet the target point-in-time/batch/selective,
+dependency-aware recovery system. New Web routes must not inherit the current
+unknown-environment-to-Production compatibility fallback without an explicit
+fail-closed policy decision.
+
+The first future implementation boundary is the common LINE authorization
+seam: decouple authorized-group trust from the current one-farm and per-user
+scope gate while retaining a compatibility bridge and all canonical entity,
+environment, stock, lineage, idempotency, and audit checks. No Chapter 2 work
+was started, and no next work item was generated.
+
 ## Governance
 
 ```text
