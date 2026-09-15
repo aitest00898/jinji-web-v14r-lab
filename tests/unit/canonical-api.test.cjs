@@ -309,13 +309,13 @@ test("LINE group management reads candidates separately and keeps claim/auth mut
       if (parsed.pathname === "/api/line-groups") {
         return response({
           environment: "production",
-          groups: [{ groupId: "C-real", groupIdShort: "C-re…-real", groupName: "真正 Production 群組", status: "unbound" }],
+          groups: [{ groupId: "C-real", groupIdShort: "C-re…-real", groupName: "真正 Production 群組", groupNameStatus: "available", status: "unbound" }],
         });
       }
       if (parsed.pathname === "/api/line-groups/claim-candidates") {
         return response({
           readOnly: true,
-          claimCandidates: [{ groupId: "C-real", groupIdShort: "C-re…-real", groupName: "真正 Production 群組", status: "unbound", observedEventCount: 2 }],
+          claimCandidates: [{ groupId: "C-real", groupIdShort: "C-re…-real", groupName: "真正 Production 群組", groupNameStatus: "available", status: "unbound", observedEventCount: 2 }],
         });
       }
       if (parsed.pathname.endsWith("/organization-claim")) return response({ group: { groupId: "C-real", organizationId: "org-current", status: "active" }, audit: { action: "organization_claim" } });
@@ -327,21 +327,27 @@ test("LINE group management reads candidates separately and keeps claim/auth mut
   const groups = await client.listLineGroups();
   assert.equal(groups.groups[0].groupId, "C-real");
   assert.equal(groups.groups[0].groupName, "真正 Production 群組");
+  assert.equal(groups.groups[0].groupNameStatus, "available");
   assert.equal(groups.claimCandidates[0].observedEventCount, 2);
   assert.equal(groups.claimCandidates[0].groupName, "真正 Production 群組");
+  assert.equal(groups.claimCandidates[0].groupNameStatus, "available");
   await client.claimLineGroupOrganization("C-real", "唯一 webhook 證據，管理者確認 organization claim");
   await client.setLineGroupOperationalAuthorization("C-real", true, "管理者確認開啟營運操作");
+  await client.setLineGroupOperationalAuthorization("C-real", false, "管理者確認解除營運授權");
 
   assert.deepEqual(calls.map(({ url }) => `${url.pathname}?${url.searchParams.toString()}`), [
     "/api/line-groups?environment=production",
     "/api/line-groups/claim-candidates?environment=production",
     "/api/line-groups/C-real/organization-claim?environment=production",
     "/api/line-groups/C-real/operational-authorization?environment=production",
+    "/api/line-groups/C-real/operational-authorization?environment=production",
   ]);
   assert.deepEqual(JSON.parse(calls[2].init.body), { confirm: true, reason: "唯一 webhook 證據,管理者確認 organization claim" });
   assert.deepEqual(JSON.parse(calls[3].init.body), { authorized: true, confirm: true, reason: "管理者確認開啟營運操作" });
+  assert.deepEqual(JSON.parse(calls[4].init.body), { authorized: false, confirm: true, reason: "管理者確認解除營運授權" });
   assert.equal(calls[2].init.method, "POST");
   assert.equal(calls[3].init.method, "PATCH");
+  assert.equal(calls[4].init.method, "PATCH");
   for (const { init } of calls) {
     assert.equal(init.credentials, "omit");
     assert.equal(init.headers.accept, "application/json");
@@ -361,6 +367,13 @@ test("LINE group client rejects arbitrary targets and missing mutation reasons b
   await assert.rejects(() => client.setLineGroupOperationalAuthorization("C-real", true, ""), (error) => error.code === "CANONICAL_LINE_GROUP_REASON_REQUIRED");
   await assert.rejects(() => client.setLineGroupOperationalAuthorization("C-real", "true", "reason"), (error) => error.code === "CANONICAL_LINE_GROUP_AUTHORIZATION_INVALID");
   assert.equal(calls, 0);
+});
+
+test("LINE group client rejects an unknown display-name status instead of enabling an unsafe target", () => {
+  assert.throws(() => canonicalLineGroupsPayload({
+    groups: [{ groupId: "C-real", status: "unbound", groupName: null, groupNameStatus: "unknown" }],
+    claimCandidates: [],
+  }), (error) => error.code === "CANONICAL_LINE_GROUP_READ_INVALID");
 });
 
 test("canonical stock projection preserves zero and rejects missing or cross-scope values", () => {
