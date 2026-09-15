@@ -309,13 +309,13 @@ test("LINE group management reads candidates separately and keeps claim/auth mut
       if (parsed.pathname === "/api/line-groups") {
         return response({
           environment: "production",
-          groups: [{ groupId: "C-real", groupIdShort: "C-re…-real", status: "unbound" }],
+          groups: [{ groupId: "C-real", groupIdShort: "C-re…-real", groupName: "真正 Production 群組", status: "unbound" }],
         });
       }
       if (parsed.pathname === "/api/line-groups/claim-candidates") {
         return response({
           readOnly: true,
-          claimCandidates: [{ groupId: "C-real", groupIdShort: "C-re…-real", status: "unbound", observedEventCount: 2 }],
+          claimCandidates: [{ groupId: "C-real", groupIdShort: "C-re…-real", groupName: "真正 Production 群組", status: "unbound", observedEventCount: 2 }],
         });
       }
       if (parsed.pathname.endsWith("/organization-claim")) return response({ group: { groupId: "C-real", organizationId: "org-current", status: "active" }, audit: { action: "organization_claim" } });
@@ -326,7 +326,9 @@ test("LINE group management reads candidates separately and keeps claim/auth mut
 
   const groups = await client.listLineGroups();
   assert.equal(groups.groups[0].groupId, "C-real");
+  assert.equal(groups.groups[0].groupName, "真正 Production 群組");
   assert.equal(groups.claimCandidates[0].observedEventCount, 2);
+  assert.equal(groups.claimCandidates[0].groupName, "真正 Production 群組");
   await client.claimLineGroupOrganization("C-real", "唯一 webhook 證據，管理者確認 organization claim");
   await client.setLineGroupOperationalAuthorization("C-real", true, "管理者確認開啟營運操作");
 

@@ -376,10 +376,18 @@
       }
       const groupId = typeof row.groupId === "string" ? row.groupId.trim() : "";
       const status = typeof row.status === "string" ? row.status.trim() : "";
+      const groupName = row.groupName === null || row.groupName === undefined
+        ? null
+        : typeof row.groupName === "string" && !/[\u0000-\u001F\u007F]/u.test(row.groupName)
+          ? row.groupName.normalize("NFKC").trim() || null
+          : null;
       if (!groupId || !status || groupId.includes("*") || groupId.includes("/")) {
         throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group identity is invalid.", { payload });
       }
-      return { ...row, groupId, status };
+      if (row.groupName !== null && row.groupName !== undefined && groupName === null) {
+        throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group name is invalid.", { payload });
+      }
+      return { ...row, groupId, status, groupName };
     };
     return {
       ...payload,
