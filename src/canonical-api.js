@@ -429,11 +429,13 @@
     let token = null;
     let expiresAt = null;
     let organization = null;
+    let accessClass = null;
 
     function clearAuth() {
       token = null;
       expiresAt = null;
       organization = null;
+      accessClass = null;
     }
 
     async function request(pathname, requestOptions = {}) {
@@ -461,26 +463,35 @@
       let payload = null;
       try { payload = await response.json(); } catch (_) {}
       if (!response.ok) {
-        if (response.status === 401 && pathname !== "/api/web/auth/login" && pathname !== "/api/web/auth/session") clearAuth();
+        if (response.status === 401 && !["/api/web/auth/login", "/api/web/auth/shared-login", "/api/web/auth/session"].includes(pathname)) clearAuth();
         const detail = normalizeCanonicalApiError(payload, response.status);
         throw new CanonicalApiError(detail.code, detail.message, { status: detail.status, payload });
       }
       return payload;
     }
 
-    async function login(password) {
+    async function login(password, requestedAccessClass = "ADMIN") {
       if (typeof password !== "string" || !password || password.length > 200) {
         throw new CanonicalApiError("CANONICAL_API_INVALID_LOGIN", "登入資料無效。");
       }
-      const payload = await request("/api/web/auth/login", { method: "POST", body: { password } });
+      if (!["ADMIN", "SHARED_EDIT"].includes(requestedAccessClass)) {
+        throw new CanonicalApiError("CANONICAL_API_ACCESS_CLASS_INVALID", "登入層級無效。");
+      }
+      const pathname = requestedAccessClass === "SHARED_EDIT" ? "/api/web/auth/shared-login" : "/api/web/auth/login";
+      const payload = await request(pathname, { method: "POST", body: { password } });
       if (payload?.authenticated !== true || typeof payload.token !== "string" || !/^[A-Za-z0-9_-]{32,100}$/u.test(payload.token)) {
+        clearAuth();
+        throw new CanonicalApiError("CANONICAL_API_AUTH_RESPONSE_INVALID", "登入服務回傳無效 session。");
+      }
+      if (payload.accessClass !== undefined && payload.accessClass !== requestedAccessClass) {
         clearAuth();
         throw new CanonicalApiError("CANONICAL_API_AUTH_RESPONSE_INVALID", "登入服務回傳無效 session。");
       }
       token = payload.token;
       expiresAt = typeof payload.expiresAt === "string" ? payload.expiresAt : null;
       organization = payload.organization || null;
-      return { authenticated: true, expiresAt, organization };
+      accessClass = payload.accessClass === "SHARED_EDIT" ? "SHARED_EDIT" : "ADMIN";
+      return { authenticated: true, expiresAt, accessClass, organization };
     }
 
     async function logout() {
@@ -497,10 +508,11 @@
       if (payload?.authenticated === true && token) {
         expiresAt = typeof payload.expiresAt === "string" ? payload.expiresAt : expiresAt;
         organization = payload.organization || organization;
+        accessClass = payload.accessClass === "SHARED_EDIT" ? "SHARED_EDIT" : "ADMIN";
       } else if (payload?.authenticated !== true) {
         clearAuth();
       }
-      return { authenticated: payload?.authenticated === true && Boolean(token), expiresAt, organization };
+      return { authenticated: payload?.authenticated === true && Boolean(token), expiresAt, accessClass, organization };
     }
 
     function setEnvironment(next, { explicitChoice = false } = {}) {
@@ -549,8 +561,8 @@
       get environment() { return environment; },
       isConfigured: () => enabled,
       isAuthenticated: () => Boolean(token),
-      authState: () => ({ authenticated: Boolean(token), expiresAt, organization }),
-      state: () => ({ enabled, environment, base, baseSource, runtimeMode, authenticated: Boolean(token), expiresAt, configurationError: configurationError?.code || null }),
+      authState: () => ({ authenticated: Boolean(token), expiresAt, accessClass, organization }),
+      state: () => ({ enabled, environment, base, baseSource, runtimeMode, authenticated: Boolean(token), accessClass, expiresAt, configurationError: configurationError?.code || null }),
       login,
       logout,
       session,

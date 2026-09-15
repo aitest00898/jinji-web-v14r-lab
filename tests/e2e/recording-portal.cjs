@@ -87,6 +87,9 @@ async function main() {
     await page.locator('[data-testid="portal-management"]').click();
     assert.equal(await page.locator('[data-page="today"]').count(), 1);
     assert.equal(await page.locator('[data-testid="stock-value"]').count(), 1);
+    assert.equal(await page.locator('[data-nav="record-portal"]').count(), 1, "management must keep a Guided Record entry");
+    await page.locator('[data-nav="record-portal"]').click();
+    await page.locator('[data-testid="record-portal"]').waitFor();
     await page.goBack();
     await page.locator('[data-testid="record-portal"]').waitFor();
 
@@ -108,6 +111,7 @@ async function main() {
     await page.locator('[data-action="guided-next"]').click();
     assert.match(await page.locator('[data-testid="guided-field-step"] [role="alert"]').innerText(), /數量/);
     await nextField(page, "quantity", 5);
+    await page.locator('[data-guided-field="sex"]').waitFor();
     await page.locator('[data-action="guided-skip-field"]').click();
     assert.match(await page.locator('[data-testid="guided-review"]').innerText(), /O9/);
     assert.match(await page.locator('[data-testid="guided-review"]').innerText(), /雞場[\s\S]*稽核紅羽一場/);

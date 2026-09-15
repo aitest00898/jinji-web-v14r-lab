@@ -245,11 +245,12 @@
     canonicalApiError: "",
     webAuthError: "",
     webAuthSubmitting: false,
+    webAuthAccessClass: "SHARED_EDIT",
   };
 
   // Canonical master data is a separate, memory-only recording scope catalog.
-  // Dashboard and Finance continue to use the clearly-labelled Lab fixture;
-  // no canonical read is ever silently replaced by fixture data.
+  // Manager awareness and Records use the canonical read model; Finance and
+  // other legacy supporting surfaces remain clearly-labelled Lab fixtures.
   const canonicalScopeCatalog = {
     environment: null,
     farms: [],
@@ -263,6 +264,7 @@
   const canonicalRecordCatalog = {
     environment: null,
     records: [],
+    lifecycleSummaries: [],
     loading: false,
     error: "",
   };
@@ -272,7 +274,18 @@
   const app = document.getElementById("app");
 
   function canonicalRecordingEnabled() {
+    // In canonical mode this flag means the page may use the public,
+    // read-only canonical projection. Mutation callers use the explicit
+    // write check below so unauthenticated reads never fall back to Lab data.
+    return Boolean(CANONICAL_API_ENABLED);
+  }
+
+  function canonicalWriteEnabled() {
     return Boolean(CANONICAL_API_ENABLED && CANONICAL_API?.isAuthenticated?.());
+  }
+
+  function canonicalAccessClass() {
+    return CANONICAL_API?.authState?.().accessClass || null;
   }
 
   function resetCanonicalScopeCatalog() {
@@ -287,6 +300,7 @@
   function resetCanonicalRecordCatalog() {
     canonicalRecordCatalog.environment = CANONICAL_API?.environment || null;
     canonicalRecordCatalog.records = [];
+    canonicalRecordCatalog.lifecycleSummaries = [];
     canonicalRecordCatalog.loading = false;
     canonicalRecordCatalog.error = "";
     canonicalReplayReceipt = null;
@@ -422,10 +436,12 @@
       if (loadId !== canonicalRecordLoadId || !canonicalRecordingEnabled() || CANONICAL_API.environment !== environment) return;
       canonicalRecordCatalog.environment = payload.environment;
       canonicalRecordCatalog.records = payload.records;
+      canonicalRecordCatalog.lifecycleSummaries = Array.isArray(payload.lifecycleSummaries) ? payload.lifecycleSummaries : [];
       canonicalRecordCatalog.error = "";
     } catch (error) {
       if (loadId === canonicalRecordLoadId && canonicalRecordingEnabled() && CANONICAL_API.environment === environment) {
         canonicalRecordCatalog.records = [];
+        canonicalRecordCatalog.lifecycleSummaries = [];
         canonicalRecordCatalog.error = error?.code === "CANONICAL_RECORD_READ_INVALID"
           ? "正式紀錄讀取契約無效，已停止顯示。"
           : "正式紀錄目前無法載入；沒有改用本機 fixture。";
@@ -445,18 +461,28 @@
   }
 
   function webAccessBoundaryMarkup() {
-    if (!WEB_RUNTIME_BLOCKED && !CANONICAL_API_ENABLED) return "";
-    if (WEB_RUNTIME_BLOCKED) {
-      const detail = CANONICAL_API_STATE.configurationError || "此 host 未被允許自動連線 Production API。";
-      return `<main class="web-access-boundary" data-testid="web-runtime-blocked"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · ACCESS BLOCKED</p><h1>此執行位置未獲授權</h1><p>為避免把模擬資料誤當成正式資料，未知 host、錯誤 API scope 或不合法 Pages base 不會載入 fixture，也不會送出 API request。</p><div class="web-access-error" role="alert">${escapeHtml(detail.message || detail)}</div><div class="readonly-note">請從已核准的 Pages host 或 localhost Lab 開啟。</div></section></main>`;
-    }
-    if (CANONICAL_API.isAuthenticated()) return "";
-    return `<main class="web-access-boundary" data-testid="web-auth-gate"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · AUTHENTICATED API</p><h1>登入管理介面</h1><p>此頁會使用核准的 canonical Worker API。密碼只在瀏覽器輸入框送往登入端點；session token 只保留在本次頁面的記憶體，不寫入 localStorage、IndexedDB 或 URL。</p><div class="web-access-meta"><span>API：${escapeHtml(CANONICAL_API.base || "—")}</span><span>預設 scope：Production</span></div><form id="web-login-form" class="web-login-form"><label for="web-admin-password">管理密碼</label><input id="web-admin-password" name="password" type="password" autocomplete="current-password" required ${state.webAuthSubmitting ? "disabled" : ""}><button type="submit" class="sheet-primary" ${state.webAuthSubmitting ? "disabled" : ""}>${state.webAuthSubmitting ? "登入中…" : "登入"}</button></form>${state.webAuthError ? `<div class="web-access-error" role="alert">${escapeHtml(state.webAuthError)}</div>` : ""}<div class="readonly-note">未登入時不會載入或提交正式資料；登入失效時會回到此畫面，不會改用本機 fixture 寫入。</div></section></main>`;
+    if (!WEB_RUNTIME_BLOCKED) return "";
+    const detail = CANONICAL_API_STATE.configurationError || "此 host 未被允許自動連線 Production API。";
+    return `<main class="web-access-boundary" data-testid="web-runtime-blocked"><section class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">金雞管理中心 · ACCESS BLOCKED</p><h1>此執行位置未獲授權</h1><p>為避免把模擬資料誤當成正式資料，未知 host、錯誤 API scope 或不合法 Pages base 不會載入 fixture，也不會送出 API request。</p><div class="web-access-error" role="alert">${escapeHtml(detail.message || detail)}</div><div class="readonly-note">請從已核准的 Pages host 或 localhost Lab 開啟。</div></section></main>`;
   }
 
-  async function beginWebLogin() {
+  function webLoginSheet() {
+    const accessClass = state.webAuthAccessClass === "ADMIN" ? "ADMIN" : "SHARED_EDIT";
+    const label = accessClass === "ADMIN" ? "管理者" : "共享編輯";
+    return sheetShell("登入", `${label}存取`, `<section class="web-login-card"><p>公開唯讀不需要登入。${label}登入只會開啟已授權的 ${label} 操作範圍；session token 只保留在本次頁面的記憶體。</p><form id="web-login-form" class="web-login-form" data-access-class="${accessClass}"><label for="web-login-password">${label}密碼</label><input id="web-login-password" name="password" type="password" autocomplete="current-password" required ${state.webAuthSubmitting ? "disabled" : ""}><button type="submit" class="sheet-primary" ${state.webAuthSubmitting ? "disabled" : ""}>${state.webAuthSubmitting ? "登入中…" : `登入${label}`}</button></form>${state.webAuthError ? `<div class="web-access-error" role="alert">${escapeHtml(state.webAuthError)}</div>` : ""}<div class="readonly-note">未登入時仍可查看公開的 Production 唯讀資料；未通過登入不會寫入資料，也不會改用本機 fixture。</div></section>`, "web-login");
+  }
+
+  function restrictedWebPage(title, message) {
+    return `<section class="page web-restricted-page" data-testid="web-access-required"><div class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p class="kicker">CANONICAL API · ACCESS REQUIRED</p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p><div class="developer-actions"><button type="button" class="sheet-primary" data-action="open-web-login" data-access-class="SHARED_EDIT">登入共享編輯</button><button type="button" class="sheet-secondary" data-action="open-web-login" data-access-class="ADMIN">管理者登入</button></div><div class="readonly-note">公開唯讀資料仍可從今日、紀錄與已公開營運頁查看。</div></div></section>`;
+  }
+
+  function restrictedWebSheet() {
+    return sheetShell("需要登入", "目前頁面不屬於公開唯讀範圍", `<div class="web-access-card"><div class="web-access-symbol">${icon("lock")}</div><p>請先登入共享編輯或管理者 session。未登入不會載入本機 Lab fixture 來代替正式資料。</p><div class="developer-actions"><button type="button" class="sheet-primary" data-action="open-web-login" data-access-class="SHARED_EDIT">登入共享編輯</button><button type="button" class="sheet-secondary" data-action="open-web-login" data-access-class="ADMIN">管理者登入</button></div></div>`, "web-access-required");
+  }
+
+  async function beginWebLogin(requestedAccessClass = state.webAuthAccessClass) {
     if (!CANONICAL_API_ENABLED || state.webAuthSubmitting) return;
-    const passwordInput = document.getElementById("web-admin-password");
+    const passwordInput = document.getElementById("web-login-password");
     const password = passwordInput?.value || "";
     if (!password) {
       state.webAuthError = "請輸入管理密碼。";
@@ -466,9 +492,10 @@
     state.webAuthError = "";
     render();
     try {
-      await CANONICAL_API.login(password);
+      await CANONICAL_API.login(password, requestedAccessClass === "ADMIN" ? "ADMIN" : "SHARED_EDIT");
       state.webAuthError = "";
       state.canonicalApiError = "";
+      state.sheet = null;
       state.page = INITIAL_MANAGEMENT_ENTRY ? "today" : "record-portal";
       await refreshCanonicalScopeCatalog();
       await refreshCanonicalRecords();
@@ -1092,9 +1119,14 @@
   }
 
   function webRuntimeControls() {
-    if (!CANONICAL_API_ENABLED || !CANONICAL_API.isAuthenticated()) return "";
+    const recordEntry = `<button type="button" class="web-record-entry" data-nav="record-portal">開始記錄</button>`;
+    if (!CANONICAL_API_ENABLED) {
+      return `<div class="web-runtime-controls" data-testid="web-runtime-controls">${recordEntry}</div>`;
+    }
+    if (!CANONICAL_API.isAuthenticated()) return `<div class="web-runtime-controls" data-testid="web-runtime-controls">${recordEntry}<span class="web-auth-status">公開唯讀</span><button type="button" class="web-login-button" data-action="open-web-login" data-access-class="SHARED_EDIT">登入共享編輯</button><button type="button" class="web-login-button admin" data-action="open-web-login" data-access-class="ADMIN">管理者登入</button></div>`;
     const environment = CANONICAL_API.environment;
-    return `<div class="web-runtime-controls" data-testid="web-runtime-controls"><button type="button" class="web-record-entry" data-nav="record-portal">開始記錄</button><label><span>資料 scope</span><select id="web-environment-select" data-action="select-api-environment" aria-label="資料 scope"><option value="production" ${environment === "production" ? "selected" : ""}>Production</option><option value="test" ${environment === "test" ? "selected" : ""}>Test（明確選取）</option></select></label><span class="web-auth-status">已登入 · ${escapeHtml(webApiEnvironmentLabel())}</span><button type="button" class="web-logout-button" data-action="web-logout">登出</button></div>`;
+    const accessClass = canonicalAccessClass() === "SHARED_EDIT" ? "共享編輯" : "管理者";
+    return `<div class="web-runtime-controls" data-testid="web-runtime-controls">${recordEntry}<label><span>資料 scope</span><select id="web-environment-select" data-action="select-api-environment" aria-label="資料 scope"><option value="production" ${environment === "production" ? "selected" : ""}>Production</option><option value="test" ${environment === "test" ? "selected" : ""}>Test（明確選取）</option></select></label><span class="web-auth-status">${accessClass} · ${escapeHtml(webApiEnvironmentLabel())}</span><button type="button" class="web-logout-button" data-action="web-logout">登出</button></div>`;
   }
 
   function desktopNavMarkup() {
@@ -1447,6 +1479,7 @@
   }
 
   function renderToday() {
+    if (canonicalRecordingEnabled()) return canonicalManagerAwarenessMarkup();
     const pending = scopedPending();
     const upcoming = upcomingFlocks();
     const activeAbnormal = scopedAbnormalities({ activeOnly: true });
@@ -1634,6 +1667,133 @@
     return `data-action="open-canonical-record" data-record-id="${escapeHtml(record.id)}"`;
   }
 
+  function canonicalLifecycleSummaryRows() {
+    return canonicalRecordCatalog.lifecycleSummaries.filter((summary) => {
+      if (!summary || typeof summary !== "object" || Array.isArray(summary)) return false;
+      const farmId = String(summary.farm?.id || "");
+      if (!farmId) return false;
+      if (state.context.farmId !== "all" && farmId !== state.context.farmId) return false;
+      if (state.context.houseId && summary.house?.id !== state.context.houseId) return false;
+      if (state.context.flockId && summary.currentFlock?.id !== state.context.flockId) return false;
+      return true;
+    });
+  }
+
+  function canonicalLabSubmissionStatusLabel(summary) {
+    const labSubmission = summary?.labSubmission;
+    const status = String(labSubmission?.status || "").toLowerCase();
+    if (labSubmission?.dataCompleteness === "incomplete") return "送驗：資料不足，無法判定";
+    return {
+      none: "送驗：無逾期未完成",
+      waiting: "送驗：等待結果",
+      incomplete: "送驗：結果待補",
+    }[status] || "送驗：資料不足，無法判定";
+  }
+
+  function canonicalLifecycleReadbackMarkup() {
+    const rows = canonicalLifecycleSummaryRows();
+    if (!rows.length) {
+      return `<section class="content-panel clean-list-panel" data-testid="canonical-lifecycle-readback"><div class="panel-title"><div><h3>一水狀態</h3><p>由 canonical effective facts 推導；不建立第二套狀態。</p></div></div><div class="readonly-note" data-testid="canonical-lifecycle-unavailable">尚未取得一水狀態 readback；不自行推算。</div></section>`;
+    }
+    const statusLabels = {
+      ACTIVE: "飼養中",
+      EMPTY_AWAITING_CLEANING: "雞舍已清空，待清消",
+      READY_NEXT_INTAKE: "清消完成，可準備下一批入雛",
+      INCOMPLETE: "資料不足，無法安全判定",
+    };
+    const cleaningLabels = {
+      not_recorded: "尚未完成清消",
+      pending: "清消待完成",
+      completed: "清消完成",
+    };
+    const statusTone = {
+      ACTIVE: "info",
+      EMPTY_AWAITING_CLEANING: "warn",
+      READY_NEXT_INTAKE: "good",
+      INCOMPLETE: "alert",
+    };
+    const rowsMarkup = rows.map((summary) => {
+      const status = String(summary.lifecycleStatus || "").toUpperCase();
+      const safeStatus = Object.prototype.hasOwnProperty.call(statusLabels, status) ? status : "INCOMPLETE";
+      const farmName = String(summary.farm?.name || summary.farm?.id || "未指定雞場");
+      const houseName = String(summary.house?.name || summary.house?.id || "未指定雞舍");
+      const batchCode = String(summary.currentFlock?.batchCode || summary.currentCycle?.batchCode || "無目前批次");
+      const stock = Number.isSafeInteger(summary.effectiveStock) && summary.effectiveStock >= 0 ? `${number(summary.effectiveStock)} 隻` : "資料不足";
+      const cleaning = cleaningLabels[summary.cleaningStatus] || "清消狀態未知";
+      const labStatus = canonicalLabSubmissionStatusLabel(summary);
+      return `<div class="list-row" data-testid="canonical-lifecycle-row"><span><strong>${escapeHtml(houseName)}</strong><span>${escapeHtml(farmName)} · 批次 ${escapeHtml(batchCode)} · 目前存欄 ${escapeHtml(stock)} · ${escapeHtml(cleaning)} · ${escapeHtml(labStatus)}</span></span><span class="row-end"><span class="status-chip ${statusTone[safeStatus]}">${escapeHtml(statusLabels[safeStatus])}</span></span></div>`;
+    }).join("");
+    return `<section class="content-panel clean-list-panel" data-testid="canonical-lifecycle-readback"><div class="panel-title"><div><h3>一水狀態</h3><p>由 canonical effective facts 推導；不建立第二套狀態。</p></div><span class="scope-chip">${rows.length} 舍</span></div><div class="list-stack">${rowsMarkup}</div></section>`;
+  }
+
+  function canonicalManagerRecordIsEffective(record) {
+    return !["corrected", "reversed"].includes(String(record?.effectiveStatus || "").toLowerCase());
+  }
+
+  function canonicalManagerAttentionRecords(records) {
+    return records.filter((record) => {
+      const taxonomyId = String(record?.taxonomyId || "");
+      const workflowStatus = String(record?.workflowStatus || record?.fields?.workflowStatus || "").toLowerCase();
+      return taxonomyId.startsWith("A") || (taxonomyId === "O6" && workflowStatus === "waiting_result");
+    }).slice(0, 5);
+  }
+
+  function canonicalFeedEstimateValue(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric.toLocaleString("zh-TW", { maximumFractionDigits: 2 }) : "資料不足";
+  }
+
+  function canonicalFeedEstimateMarkup() {
+    const rows = canonicalLifecycleSummaryRows();
+    const rowsMarkup = rows.map((summary) => {
+      const estimate = summary?.feedEstimate;
+      const available = estimate?.status === "ESTIMATE_AVAILABLE"
+        && Number.isFinite(Number(estimate.estimate))
+        && Number.isFinite(Number(estimate.range?.lower))
+        && Number.isFinite(Number(estimate.range?.upper));
+      const houseName = String(summary?.house?.name || summary?.house?.id || "未指定雞舍");
+      const batchCode = String(summary?.currentFlock?.batchCode || summary?.currentCycle?.batchCode || "無目前批次");
+      const referenceCount = Number.isInteger(estimate?.referenceCycleCount) ? estimate.referenceCycleCount : null;
+      const content = available
+        ? `<strong>${escapeHtml(houseName)} · ${escapeHtml(batchCode)}</strong><span>目前水次估算 ${escapeHtml(canonicalFeedEstimateValue(estimate.estimate))} kg · 範圍 ${escapeHtml(canonicalFeedEstimateValue(estimate.range.lower))}～${escapeHtml(canonicalFeedEstimateValue(estimate.range.upper))} kg</span><small>依同舍近 5 年、最多 15 水的有效資料；參考 ${referenceCount === null ? "資料不足" : number(referenceCount)} 水</small>`
+        : `<strong>${escapeHtml(houseName)} · ${escapeHtml(batchCode)}</strong><span>資料不足，暫不估算</span><small>不把缺少歷史資料或目前資料當成 0；不會自動建立叫料紀錄。</small>`;
+      return `<div class="list-row" data-testid="canonical-feed-estimate-row"><span>${content}</span><span class="row-end"><span class="status-chip ${available ? "info" : "warn"}">${available ? "可供判斷" : "資料不足"}</span></span></div>`;
+    }).join("");
+    return `<section class="content-panel clean-list-panel" data-testid="canonical-feed-estimate"><div class="panel-title"><div><h3>飼料估算</h3><p>沿用 canonical lifecycle summary 的既有 5 年／最多 15 水決策資料；僅供管理者判斷。</p></div><span class="scope-chip">${rows.length} 舍</span></div><div class="list-stack">${rowsMarkup || `<div class="empty-tab"><strong>尚未取得飼料估算</strong><p>沒有可用的 canonical lifecycle summary，不自行推算。</p></div>`}</div></section>`;
+  }
+
+  function canonicalManagerAwarenessMarkup({ desktop = false } = {}) {
+    const loading = canonicalRecordCatalog.loading;
+    const unavailable = Boolean(canonicalRecordCatalog.error);
+    const lifecycleRows = loading || unavailable ? [] : canonicalLifecycleSummaryRows();
+    const records = loading || unavailable ? [] : canonicalRecordRows().filter(canonicalManagerRecordIsEffective);
+    const attention = canonicalManagerAttentionRecords(records);
+    const recent = records.slice(0, 6);
+    const status = loading
+      ? `<div class="readonly-note" data-testid="canonical-manager-status">正在載入 ${escapeHtml(webApiEnvironmentLabel())} canonical read model…</div>`
+      : unavailable
+        ? `<div class="lab-write-notice error" role="alert" data-testid="canonical-manager-status">${escapeHtml(canonicalRecordCatalog.error)}</div><div class="readonly-note">讀取失敗時不會顯示本機 fixture，也不會自行補造營運數字。</div>`
+        : `<div class="readonly-note" data-testid="canonical-manager-status">來源：Worker canonical read model · ${escapeHtml(webApiEnvironmentLabel())} · ${lifecycleRows.length} 舍 · ${records.length} 筆有效紀錄</div>`;
+    const attentionMarkup = attention.length
+      ? attention.map((record) => `<button type="button" class="list-row" ${canonicalRecordActionAttributes(record)}><span><strong>${escapeHtml(canonicalRecordTitle(record))}</strong><span>${escapeHtml(canonicalRecordLocation(record))} · ${escapeHtml(canonicalRecordDateTime(record))}</span></span><span class="row-end"><span class="status-chip warn">${escapeHtml(record.taxonomyId.startsWith("A") ? "異常" : "待結果")}</span><span class="row-arrow">›</span></span></button>`).join("")
+      : `<div class="empty-tab"><strong>目前沒有權威注意事項</strong><p>只依 Worker 回傳的 effective records；缺少資料不會當成 0。</p></div>`;
+    const recentMarkup = recent.length
+      ? recent.map((record) => `<button type="button" class="list-row" ${canonicalRecordActionAttributes(record)}><span><strong>${escapeHtml(canonicalRecordTitle(record))}</strong><span>${escapeHtml(canonicalRecordLocation(record))} · ${escapeHtml(canonicalRecordDateTime(record))}</span></span><span class="row-end"><span class="status-chip ${record.effectiveStatus === "active" ? "good" : "warn"}">${escapeHtml(canonicalRecordStatusLabel(record))}</span><span class="row-arrow">›</span></span></button>`).join("")
+      : `<div class="empty-tab"><strong>目前沒有 canonical 紀錄</strong><p>讀取結果為空，不會補入本機資料。</p></div>`;
+    const shellClass = desktop ? "desktop-v2-page" : "page";
+    const contextMarkup = desktop ? desktopContextToolbar() : contextBar();
+    return `<section class="${shellClass} canonical-manager-awareness" data-page="today" data-testid="canonical-manager-awareness">
+      ${contextMarkup}
+      ${pageIntro("CANONICAL READ MODEL", "營運概況", "先看權威雞場／雞舍／批次狀態，再追查需要判斷的紀錄。")}
+      ${status}
+      <section class="content-panel clean-list-panel" data-testid="canonical-manager-attention"><div class="panel-title"><div><h3>管理者注意事項</h3><p>異常與待結果項目由 canonical effective records 提供。</p></div><span class="scope-chip">${attention.length} 項</span></div><div class="list-stack">${attentionMarkup}</div></section>
+      ${canonicalLifecycleReadbackMarkup()}
+      ${canonicalFeedEstimateMarkup()}
+      <section class="content-panel clean-list-panel" data-testid="canonical-manager-recent-records"><div class="panel-title"><div><h3>近期權威紀錄</h3><p>點選可查看 supporting fields、scope 與 lineage。</p></div><span class="scope-chip">${recent.length} 筆</span></div><div class="list-stack">${recentMarkup}</div></section>
+      <div class="readonly-note">本頁與 Records 共用 Worker canonical read model；不顯示 Lab fixture，也不在瀏覽器端推算 stock 或 lifecycle。</div>
+    </section>`;
+  }
+
   function canonicalAcceptanceReplayEnabled() {
     const hostname = String(window.location.hostname || "").toLowerCase();
     const local = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
@@ -1658,6 +1818,7 @@
       ${canonicalRecordsContextMarkup()}
       ${pageIntro("CANONICAL READ MODEL", "紀錄", "只顯示目前授權 scope 的 canonical records；時間軸不混入 Lab fixture。")}
       ${status}
+      ${canonicalLifecycleReadbackMarkup()}
       <section class="content-panel clean-list-panel"><div class="panel-title"><div><h3>Canonical 紀錄時間軸</h3><p>每筆資料都保留 authority、provenance、derived fields 與 append-only lineage。</p></div><span class="scope-chip">${rows.length} 筆</span></div><div class="list-stack">${list || `<div class="empty-tab"><strong>目前 scope 沒有 canonical 紀錄</strong><p>讀取結果為空，不會補入本機資料。</p></div>`}</div></section>
       <div class="readonly-note">此頁不做瀏覽器端 stock 計算；O3／O9 的數量效果只由 Worker canonical authority 處理。</div>
     </section>`;
@@ -1841,6 +2002,9 @@
   }
 
   function renderMore() {
+    if (CANONICAL_API_ENABLED && !CANONICAL_API.isAuthenticated()) {
+      return `<section class="page" data-page="more">${contextBar()}${pageIntro("", "更多", "公開唯讀模式只顯示可公開的營運入口。") }<section class="content-panel web-access-card"><div class="web-access-symbol">${icon("lock")}</div><h2>需要登入才能使用管理功能</h2><p>財務、管理設定、完整 Audit 與其他敏感資料不在公開唯讀範圍。今日與紀錄頁仍可查看公開的 Production canonical data。</p><div class="developer-actions"><button type="button" class="sheet-primary" data-action="open-web-login" data-access-class="SHARED_EDIT">登入共享編輯</button><button type="button" class="sheet-secondary" data-action="open-web-login" data-access-class="ADMIN">管理者登入</button></div></section></section>`;
+    }
     const totalClicks = Object.values(developerAnalytics.counts).reduce((sum, value) => sum + value, 0);
     return `<section class="page" data-page="more">
       ${contextBar()}
@@ -2319,6 +2483,9 @@
       CANONICAL_API_AUTH_RESPONSE_INVALID: "登入服務回傳無效 session，沒有送出資料。",
       invalid_credentials: "登入未通過，請確認管理密碼後再試。",
       organization_unavailable: "登入服務目前無法提供組織資訊，請稍後再試。",
+      shared_access_not_configured: "共享編輯登入尚未配置，請使用管理者登入或聯絡系統管理者。",
+      shared_access_not_ready: "共享編輯登入尚未完成資料結構切換，請稍後再試。",
+      auth_rate_limited: "登入嘗試過多，請稍後再試。",
       origin_not_allowed: "此執行來源未獲授權，沒有送出資料。",
       unauthorized: "登入 session 已失效，請重新登入；沒有建立本機替代紀錄。",
       CANONICAL_API_NETWORK_ERROR: "canonical API 無法連線；沒有建立本機替代紀錄。",
@@ -2335,6 +2502,12 @@
 
   function submitCanonicalBoundary(command, relation, successText, { onSuccess, onError } = {}) {
     if (!CANONICAL_API_ENABLED) return false;
+    if (!canonicalWriteEnabled()) {
+      state.webAuthAccessClass = "SHARED_EDIT";
+      state.webAuthError = "這項操作需要共享編輯登入；公開唯讀模式不會寫入資料。";
+      openSheet({ kind: "web-login" });
+      return true;
+    }
     state.canonicalApiError = "";
     CANONICAL_API.submitRecord(command, relation).then(async (result) => {
       if (canonicalAcceptanceReplayEnabled()) {
@@ -3437,7 +3610,22 @@
   }
 
   function startGuidedRecord(area) {
-    state.guidedRecord = window.JinjiGuidedRecording.createState(area, PLUS_AS_OF);
+    const guided = window.JinjiGuidedRecording.createState(area, PLUS_AS_OF);
+    const current = state.context;
+    if (current?.farmId && current.farmId !== "all" && current.farmId !== "history") {
+      const farm = recordingScopeFarmById(current.farmId);
+      const house = current.houseId ? farm?.houses?.find((candidate) => candidate.id === current.houseId) : null;
+      const flock = current.flockId ? house?.flocks?.find((candidate) => candidate.id === current.flockId) : null;
+      if (farm && (!current.houseId || house) && (!current.flockId || flock)) {
+        guided.scope = {
+          farmId: farm.id,
+          houseId: house?.id || "",
+          flockId: flock?.id || "",
+          wholeFarmConfirmed: Boolean(current.wholeFarmConfirmed && !house),
+        };
+      }
+    }
+    state.guidedRecord = guided;
     state.quickRecordError = "";
     return openSheet({ kind: "guided-record" });
   }
@@ -3705,6 +3893,8 @@
 
   function renderSheet() {
     if (!state.sheet) return "";
+    if (CANONICAL_API_ENABLED && !CANONICAL_API.isAuthenticated() && ["insights", "insight-detail", "system", "system-detail", "audit", "settings", "settings-detail", "finance-farm", "investor-detail", "expense-detail", "distribution-detail", "finance-metric", "analysis-detail", "developer-clicks", "developer-log", "developer-notes", "developer-diagnostics", "developer-fallback"].includes(state.sheet.kind)) return restrictedWebSheet();
+    if (state.sheet.kind === "web-login") return webLoginSheet();
     if (state.sheet.kind === "context") return contextSheet();
     if (state.sheet.kind === "pending") return pendingSheet();
     if (state.sheet.kind === "pending-item") return pendingItemSheet(state.sheet.id);
@@ -3783,6 +3973,7 @@
   }
 
   function desktopToday() {
+    if (canonicalRecordingEnabled()) return canonicalManagerAwarenessMarkup({ desktop: true });
     const pending = scopedPending();
     const upcoming = upcomingFlocks();
     const abnormalities = scopedAbnormalities({activeOnly:true});
@@ -3842,6 +4033,9 @@
   }
 
   function desktopMore() {
+    if (CANONICAL_API_ENABLED && !CANONICAL_API.isAuthenticated()) {
+      return `<section class="desktop-v2-page" data-page="more">${desktopContextToolbar()}<section class="desktop-pane web-access-card"><div class="desktop-pane-body"><div class="web-access-symbol">${icon("lock")}</div><h2>更多管理功能需要登入</h2><p>公開唯讀模式不顯示財務、管理設定、完整 Audit 與開發者 fixture；今日與紀錄頁仍可查看公開 canonical data。</p><div class="developer-actions"><button type="button" class="sheet-primary" data-action="open-web-login" data-access-class="SHARED_EDIT">登入共享編輯</button><button type="button" class="sheet-secondary" data-action="open-web-login" data-access-class="ADMIN">管理者登入</button></div></div></section></section>`;
+    }
     const totalClicks=Object.values(developerAnalytics.counts).reduce((s,v)=>s+v,0);
     const tool=(iconName,title,desc,action,kind="")=>`<button type="button" class="more-item" data-action="${action}" ${kind?`data-sheet-kind="${kind}"`:""}><span class="more-item-icon">${icon(iconName)}</span><span><strong>${title}</strong><span>${desc}</span></span><span>›</span></button>`;
     return `<section class="desktop-v2-page" data-page="more">${desktopContextToolbar()}<div class="desktop-more-grid"><section class="desktop-pane"><div class="desktop-pane-head"><div><h2>工具與管理</h2><p>桌面一次展開高頻與低頻工具</p></div></div><div class="more-list">${tool("chart","洞察","在養、死亡、飼料、飲水與異常","open-sheet","insights")}${tool("records","月曆","排程、入雛、磅雞、出雞與營運紀錄","go-calendar")}${tool("finance","財務","總覽、各場、股權、歷史分配、費用、投資績效與資料來源；桌面左側也可直接進入","go-finance")}${tool("ai","AI 助理","帶入目前工作範圍；維持唯讀","go-ai")}${tool("lock","系統","雞場、雞舍、批次與服務邊界","open-sheet","system")}${tool("records","變更紀錄","修改、取消與操作歷程入口","open-sheet","audit")}${tool("more","設定","操作與管理設定","open-sheet","settings")}</div></section><aside class="desktop-pane"><div class="desktop-pane-head"><div><h2>開發者</h2><p>本機測試分析 · 不上傳操作資料</p></div><span class="env-chip">${number(totalClicks)} 次點擊</span></div><section class="developer-block"><div class="developer-grid"><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-clicks"><span>${icon("todo")}</span><strong>點擊計數</strong><small>組件使用次數</small></button><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-log"><span>${icon("records")}</span><strong>UI Log</strong><small>最近互動</small></button><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-notes"><span>${icon("spark")}</span><strong>開發者筆記</strong><small>本機儲存</small></button><button type="button" class="developer-item" data-action="open-sheet" data-sheet-kind="developer-diagnostics"><span>${icon("lock")}</span><strong>診斷</strong><small>資料契約與降級</small></button><button type="button" class="developer-item wide" data-action="open-sheet" data-sheet-kind="developer-fallback"><span>${icon("ai")}</span><strong>AI／Cloudflare 降級方案</strong><small>暫時中斷與永久遷移</small></button></div></section></aside></div></section>`;
@@ -3876,6 +4070,9 @@
 
   function pageMarkup() {
     if (state.page === "record-portal") return recordPortalMarkup();
+    if (CANONICAL_API_ENABLED && !CANONICAL_API.isAuthenticated() && ["finance", "ai"].includes(state.page)) {
+      return restrictedWebPage(state.page === "finance" ? "財務需要登入" : "AI 營運檢視需要登入", "這個頁面不屬於公開唯讀範圍，請使用共享編輯或管理者 session。 ");
+    }
     if (desktopWideMode()) return desktopPageMarkup();
     if (state.page === "today") return renderToday();
     if (state.page === "calendar") return renderCalendar();
@@ -4024,7 +4221,7 @@
     if (accessBoundary) {
       app.innerHTML = accessBoundary;
       unlockBody();
-      window.requestAnimationFrame(() => document.getElementById("web-admin-password")?.focus());
+      window.requestAnimationFrame(() => document.getElementById("web-login-password")?.focus());
       return;
     }
     const desktop = desktopWideMode();
@@ -4038,7 +4235,10 @@
       : `<header class="topbar"><div class="brand-lockup mobile-brand"><span class="brand-symbol">🐔</span><span class="brand-copy"><strong>金雞管理中心</strong><span>營運管理 · V14R Plus r4</span></span></div><span class="topbar-status">Plus r4${modeStatus}</span>${webRuntimeControls()}</header>`;
     const globalNotices = [state.quickRecordNotice, state.canonicalApiNotice, state.canonicalApiError ? `Canonical API：${state.canonicalApiError}` : ""].filter(Boolean);
     const globalLabNotice = globalNotices.map((notice, index) => `<div class="lab-write-notice ${state.canonicalApiError && index === globalNotices.length - 1 ? "error" : ""}" role="${state.canonicalApiError && index === globalNotices.length - 1 ? "alert" : "status"}">${escapeHtml(notice)}</div>`).join("");
-    const apiRuntimeNotice = CANONICAL_API_ENABLED ? `<div class="api-runtime-notice" role="status"><strong>已登入 ${escapeHtml(webApiEnvironmentLabel())}</strong><span>Canonical write 只經 Worker business boundary；畫面中的 Lab／Finance fixture 明確標示為 synthetic，API 失敗不會改用 fixture 寫入或靜默回退。</span></div>` : "";
+    const runtimeAccessLabel = CANONICAL_API.isAuthenticated()
+      ? (canonicalAccessClass() === "SHARED_EDIT" ? "共享編輯已登入" : "管理者已登入")
+      : "公開唯讀";
+    const apiRuntimeNotice = CANONICAL_API_ENABLED ? `<div class="api-runtime-notice" role="status"><strong>${runtimeAccessLabel} · ${escapeHtml(webApiEnvironmentLabel())}</strong><span>Canonical write 只經 Worker business boundary；未登入時僅提供公開唯讀。畫面中的 Lab／Finance fixture 明確標示為 synthetic，API 失敗不會改用 fixture 寫入或靜默回退。</span></div>` : "";
     app.innerHTML = `<div class="app-shell ${portal ? "portal-mode" : ""}">${desktop && !portal ? desktopNavMarkup() : ""}<div class="workspace-shell">${header}${apiRuntimeNotice}${globalLabNotice}<main class="page-shell">${pageMarkup()}</main></div>${portal ? "" : (desktop ? "" : mobileQuick)}${portal ? "" : navMarkup()}${renderSheet()}</div>`;
     if (state.sheet) lockBody(); else unlockBody();
   }
@@ -4060,6 +4260,11 @@
     const actionElement = event.target.closest("[data-action]");
     if (!actionElement) return;
     const action = actionElement.dataset.action;
+    if (action === "open-web-login") {
+      state.webAuthAccessClass = actionElement.dataset.accessClass === "ADMIN" ? "ADMIN" : "SHARED_EDIT";
+      state.webAuthError = "";
+      return openSheet({ kind: "web-login" });
+    }
     if (action === "web-logout") return beginWebLogout();
     if (action === "start-guided-operational") return startGuidedRecord("operational");
     if (action === "start-guided-abnormal") return startGuidedRecord("abnormal");
@@ -4113,6 +4318,12 @@
       else if (requirements.flockRequired && !scope.flockId) guided.error = "這個分類需要指定批次。";
       else if (!scope.houseId && requirements.wholeFarmAllowed && !scope.wholeFarmConfirmed) guided.error = "未指定雞舍時，請明確確認這是整場資料。";
       else {
+        state.context = {
+          farmId: scope.farmId,
+          houseId: scope.houseId || null,
+          flockId: scope.flockId || null,
+          wholeFarmConfirmed: Boolean(scope.wholeFarmConfirmed && !scope.houseId),
+        };
         guided.error = "";
         guided.step = "field";
         guided.fieldIndex = 0;
@@ -4529,7 +4740,7 @@
   function handleSubmit(event) {
     if (event.target?.id !== "web-login-form") return;
     event.preventDefault();
-    beginWebLogin();
+    beginWebLogin(event.target.dataset.accessClass);
   }
 
 
@@ -4632,4 +4843,10 @@
 
   assertDataContract();
   render();
+  if (CANONICAL_API_ENABLED) {
+    // Public mode starts with the same canonical read model as authenticated
+    // mode; it never renders Lab fixtures while waiting for the readback.
+    void refreshCanonicalScopeCatalog();
+    void refreshCanonicalRecords();
+  }
 })();

@@ -172,7 +172,7 @@ test("browser auth keeps the session token in memory and gates Test scope behind
     base: "https://worker.example.test",
     fetchImpl: async (url, init) => {
       calls.push({ url: new URL(url), init });
-      if (calls.length === 1) return response({ authenticated: true, token: "A".repeat(43), expiresAt: "2026-09-09T02:00:00.000Z", organization: { id: "org-test" } });
+      if (calls.length === 1) return response({ authenticated: true, token: "A".repeat(43), expiresAt: "2026-09-09T02:00:00.000Z", accessClass: "ADMIN", organization: { id: "org-test" } });
       if (calls.at(-1).url.pathname === "/api/web/auth/logout") return response({ authenticated: false });
       return response({ record: { created: true }, records: [] }, 201);
     },
@@ -180,7 +180,7 @@ test("browser auth keeps the session token in memory and gates Test scope behind
 
   assert.throws(() => client.setEnvironment("test", { explicitChoice: true }), /authenticated/);
   const auth = await client.login("browser-only-password");
-  assert.deepEqual(auth, { authenticated: true, expiresAt: "2026-09-09T02:00:00.000Z", organization: { id: "org-test" } });
+  assert.deepEqual(auth, { authenticated: true, expiresAt: "2026-09-09T02:00:00.000Z", accessClass: "ADMIN", organization: { id: "org-test" } });
   assert.equal(client.state().authenticated, true);
   assert.equal(JSON.stringify(client.state()).includes("A".repeat(43)), false);
 
@@ -211,7 +211,7 @@ test("flat Worker login rejection preserves code/status without creating auth st
     return true;
   });
   assert.equal(client.isAuthenticated(), false);
-  assert.deepEqual(client.authState(), { authenticated: false, expiresAt: null, organization: null });
+  assert.deepEqual(client.authState(), { authenticated: false, expiresAt: null, accessClass: null, organization: null });
 });
 
 test("malformed and non-JSON errors remain bounded, while protected 401 clears auth", async () => {

@@ -144,6 +144,24 @@ function legacyRecords() {
   ];
 }
 
+function lifecycleSummary(stockMode) {
+  const missing = stockMode === "missing";
+  const stock = missing ? null : stockMode;
+  const depleted = !missing && Number(stockMode) === 0;
+  return {
+    farm: { id: "test-farm", name: "金雞測試場", environment: "test" },
+    house: { id: "test-house", name: "測試1舍" },
+    currentFlock: { id: "test-flock", batchCode: "TEST-BATCH-001", status: depleted ? "closed" : "active" },
+    currentCycle: { id: "test-flock", flockId: "test-flock", batchCode: "TEST-BATCH-001" },
+    effectiveStock: stock,
+    lifecycleStatus: missing ? "INCOMPLETE" : depleted ? "READY_NEXT_INTAKE" : "ACTIVE",
+    cleaningStatus: depleted ? "completed" : "not_recorded",
+    readyForNextIntake: depleted,
+    dataCompleteness: missing ? "incomplete" : "complete",
+    labSubmission: { status: "none", dataCompleteness: "complete" },
+  };
+}
+
 async function installCanonicalStub(page, stockMode, calls) {
   await page.route(`${workerBase}/**`, async (route) => {
     const request = route.request();
@@ -153,10 +171,10 @@ async function installCanonicalStub(page, stockMode, calls) {
 
     if (request.method() === "OPTIONS") return jsonResponse(route, {}, 204);
     if (url.pathname === "/api/web/auth/login") {
-      return jsonResponse(route, { authenticated: true, token: "STUB_TOKEN_1234567890123456789012345678901234567", expiresAt: "2099-01-01T00:00:00.000Z", organization: { id: "org-test" } });
+      return jsonResponse(route, { authenticated: true, token: "STUB_TOKEN_1234567890123456789012345678901234567", expiresAt: "2099-01-01T00:00:00.000Z", accessClass: "ADMIN", organization: { id: "org-test" } });
     }
     if (url.pathname === "/api/web/auth/session") {
-      return jsonResponse(route, { authenticated: true, expiresAt: "2099-01-01T00:00:00.000Z", organization: { id: "org-test" } });
+      return jsonResponse(route, { authenticated: true, expiresAt: "2099-01-01T00:00:00.000Z", accessClass: "ADMIN", organization: { id: "org-test" } });
     }
     if (url.pathname === "/api/web/auth/logout") return jsonResponse(route, { authenticated: false });
     if (url.pathname === "/api/farms") {
@@ -185,19 +203,20 @@ async function installCanonicalStub(page, stockMode, calls) {
         },
       });
     }
-    if (url.pathname === "/api/records") return jsonResponse(route, { environment, records: environment === "test" ? legacyRecords() : [] });
+    if (url.pathname === "/api/records") return jsonResponse(route, {
+      environment,
+      records: environment === "test" ? legacyRecords() : [],
+      lifecycleSummaries: environment === "test" ? [lifecycleSummary(stockMode)] : [],
+    });
     return jsonResponse(route, { error: "unexpected_test_route" }, 404);
   });
 }
 
 async function loginAndSelectTestScope(page, expectedStock, stockMode, calls) {
   await page.goto(`${baseUrl}/index.html?api-base=${encodeURIComponent(workerBase)}&cache-bust=canonical-stock-read-1#/dashboard`, { waitUntil: "networkidle" });
-  try {
-    await page.locator('[data-testid="web-auth-gate"]').waitFor();
-  } catch (error) {
-    throw new Error(`${error.message}\nGATE_DEBUG_BODY=${(await page.locator("body").innerText()).slice(0, 2000)}\nGATE_DEBUG_CALLS=${JSON.stringify(calls)}`);
-  }
-  await page.locator("#web-admin-password").fill("stub-password");
+  assert.equal(await page.locator('[data-testid="canonical-manager-awareness"]').count(), 1);
+  await page.locator('[data-action="open-web-login"][data-access-class="ADMIN"]').first().click();
+  await page.locator("#web-login-password").fill("stub-password");
   await page.locator("#web-login-form").locator("button[type=submit]").click();
   try {
     await page.locator('[data-testid="web-runtime-controls"]').waitFor();
@@ -211,13 +230,14 @@ async function loginAndSelectTestScope(page, expectedStock, stockMode, calls) {
   await page.locator('[data-action="select-farm-direct"][data-farm-id="test-farm"]').click();
   await page.locator('[data-testid="house-chips"] [data-action="select-house-direct"][data-house-id="test-house"]').click();
   await page.locator('[data-testid="flock-chips"] [data-action="select-flock-direct"][data-flock-id="test-flock"]').click();
-  await page.locator('[data-testid="stock-value"]').waitFor();
-  assert.equal((await page.locator('[data-testid="stock-value"]').innerText()).trim(), expectedStock);
-  assert.equal(await page.locator('[data-testid="web-runtime-controls"] .web-auth-status').innerText(), "已登入 · Test scope");
+  const lifecycleRow = page.locator('[data-testid="canonical-lifecycle-row"]');
+  await lifecycleRow.waitFor();
+  const lifecycleText = await lifecycleRow.innerText();
+  assert.match(lifecycleText, new RegExp(`目前存欄 ${expectedStock === "資料不足" ? "資料不足" : `${expectedStock} 隻`}`));
+  assert.equal(await page.locator('[data-testid="web-runtime-controls"] .web-auth-status').innerText(), "管理者 · Test scope");
   assert.equal(await page.evaluate(() => Object.values(localStorage).some((value) => String(value).includes("STUB_TOKEN") || String(value).includes("stub-password"))), false);
   assert.equal(calls.some((call) => call.method === "POST" && call.pathname === "/api/records"), false);
   assert.equal(calls.some((call) => call.pathname === "/api/ai/live-status" && call.environment === "production"), false);
-  assert.equal(stockMode === "missing" ? await page.locator('[data-testid="stock-value"]').innerText() : expectedStock, expectedStock);
 }
 
 async function main() {
@@ -244,8 +264,9 @@ async function main() {
       await page.waitForFunction(() => !document.querySelector('[data-testid="canonical-record-status"]')?.textContent.includes("正在載入"));
       const recordsPage = page.locator('[data-testid="canonical-records-page"]');
       assert.equal(await recordsPage.count(), 1);
-      assert.equal(await recordsPage.locator('.list-row').count(), 6);
-      const recordsText = await recordsPage.innerText();
+      const recordTimeline = recordsPage.locator('section.content-panel').last();
+      assert.equal(await recordTimeline.locator('.list-row').count(), 6);
+      const recordsText = await recordTimeline.innerText();
       for (const taxonomyId of ["O4", "A8"]) assert.match(recordsText, new RegExp(taxonomyId));
       assert.ok((recordsText.match(/O2/g) || []).length >= 2);
       assert.ok((recordsText.match(/O3/g) || []).length >= 2);
