@@ -1259,3 +1259,48 @@ No raw provider group identifier is stored in this ledger. After the single
 human action, the new event must be attributed by timestamp, group metadata,
 organization, and exclusion of the Test/synthetic rows before any group can
 be considered Production.
+
+## 2026-09-15 — Chapter 3 terminal human/environment block
+
+The minimum Chapter 3 group-name status and Web revocation changes were
+implemented, tested, pushed on the Web source branch, and the Worker was
+deployed. The controlled Pages workflow is blocked before its first step while
+GitHub waits for `github-pages` deployment approval. The current account has
+no approval capability and the authenticated job page exposes no approval
+control, so no environment-policy bypass or unrelated change was made.
+
+```text
+CHAPTER_3 = TRUE_HUMAN_BLOCKED
+CHAPTER_3_BLOCKER = GITHUB_PAGES_ENVIRONMENT_APPROVAL_UNAVAILABLE
+CONTROLLED_PAGES_RUN = 34919937805
+CONTROLLED_PAGES_HEAD = 80b2b70f45ec093b12296c1e4fe3b32c77d99176
+CONTROLLED_PAGES_DEPLOYMENT = WAITING_FOR_APPROVAL
+WEB_PAGES_DEPLOYMENT_VERIFIED = NO
+PUBLIC_BUILD_SHA = LOCAL_UNBUILT
+WORKER_SOURCE = e001106506c5e62a86a1968f9b076e7d8d11319a
+WORKER_DEPLOYED = YES
+WORKER_HEALTH_READY = PASS
+PRODUCTION_GROUP = ++金雞Ai助手正式++
+GROUP_ORGANIZATION_CLAIM = NOT_EXECUTED
+TARGET_GROUP_AUTHORIZED = NOT_EXECUTED
+REVOCATION_UI_PRESENT = YES
+REVOCATION_AUTH_REQUIRED = PASS
+REVOCATION_CONFIRMATION = PASS
+REVOCATION_READBACK = PASS
+REVOCATION_IDEMPOTENT = PASS
+REVOCATION_AUDIT = PASS
+REVOCATION_UNCLAIMS_GROUP = PASS
+UNIDENTIFIED_GROUP_ACTIONABLE = NO
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+PRODUCTION_BUSINESS_WRITE = 0
+STOCK_UNINTENDED_DELTA = 0
+FINANCE_MUTATION = 0
+TEST_PRODUCTION_CROSSOVER = 0
+READY_FOR_NEXT_FEATURE_CHAPTER = NO
+```
+
+No raw provider group identifier is stored here. The existing Chapter 3
+transition remains paused until the exact Pages approval/environment authority
+is available; Test and synthetic groups remain ineligible for promotion.
