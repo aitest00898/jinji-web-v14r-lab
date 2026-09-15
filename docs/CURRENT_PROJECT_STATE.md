@@ -972,5 +972,50 @@ Test-scope readbacks. No new business write, AI call, or Production action was
 performed.
 
 ```text
-GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_REMOTE_NETWORK_CHECK
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+```
+
+## 2026-09-15 — Chapter 6 unified Web access classes (latest)
+
+Chapter 6 is complete in the local Worker and Web source. The reachable Web
+route inventory now has one enforced access policy with three classes:
+PUBLIC, SHARED_EDIT, and ADMIN. The Worker dispatch boundary rejects unknown
+routes and malformed environments, while the Web client exposes public read
+access and explicit shared/admin login transitions. Existing canonical read,
+write, correction, reversal, lifecycle, and audit paths are reused; no
+parallel business authority was introduced.
+
+```text
+CHAPTER_6 = PASS_LOCAL
+WEB_ACCESS_POLICY_UNIFIED = PASS
+UNCLASSIFIED_REACHABLE_WEB_ROUTES = 0
+PUBLIC_BOUNDARY = PASS
+SHARED_EDIT_BOUNDARY = PASS
+ADMIN_BOUNDARY = PASS
+PUBLIC_SENSITIVE_DATA_EXPOSURE = 0
+SHARED_EDIT_ADMIN_ESCALATION = 0
+DIRECT_API_ENFORCEMENT = PASS
+UI_API_POLICY_PARITY = PASS
+ENVIRONMENT_FAIL_CLOSED = PASS
+CANONICAL_LINEAGE_INTEGRITY = PASS
+STOCK_INTEGRITY = PASS
+AUDIT_ATTRIBUTION = PASS
+WORKER_FULL_REGRESSION = PASS_933_PASSED_11_SKIPPED
+WEB_FULL_REGRESSION = PASS
+WORKER_SOURCE_COMMIT = da1d7f90866fb9c02118b5c558a25c83b799910c
+WEB_SOURCE_COMMIT = 3b93c2733695b2f901e64702b1bff73e571c8487
+MIGRATION_0042 = CREATED_NOT_APPLIED
+PRODUCTION_UNEXPECTED_DELTA = 0
+AI_CALLS = 0
+FINANCE_MUTATION = 0
+SOURCE_CHANGE_SCOPE = CHAPTER_6_WEB_ACCESS_BOUNDARY_ONLY
+READY_FOR_NEXT_FEATURE_CHAPTER = YES
+BLOCKER = NONE
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+```
+
+This ledger records local Chapter 6 completion only; it is not a Production
+deployment or migration approval. No Production business, stock, Finance,
+Queue, or AI mutation was performed. No raw provider group or sender
+identifier is stored here.
 ```
