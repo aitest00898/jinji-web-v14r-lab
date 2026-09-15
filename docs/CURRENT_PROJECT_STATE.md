@@ -1304,3 +1304,56 @@ READY_FOR_NEXT_FEATURE_CHAPTER = NO
 No raw provider group identifier is stored here. The existing Chapter 3
 transition remains paused until the exact Pages approval/environment authority
 is available; Test and synthetic groups remain ineligible for promotion.
+
+## 2026-09-15 — Chapter 3 terminal evidence closure
+
+The existing Chapter 3 transition is now closed from authoritative evidence.
+The authenticated Web readback identifies `++金雞Ai助手正式++` as the sole
+organization-owned and operationally authorized group. Read-only D1 audit
+correlation to that current authorized row found one organization-claim audit
+at `2026-09-15 01:01:27` UTC with organization `NULL -> SET`, and one
+operational-authorization audit at `2026-09-15 01:01:34` UTC with
+`operational_authorized 0 -> 1`. No mutation was repeated to manufacture
+evidence.
+
+The public controlled Pages build read back exact Web SHA
+`80b2b70f45ec093b12296c1e4fe3b32c77d99176`; the deployed Worker source is
+`e001106506c5e62a86a1968f9b076e7d8d11319a`, and health/readiness pass.
+
+The authorized Production group passed a bounded harmless real-LINE read:
+`今日狀況` produced a visible Bot reply, while its authoritative event receipt
+was `reply_completed`, `reply_status=sent`, HTTP 200, and
+`business_status=completed`. Existing deployed-source tests cover ordinary
+group-member trust, direct-message formal-operation denial, and fail-closed
+missing/left/cross-organization or unauthorized groups.
+
+The bounded operation produced zero stock, canonical business, Finance, AI,
+Test/Production crossover, and unintended authorization deltas. Production
+write acceptance remains `DEFERRED_UNTIL_REAL_BUSINESS_EVENT`. No raw provider
+group identifier is stored in this ledger.
+
+```text
+CLAIM_AUDIT = PASS
+CLAIM_READBACK = PASS
+AUTHORIZATION_AUDIT = PASS
+AUTHORIZATION_READBACK = PASS
+AUTHORIZED_READ = PASS
+ORDINARY_MEMBER_GROUP_TRUST = PASS
+DM_DENIED = PASS
+UNAUTHORIZED_BOUNDARY = PASS
+WRITE_ACCEPTANCE = DEFERRED_UNTIL_REAL_BUSINESS_EVENT
+STOCK_DELTA = 0
+CANONICAL_BUSINESS_DELTA = 0
+FINANCE_DELTA = 0
+TEST_PRODUCTION_CROSSOVER = 0
+TEST_GROUP_AUTHORIZATION = 0
+SYNTHETIC_GROUP_AUTHORIZATION = 0
+UNINTENDED_GROUP_AUTHORIZATION = 0
+CHAPTER_3 = PASS
+PRODUCTION_CHAPTER_2_AUTHORITY = ACCEPTED
+READY_FOR_NEXT_FEATURE_CHAPTER = YES
+CONTROLLED_PAGES_DEPLOYMENT = PASS
+PUBLIC_BUILD_SHA = 80b2b70f45ec093b12296c1e4fe3b32c77d99176
+PAGES_PUBLISHING_PATH = SINGLE_CONTROLLED_PATH
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+```
