@@ -722,3 +722,41 @@ mention selection and delivery. The bounded Worker tail did not replay the
 historical events, so webhook metadata is not independently available in this
 receipt. No Bot reply or digest wake was observed; this result does not change
 the Bot wake policy or prove behavior for a true self-mention.
+
+## 2026-09-15 — Chapter 6 Production access-boundary P1 repaired and accepted
+
+The Worker-side Chapter 6 public access-boundary P1 was repaired with a
+minimal explicit public farm projection. Finance-derived
+playerGroupEquityFraction is no longer returned by public farm responses;
+protected canonical farm responses retain the existing fields. The Web source
+was not changed by this repair.
+
+CHAPTER_6 = PASS
+WEB_ACCESS_POLICY_UNIFIED = PASS_PRODUCTION
+WORKER_SOURCE_COMMIT = b5326d6c816b8afb883c46464e1570873108871c
+WORKER_DEPLOYMENT = PASS
+ACTIVE_WORKER_VERSION = fffd4545-1a82-49dc-b3a0-80d4658520e9
+MIGRATION_0042 = APPLIED
+PUBLIC_BOUNDARY = PASS_PRODUCTION
+PUBLIC_SENSITIVE_EXPOSURE = 0
+SHARED_EDIT_BOUNDARY = PASS_PRODUCTION
+ADMIN_BOUNDARY = PASS_PRODUCTION
+DIRECT_API_ENFORCEMENT = PASS_PRODUCTION
+ENVIRONMENT_FAIL_CLOSED = PASS_PRODUCTION
+PRODUCTION_UNEXPECTED_BUSINESS_DELTA = 0
+PRODUCTION_UNEXPECTED_STOCK_DELTA = 0
+FINANCE_UNEXPECTED_DELTA = 0
+LINE_AUTHORITY_REGRESSION = 0
+SINGLETON_LINE_ADMIN_REGRESSION = 0
+UNINTENDED_GROUP_AUTHORIZATION = 0
+P0_COUNT = 0
+P1_COUNT = 0
+READY_FOR_NEXT_FEATURE_CHAPTER = YES
+BLOCKER = NONE
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+
+The Worker focused and full regressions passed, and the authenticated shared
+Production session continued to show canonical records/lifecycle data while
+the LINE-admin route remained denied. No Web source, Pages deployment,
+Production business data, stock, Finance, Queue, or AI state was changed by
+this repair. Chapter 7 was not started.
