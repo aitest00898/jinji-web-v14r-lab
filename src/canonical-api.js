@@ -370,6 +370,17 @@
       || !Array.isArray(payload.groups) || !Array.isArray(payload.claimCandidates)) {
       throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group response is invalid.", { payload });
     }
+    const groupNameStatuses = new Set([
+      "available",
+      "provider_not_configured",
+      "provider_unreachable",
+      "provider_not_found",
+      "provider_access_denied",
+      "provider_unavailable",
+      "provider_response_invalid",
+      "provider_identity_mismatch",
+      "provider_name_missing",
+    ]);
     const normalize = (row) => {
       if (!row || typeof row !== "object" || Array.isArray(row)) {
         throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group row is invalid.", { payload });
@@ -381,13 +392,21 @@
         : typeof row.groupName === "string" && !/[\u0000-\u001F\u007F]/u.test(row.groupName)
           ? row.groupName.normalize("NFKC").trim() || null
           : null;
+      const groupNameStatus = row.groupNameStatus === null || row.groupNameStatus === undefined
+        ? null
+        : typeof row.groupNameStatus === "string" && groupNameStatuses.has(row.groupNameStatus.trim())
+          ? row.groupNameStatus.trim()
+          : null;
       if (!groupId || !status || groupId.includes("*") || groupId.includes("/")) {
         throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group identity is invalid.", { payload });
       }
       if (row.groupName !== null && row.groupName !== undefined && groupName === null) {
         throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group name is invalid.", { payload });
       }
-      return { ...row, groupId, status, groupName };
+      if (row.groupNameStatus !== null && row.groupNameStatus !== undefined && groupNameStatus === null) {
+        throw new CanonicalApiError("CANONICAL_LINE_GROUP_READ_INVALID", "Canonical LINE group name status is invalid.", { payload });
+      }
+      return { ...row, groupId, status, groupName, groupNameStatus };
     };
     return {
       ...payload,

@@ -251,6 +251,7 @@
       notice: "",
       claimConfirmId: null,
       authorizationConfirmId: null,
+      revocationConfirmId: null,
       claimedGroupId: null,
       mutationInFlight: false,
     },
@@ -463,6 +464,7 @@
       notice: "",
       claimConfirmId: null,
       authorizationConfirmId: null,
+      revocationConfirmId: null,
       claimedGroupId: null,
       mutationInFlight: false,
     };
@@ -3365,6 +3367,23 @@
     return name ? escapeHtml(name) : "名稱尚未取得";
   }
 
+  const LINE_GROUP_NAME_STATUS_LABELS = Object.freeze({
+    provider_not_configured: "LINE 名稱查詢尚未設定",
+    provider_unreachable: "LINE 名稱服務目前無法連線",
+    provider_not_found: "LINE provider 找不到此群組或目前無法存取",
+    provider_access_denied: "LINE provider 拒絕名稱查詢",
+    provider_unavailable: "LINE 名稱服務暫時不可用",
+    provider_response_invalid: "LINE provider 回應格式無效",
+    provider_identity_mismatch: "LINE provider 群組識別不一致",
+    provider_name_missing: "LINE provider 未提供名稱",
+  });
+
+  function lineGroupDisplayStatus(group) {
+    if (typeof group?.groupName === "string" && group.groupName.trim()) return "";
+    const reason = LINE_GROUP_NAME_STATUS_LABELS[group?.groupNameStatus];
+    return reason ? `名稱尚未取得：${reason}` : "名稱尚未取得：原因未明";
+  }
+
   function lineGroupManagementSheet() {
     if (!CANONICAL_API_ENABLED || !canonicalRecordingEnabled()) {
       return sheetShell("LINE 群組", "需要已登入的 canonical Production session", `<div class="readonly-note">尚未登入 canonical API；沒有載入或變更 LINE 群組。</div>`, "settings-detail");
@@ -3386,17 +3405,23 @@
     const authorizationConfirmation = manager.authorizationConfirmId && target?.groupId === manager.authorizationConfirmId
       ? `<div class="detail-block" data-testid="line-group-authorization-confirmation"><h3>請確認營運授權</h3><p>這會只對剛完成 organization claim 的唯一 Production 群組開啟營運操作信任；不會授權 Test 群組、synthetic 群組或其他 organization 群組。</p><p><strong>群組名稱：</strong>${lineGroupDisplayName(target)}</p><p><strong>群組識別（遮罩）：</strong>${escapeHtml(target.groupIdShort || "已遮罩")}</p><div class="developer-actions">${targetNameAvailable ? `<button type="button" class="sheet-primary" data-action="line-group-confirm-authorization" ${manager.mutationInFlight ? "disabled" : ""}>${manager.mutationInFlight ? "授權中…" : "確認開啟營運授權"}</button>` : `<div class="readonly-note">LINE 群組名稱暫時無法再次確認，為避免誤授權已暫停。</div>`}<button type="button" class="sheet-secondary" data-action="line-group-cancel-authorization" ${manager.mutationInFlight ? "disabled" : ""}>取消</button></div></div>`
       : "";
+    const revocationTarget = manager.revocationConfirmId
+      ? manager.groups.find((group) => group.groupId === manager.revocationConfirmId)
+      : null;
+    const revocationConfirmation = revocationTarget && revocationTarget.operationalAuthorized && revocationTarget.groupName
+      ? `<div class="detail-block" data-testid="line-group-revocation-confirmation" data-line-group-revoke-id="${escapeHtml(revocationTarget.groupId)}"><h3>請確認解除營運授權</h3><p>這只會關閉此群組的營運操作信任；不移除 organization claim、不刪除歷史、不修改 business records、stock 或 Finance。</p><p><strong>群組名稱：</strong>${lineGroupDisplayName(revocationTarget)}</p><label for="line-group-revoke-reason">解除原因</label><input id="line-group-revoke-reason" type="text" maxlength="500" value="管理者確認解除營運授權" autocomplete="off"><div class="developer-actions"><button type="button" class="sheet-primary" data-action="line-group-confirm-revocation" ${manager.mutationInFlight ? "disabled" : ""}>${manager.mutationInFlight ? "解除中…" : "確認解除營運授權"}</button><button type="button" class="sheet-secondary" data-action="line-group-cancel-revocation" ${manager.mutationInFlight ? "disabled" : ""}>取消</button></div></div>`
+      : "";
     const candidateBlock = candidate
       ? `<div class="detail-block" data-testid="line-group-claim-candidate"><h3>唯一可認領候選</h3><p>已找到 1 個有 LINE webhook 證據、目前未綁定 organization 的群組。</p><p><strong>群組名稱：</strong>${lineGroupDisplayName(candidate)}</p><p><strong>群組識別（遮罩）：</strong>${escapeHtml(candidate.groupIdShort || "已遮罩")} · 觀察到 ${number(candidate.observedEventCount || 0)} 筆事件</p>${candidateNameAvailable ? `<button type="button" class="sheet-primary" data-action="line-group-start-claim" ${manager.claimConfirmId || manager.mutationInFlight ? "disabled" : ""}>認領至目前 organization</button>` : `<div class="readonly-note" role="alert">LINE 尚未回傳群組名稱，無法安全判別目標；目前禁止認領。</div>`}</div>`
       : `<div class="readonly-note" data-testid="line-group-claim-candidate-state">目前有 ${number(manager.claimCandidates.length)} 個符合 webhook 證據的未綁定候選；只有唯一候選時才提供認領，不會猜測。</div>`;
     const ownedMarkup = manager.groups.length
-      ? `<div class="detail-block"><h3>目前 organization 群組</h3><div class="sheet-item-list">${manager.groups.map((group) => `<div class="sheet-item static"><span><strong>LINE 群組 · ${lineGroupDisplayName(group)}</strong><span>${escapeHtml(group.groupIdShort || "已遮罩")} · ${escapeHtml(group.status)} · ${escapeHtml(lineGroupStatusLabel(group))}</span></span></div>`).join("")}</div></div>`
+      ? `<div class="detail-block"><h3>目前 organization 群組</h3><div class="sheet-item-list">${manager.groups.map((group) => { const displayStatus = lineGroupDisplayStatus(group); const revokeMarkup = group.operationalAuthorized && group.groupName ? `<button type="button" class="sheet-secondary" data-action="line-group-start-revocation" data-group-id="${escapeHtml(group.groupId)}" ${manager.mutationInFlight || manager.revocationConfirmId ? "disabled" : ""}>解除營運授權</button>` : group.operationalAuthorized ? `<span class="readonly-note">${escapeHtml(displayStatus)}；為避免誤操作暫停解除</span>` : ""; return `<div class="sheet-item static"><span><strong>LINE 群組 · ${lineGroupDisplayName(group)}</strong><span>${escapeHtml(group.groupIdShort || "已遮罩")} · ${escapeHtml(group.status)} · ${escapeHtml(lineGroupStatusLabel(group))}</span>${displayStatus ? `<span class="readonly-note">${escapeHtml(displayStatus)}</span>` : ""}</span>${revokeMarkup ? `<span class="sheet-item-end">${revokeMarkup}</span>` : ""}</div>`; }).join("")}</div></div>`
       : `<div class="readonly-note">目前 organization 尚無已認領的 LINE 群組。</div>`;
     const targetMarkup = target
       ? `<div class="detail-block" data-testid="line-group-claimed-target"><h3>organization claim readback</h3><p>唯一 Production 群組已歸屬目前 organization；farm/operator scope 維持未綁定。</p><p><strong>群組名稱：</strong>${lineGroupDisplayName(target)}</p>${target.operationalAuthorized ? `<div class="dev-save-note">營運授權 readback：已開啟。</div>` : targetNameAvailable ? `<button type="button" class="sheet-primary" data-action="line-group-start-authorization" ${manager.authorizationConfirmId || manager.mutationInFlight ? "disabled" : ""}>授權營運操作</button>` : `<div class="readonly-note" role="alert">LINE 群組名稱暫時無法確認，為避免誤授權已暫停。</div>`}</div>`
       : "";
     const notice = manager.notice ? `<div class="dev-save-note" data-testid="line-group-notice">${escapeHtml(manager.notice)}</div>` : "";
-    return sheetShell("LINE 群組", "Production · 單一 verified group claim / authorization", `${notice}${claimConfirmation}${authorizationConfirmation}${!claimConfirmation && !authorizationConfirmation ? candidateBlock + targetMarkup + ownedMarkup : ""}<div class="readonly-note">此頁只使用 authenticated canonical API；不提供任意群組 ID、bulk claim 或 wildcard 授權。所有變更都有 server-side audit 與 readback。</div>`, "settings-detail");
+    return sheetShell("LINE 群組", "Production · 單一 verified group claim / authorization", `${notice}${claimConfirmation}${authorizationConfirmation}${revocationConfirmation}${!claimConfirmation && !authorizationConfirmation && !revocationConfirmation ? candidateBlock + targetMarkup + ownedMarkup : ""}<div class="readonly-note">此頁只使用 authenticated canonical API；不提供任意群組 ID、bulk claim 或 wildcard 授權。所有變更都有 server-side audit 與 readback。</div>`, "settings-detail");
   }
 
   async function claimCanonicalLineGroup() {
@@ -3436,6 +3461,32 @@
     } catch (error) {
       manager.error = canonicalApiErrorMessage(error);
       manager.authorizationConfirmId = null;
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  async function revokeCanonicalLineGroup() {
+    const manager = state.lineGroupState;
+    const target = manager.revocationConfirmId && manager.groups.find((group) => group.groupId === manager.revocationConfirmId);
+    if (!target || !target.groupName || !target.operationalAuthorized || manager.mutationInFlight) return;
+    const reason = String(document.getElementById("line-group-revoke-reason")?.value ?? "").normalize("NFKC").trim();
+    if (!reason) {
+      manager.error = "解除營運授權需要填寫原因；沒有變更資料。";
+      return render();
+    }
+    manager.mutationInFlight = true;
+    manager.error = "";
+    render();
+    try {
+      await CANONICAL_API.setLineGroupOperationalAuthorization(target.groupId, false, reason);
+      manager.revocationConfirmId = null;
+      manager.notice = "營運授權已解除，server readback PASS。";
+      await refreshCanonicalLineGroups({ force: true });
+    } catch (error) {
+      manager.error = canonicalApiErrorMessage(error);
+      manager.revocationConfirmId = null;
     } finally {
       manager.mutationInFlight = false;
       render();
@@ -4478,6 +4529,23 @@
       return render();
     }
     if (action === "line-group-confirm-authorization") return void authorizeCanonicalLineGroup();
+    if (action === "line-group-start-revocation") {
+      const manager = state.lineGroupState;
+      const target = manager.groups.find((group) => group.groupId === actionElement.dataset.groupId);
+      if (!target || !target.groupName || !target.operationalAuthorized || manager.mutationInFlight) {
+        manager.error = "只有已取得名稱且目前已授權營運的 LINE 群組才可解除；沒有變更資料。";
+      } else {
+        manager.revocationConfirmId = target.groupId;
+        manager.notice = "";
+        manager.error = "";
+      }
+      return render();
+    }
+    if (action === "line-group-cancel-revocation") {
+      state.lineGroupState.revocationConfirmId = null;
+      return render();
+    }
+    if (action === "line-group-confirm-revocation") return void revokeCanonicalLineGroup();
     if (action === "set-farm-scope") {
       state.context = { farmId: actionElement.dataset.farmId, houseId: null, flockId: null };
       state.page = "farms";
