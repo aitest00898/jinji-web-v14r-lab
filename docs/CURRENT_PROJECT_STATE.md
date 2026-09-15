@@ -63,6 +63,47 @@ resolution; the absence of an active flock independently blocks Pilot 1B but
 does not change the 1A rule. This is a configuration/provisioning state, not a
 confirmed Product P0/P1.
 
+## Chapter 1 — Permission architecture reconciliation — 2026-09-14
+
+This is a read-only, documentation-only reconciliation against the exact
+deployed Production source. It does not change runtime behavior, schema,
+authorization, finance, recovery, or deployment state.
+
+```text
+CHAPTER_1_ARCHITECTURE_RECONCILIATION = PASS
+RECONCILIATION_SOURCE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+ARCHITECTURE_DOC = /Users/joe/Documents/Codex/deployment-prerequisites-20260912/docs/JINJI_PERMISSION_ARCHITECTURE_RECONCILIATION.md
+SOURCE_RUNTIME_CHANGE = NO
+D1_WRITE = NO
+PRODUCTION_MUTATION = NO
+FINANCE_MUTATION = NO
+LINE_SEND = NO
+READY_FOR_CHAPTER_2 = YES
+```
+
+The current canonical write boundary is stricter than the approved target:
+LINE writes require a provisioned LINE identity, a bound group, and an active
+operator scope/binding; the current group context is coupled to one farm. The
+target instead trusts members of an authorized group equally and resolves
+farm/house/flock context separately, including one group operating across
+multiple farms. The current LINE admin is a temporary password/session path,
+not the target fixed singleton system administrator. Web currently has one
+Bearer Web-admin session tier rather than `PUBLIC` / `SHARED_EDIT` / `ADMIN`.
+
+Investor links remain personal-query associations, not general authorization.
+Append-only operational lineage, idempotency, stock authority, entity version
+checks, and immutable audit are retained as migration foundations. Existing
+reliability recovery is not yet the target point-in-time/batch/selective,
+dependency-aware recovery system. New Web routes must not inherit the current
+unknown-environment-to-Production compatibility fallback without an explicit
+fail-closed policy decision.
+
+The first future implementation boundary is the common LINE authorization
+seam: decouple authorized-group trust from the current one-farm and per-user
+scope gate while retaining a compatibility bridge and all canonical entity,
+environment, stock, lineage, idempotency, and audit checks. No Chapter 2 work
+was started, and no next work item was generated.
+
 ## Governance
 
 ```text
@@ -760,3 +801,498 @@ Production session continued to show canonical records/lifecycle data while
 the LINE-admin route remained denied. No Web source, Pages deployment,
 Production business data, stock, Finance, Queue, or AI state was changed by
 this repair. Chapter 7 was not started.
+## LINE non-@Bot wake inventory — restart in progress
+
+Recorded on 2026-09-14. This is the current restart ledger before new
+bounded real-client messages. The exact source under static review is
+`7df2610070518122b1737c62a310ab5492c0e476`.
+
+```text
+REAL_LINE_NON_BOT_WAKE_INVENTORY = IN_PROGRESS
+REAL_LINE_NON_MENTION_E2E = PENDING_WAKE_INVENTORY
+TRUE_BOT_MENTION_TEST = DEFERRED_TO_HUMAN
+STATIC_INVENTORY = COMPLETE
+PARSER_COMMAND_COUNT = 50_RECOGNIZED_KINDS_PLUS_UNKNOWN_FALLBACK
+MENU_ACTION_IDENTITIES = 72
+NEW_LINE_MESSAGES_THIS_RESTART = 0
+PRODUCTION_TOUCHED = NO
+TEST_BUSINESS_WRITES_THIS_RESTART = 0
+WORKERS_AI_CALLS = 0
+LINE_SETTINGS_CHANGED = NO
+QUEUE_CHANGED = NO
+MIGRATION_APPLIED = NO
+DEPLOYMENT = NO
+```
+
+The detailed source-grounded matrix is maintained in the Production
+repository artifact `docs/LINE_NON_BOT_WAKE_INVENTORY.md`; this Web ledger
+stores only progress state and no raw LINE group/user IDs.
+
+## LINE non-`@Bot` wake inventory — static closure / current UI boundary
+
+Recorded on 2026-09-14. This is a source-grounded inventory against the exact
+Production source baseline below. It does not claim a new live LINE acceptance.
+
+```text
+SOURCE_BASE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+INVENTORY_ARTIFACT = docs/LINE_NON_BOT_WAKE_INVENTORY.md
+INVENTORY_ARTIFACT_LOCAL_COMMIT = e663fdedd4659afa84e1b1f18ec88dbc3bfb3161
+REAL_LINE_NON_BOT_WAKE_INVENTORY = COMPLETE_STATIC_PARTIAL_RUNTIME
+REAL_LINE_NON_MENTION_E2E = BLOCKED_BY_CURRENT_SCREEN_CAPTURE_TOOLING
+TRUE_BOT_MENTION_TEST = DEFERRED_TO_HUMAN
+TRUNCATED_TASK_STOP = YES
+TRUNCATED_AT = Phase_3A_CLEAN_CONTEXT_WAKE_heading
+CURRENT_LINE_UI_ACCESS = BLOCKED_BY_CURRENT_SCREEN_CAPTURE_TOOLING
+NEW_LINE_SENDS_THIS_TASK = 0
+PRODUCTION_TOUCHED = NO
+TEST_BUSINESS_WRITES_THIS_TASK = 0
+LINE_SETTINGS_CHANGED = NO
+QUEUE_CHANGED = NO
+MIGRATION_APPLIED = NO
+DEPLOYMENT = NO
+WORKERS_AI_CALLS = 0
+```
+
+Historical genuine LINE Desktop evidence remains the two-message `摘要` and
+native `@All + 摘要` observation recorded above; both had visible outgoing
+bubbles, no Bot reply in the bounded window, and zero observed official writes.
+The current Computer Use app binding failed with ScreenCaptureKit error -3811
+before an AX/screenshot surface could be used, so no new outgoing bubble was
+attempted or claimed. Phase 3 was not entered because the supplied task text is
+truncated before its complete instructions and result contract.
+
+## Test LINE cleanroom gate — blocked safe (2026-09-14)
+
+The non-`@Bot` wake inventory is paused behind a Test-only cleanroom. This
+entry records only read-only remote reconciliation; it does not claim new
+LINE evidence and does not change the existing historical wake results.
+
+```text
+TEST_LINE_CLEANROOM_GATE = BLOCKED
+REAL_LINE_WAKE_TEST = PAUSED_FOR_CLEANROOM
+TEST_GROUP_CONFIRMED = YES
+TEST_ENVIRONMENT_CONFIRMED = YES
+READBACK_1 = 2026-09-14T01:51:08Z
+READBACK_2 = 2026-09-14T01:52:58Z
+READBACK_STABLE = YES
+NEW_LINE_MESSAGES_DURING_CLEANROOM = 0
+
+TEST_LINE_EVENTS_TOTAL = 750
+TEST_ACTIONABLE_UNFINISHED = 0
+TEST_ACTIONABLE_FAILED = 0
+TEST_RETRYABLE = 0
+TEST_UNRESOLVED_ACTIONABLE = 0
+TEST_UNRECOGNIZED_ACTIONABLE = 0
+TEST_AMBIENT_TOTAL = 19
+TEST_AMBIENT_ACTIONABLE = 0
+TEST_PENDING_CANDIDATES = 4
+TEST_ACTIVE_SESSIONS = 0
+TEST_PENDING_CLARIFICATIONS = 0
+TEST_PENDING_CONFIRMATIONS = 0
+TEST_PENDING_SELECTIONS = 0
+TEST_ACTIVE_DIGEST_RUNS = 0
+TEST_ACTIVE_LEASES = 0
+OLD_AMBIENT_ELIGIBLE_FOR_NEXT_DIGEST = 0
+TEST_AUTHORITATIVE_STOCK = 963
+CANONICAL_RECONCILIATION = PASS
+
+TEST_ROWS_MUTATED = 0
+PRODUCTION_ROWS_MUTATED = 0
+FINANCE_ROWS_MUTATED = 0
+QUEUE_CONTROL_MUTATIONS = 0
+SOURCE_CHANGES = 0
+MIGRATIONS = 0
+DEPLOYMENTS = 0
+WORKERS_AI_CALLS = 0
+CLEANROOM_CUTOFF_TIMESTAMP = 2026-09-14T01:53:37.300Z
+```
+
+The exact deployed source exposes `GET /api/pending-candidates` as
+read-only. Candidate terminalization is available through the existing LINE
+candidate lifecycle, but this cleanroom forbids new LINE messages. The four
+pending candidate rows therefore remain unconfirmed workflow state and block
+the cleanroom; no Web redesign or source change was started. The detailed
+state-surface matrix is maintained in the Production artifact
+`docs/LINE_NON_BOT_WAKE_INVENTORY.md`.
+
+```text
+NEXT_ALLOWED_ACTION = EXISTING_TEST_ONLY_CANDIDATE_CANCEL_OR_IGNORE_PATH; NO_NEW_LINE_MESSAGES_UNTIL_GATE_PASS
+```
+
+## 2026-09-14 — Test LINE cleanroom terminalized and stabilized
+
+The authorized Test-only cleanup completed through the existing LINE
+candidate lifecycle. This Web ledger records progress only; it does not store
+LINE group/user identifiers or credentials.
+
+```text
+CLEANROOM_CLEANUP = COMPLETE
+CANDIDATE_1 = IGNORED
+CANDIDATE_2 = EXISTING_RECORD_RECONCILIATION_ONLY
+CANDIDATE_3 = IGNORED
+CANDIDATE_4 = IGNORED
+PENDING_CANDIDATE_SEQUENCE = 4 -> 3 -> 2 -> 1 -> 0
+CLEANUP_CREATED_NEW_CANDIDATE = 0
+OFFICIAL_BUSINESS_WRITE_DELTA = 0
+AUTHORITATIVE_STOCK_DELTA = 0
+CANONICAL_TEST_BUSINESS_ROWS_MUTATED = 0
+PRODUCTION_ROWS_MUTATED = 0
+FINANCE_ROWS_MUTATED = 0
+DIRECT_SQL_BUSINESS_FIXES = 0
+WORKERS_AI_CALLS = 0
+
+TEST_LINE_EVENTS_TOTAL_AFTER = 760
+TEST_ACTIONABLE_UNFINISHED = 0
+TEST_ACTIONABLE_FAILED = 0
+TEST_RETRYABLE = 0
+TEST_UNRESOLVED_ACTIONABLE = 0
+TEST_UNRECOGNIZED_ACTIONABLE = 0
+TEST_AMBIENT_ACTIONABLE = 0
+TEST_PENDING_CANDIDATES = 0
+TEST_ACTIVE_SESSIONS = 0
+TEST_PENDING_CLARIFICATIONS = 0
+TEST_PENDING_CONFIRMATIONS = 0
+TEST_PENDING_SELECTIONS = 0
+TEST_ACTIVE_DIGEST_RUNS = 0
+TEST_ACTIVE_LEASES = 0
+OLD_AMBIENT_ELIGIBLE_FOR_NEXT_DIGEST = 0
+TEST_AUTHORITATIVE_STOCK = 963
+CANONICAL_RECONCILIATION = PASS
+
+AFTER_READBACK_AT = 2026-09-14T02:56:52Z
+STABILIZATION_READBACK_1_AT = 2026-09-14T02:57:19Z
+STABILIZATION_READBACK_2_AT = 2026-09-14T02:57:45Z
+STATE_REAPPEARED = NO
+CLEANROOM_CUTOFF_TIMESTAMP = 2026-09-14T02:58:23Z
+TEST_LINE_CLEANROOM_GATE = PASS
+REAL_LINE_WAKE_TEST = PAUSED_AFTER_CLEANROOM
+NEXT_ALLOWED_ACTION = POST_CLEANROOM_REAL_LINE_NON_BOT_WAKE_INVENTORY
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALWAYS_ON
+```
+
+The previous blocked-cleanroom entry remains historical; this is the latest
+authoritative Test-only state. No new non-cleanup wake test was started.
+
+## 2026-09-14 — Post-cleanroom non-`@Bot` wake inventory
+
+This entry is limited to evidence produced after the cleanroom cutoff. The
+exact deployed source was inspected before the bounded genuine LINE Desktop
+run; no source, wake policy, LINE setting, deployment, migration, Queue, or
+Production state was changed.
+
+```text
+POST_CLEANROOM_REAL_LINE_NON_BOT_WAKE_INVENTORY = COMPLETE
+CLEANROOM_CUTOFF_TIMESTAMP = 2026-09-14T02:58:23Z
+EXACT_DEPLOYED_SOURCE = 7df2610070518122b1737c62a310ab5492c0e476
+TEST_GROUP = ++開發++金雞協會Ai助手測試頻道++
+TARGET_SCOPE = 金雞測試場 / 測試1舍 / TEST-BATCH-001
+SAFE_RUNTIME_INPUTS = 37
+FINAL_READBACK_INPUTS = 2
+BOT_MENTION_USED = 0
+ALL_MENTION_USED = 0
+TRUE_BOT_TESTED = 0
+```
+
+The following individual inputs produced visible Bot replies without a Bot
+mention and were classified as deterministic wake/runtime cases: `使用說明`
+(`menu_help`), `測試` (`ping`), `幫助` (`help`), `選單` (`menu`/home),
+`快速紀錄` (`menu_quick_record`), `今日狀況` (`menu_today_summary`),
+`雞場與批次` (`menu_farms`), `最近異常` (`menu_recent_abnormal`),
+`修改紀錄` (`menu_correction_help`), `雲林天氣` (`menu_weather`),
+`AI 分析` (`menu_ai`, menu only), `更多功能` (more navigation),
+`待確認資料` (`menu_pending_candidates`), `歷史紀錄` (`menu_audit`),
+`管理功能`, `開發選單`, `系統狀態`, `顯示待摘要訊息`, `財務摘要`,
+`今日` (`summary`), `今日死亡` (`query_today_mortality`), `目前存欄`
+(`query_inventory`), `1舍日齡` (`query_flock_age`), `近期出雞`
+(`query_upcoming_shipments`), `雞場列表` (`query_farm_list`), `各場持股`
+(`query_equity`), `我的持股` (`query_my_equity`), `各場盈虧`
+(`query_farm_profit_list`), `金雞測試場盈虧` (`query_farm_profit`,
+read-only clarification response), `總盈虧` (`query_portfolio_profit`),
+`我的盈虧` (`query_investor_profit`), `金雞測試場死亡`
+(`query_farm_today_mortality`), `金雞測試場 測試1舍 目前存欄` (farm
+inventory query), and `金雞測試場 測試1舍 日齡` (farm age query).
+
+`管理功能`、`開發選單`、`系統狀態`、`顯示待摘要訊息`、`財務摘要` were
+`AUTH_DENIED_BUT_WOKE`: the runtime woke and returned an authorization
+response, without entering a business write. `AI 分析` returned its menu;
+no AI/provider route was entered.
+
+Negative and quiet controls were individually sent and observed: `摘要`
+was parsed as `ambient_digest_now` but intentionally remained quiet/
+buffered-only; `早安，今天天氣很好` and `這不是最近異常` were ordinary or
+substring-negative controls and remained quiet/buffered-only. No false wake
+was observed. Two final readbacks, `待確認資料` and `目前存欄`, again returned
+`0` pending candidates and `金雞測試場｜測試1舍：963隻 / TEST-BATCH-001：963隻`.
+
+```text
+ALWAYS_WAKE_WITHOUT_BOT_MENTION = deterministic CONTROL/QUERY/navigation cases listed above
+CONTEXT_ONLY_WAKE = 0 observed; controls remained buffered-only
+PARSED_BUT_QUIET_WITHOUT_BOT = 摘要
+NON_TEXT_WAKE_ENTRY_POINTS = source-proven LINE Message Actions/Postbacks; not exercised in this text-only batch
+TRUE_BOT_REQUIRED = true @金雞協會助理Ai deferred to human phone acceptance; prior @All result remains NO
+FALSE_WAKE_COUNT = 0
+BUSINESS_WRITE_DELTA = 0 observed and source-proven for tested safe routes; no mutation-capable complete command sent
+AI_CALL_DELTA = 0; deterministic routes only and no AI analysis invocation
+FINAL_PENDING_CANDIDATES_VISIBLE = 0
+FINAL_AUTHORITATIVE_STOCK_VISIBLE = 963
+PRODUCTION_ROWS_MUTATED = 0
+FINANCE_ROWS_MUTATED = 0
+QUEUE_MUTATIONS = 0
+LINE_SETTINGS_CHANGED = NO
+```
+
+Independent aggregate D1 readback was unavailable in this run because the
+restricted Wrangler environment had no noninteractive API token and its
+OAuth callback/log path could not start. The result therefore does not claim
+an unavailable D1 aggregate; the zero-write conclusion above is limited to
+the source-proven safe routes, visible runtime evidence, and final visible
+Test-scope readbacks. No new business write, AI call, or Production action was
+performed.
+
+```text
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_REMOTE_NETWORK_CHECK
+```
+
+## 2026-09-14 — LINE identity and permission read-only audit
+
+This entry records durable source-grounded permission architecture from the
+exact deployed Worker source. No source, D1, Production, LINE, or deployment
+state was changed by the audit.
+
+- Canonical LINE and Web business writes share the canonical persistence
+  boundary and require a provisioned operator identity plus an active scope.
+  LINE additionally requires the bound group/operator/scope association.
+- Scope authority is environment + farm with optional house/flock narrowing;
+  a null house or flock is a broader scope. The Web admin identity is an
+  organization-level `web-admin` identity, while LINE uses the provider user
+  id. These are not one unified user/RBAC role model.
+- Existing operator, scope, and LINE-group binding APIs are authenticated,
+  create/idempotent, and audit-backed, but no corresponding Web provisioning
+  UI or lifecycle revoke/deactivate/delete API was found.
+- Investor-specific LINE replies require an active linked
+  `line_user_investor_links` row. No investor-link provisioning API, Web UI,
+  or LINE self-service binding command was found; general/farm queries do not
+  require that investor link.
+- Manager/admin access is a separate temporary LINE group+user session after
+  Worker-secret password verification; Web Bearer sessions are a separate
+  organization-scoped authentication system. No persistent manager role model
+  was found.
+- Canonical writes enforce operator scope, but legacy LINE queries and some
+  read paths are organization/environment or bound-group based and do not
+  uniformly apply operator scope. Remote D1 counts were not asserted because
+  noninteractive Wrangler credentials were unavailable.
+
+```text
+LINE_IDENTITY_PERMISSION_AUDIT = COMPLETE_READ_ONLY
+EXACT_DEPLOYED_SOURCE = 7df2610070518122b1737c62a310ab5492c0e476
+REMOTE_DATA_READBACK = NOT_AVAILABLE
+SOURCE_CHANGE = NO
+D1_WRITE = 0
+LINE_SEND = 0
+PRODUCTION_MUTATION = 0
+```
+
+## 2026-09-14 — Chapter 2 authorized LINE group operational trust
+
+The Production source feature branch now contains the additive Chapter 2
+trust-boundary implementation. This Web ledger records the source-aligned
+milestone only; the Worker was not deployed and no Production data was
+changed.
+
+```text
+CHAPTER_2_AUTHORIZED_GROUP_TRUST = PASS_LOCAL
+PRODUCTION_SOURCE_BRANCH = feature/chapter-2-authorized-group-trust-20260914
+PRODUCTION_SOURCE_FINAL_SHA = 6e5b2660813046ad6b6d1cc20ebd53c182d67fb8
+PRODUCTION_SOURCE_REMOTE_MATCH = YES
+MIGRATION_0041 = NOT_APPLIED_REMOTE
+PRODUCTION_DEPLOYED = NO
+AUTHORIZED_ORDINARY_MEMBER_WRITE = PASS
+AUTHORIZED_GROUP_MULTI_FARM = PASS
+UNAUTHORIZED_GROUP_DENIED = PASS
+DM_FORMAL_OPERATION_DENIED = PASS
+LEGACY_SCOPE_BYPASS = DENIED
+LOCAL_CANONICAL_RUNTIME = 18/18
+FOCUSED_TESTS = 39/39
+BROAD_TESTS = 916 passed / 11 skipped
+DIFF_CHECK = PASS
+PRODUCTION_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+AI_CALLS = 0
+LINE_SETTINGS_CHANGED = NO
+```
+
+Normal LINE operations now require explicit group authorization with the
+organization/group boundary; ordinary members do not need a separate
+per-user farm scope on this path. Existing operator/scope/binding data is
+retained for legacy/Web consumers and is not silently reinterpreted. The
+next deployment boundary must apply migration 0041 before the compatible
+Worker release, then explicitly provision the intended Production group
+through an authenticated administrative procedure.
+
+## 2026-09-14 — Chapter 3 controlled Production transition blocked
+
+This is the current cross-project state. Chapter 3 stopped before any
+Production mutation. The authoritative Commander plan is maintained in the
+Worker repository at `aitest00898/jinji-farm-manager/plan.md`; it is not
+duplicated in this Web repository.
+
+```text
+CURRENT_GATE = CHAPTER_3_PRODUCTION_TRANSITION
+CHAPTER_1 = PASS
+CHAPTER_2 = PASS_LOCAL
+CHAPTER_2_PRODUCTION_ACCEPTANCE = NOT_YET_ACCEPTED
+CHAPTER_3 = BLOCKED
+PRODUCTION_CHAPTER_2_AUTHORITY = NOT_ACCEPTED
+READY_FOR_NEXT_FEATURE_CHAPTER = NO
+WRANGLER_REMOTE_AUTH = UNAVAILABLE
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+MIGRATION_0041_REMOTE_STATE = NOT_VERIFIED
+AUTHENTICATED_GROUP_AUTHORIZATION_PROCEDURE = NOT_VERIFIED
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+LINE_SEND = 0
+PRODUCTION_SYNTHETIC_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+STOCK_UNINTENDED_DELTA = 0
+HEALTH = PASS
+READY = PASS
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALWAYS_ON
+```
+
+The fixed transition order remains: identify the intended Production group;
+establish authenticated remote access; capture the authoritative baseline;
+apply migration 0041; read back schema/data; deploy the approved Worker;
+authorize only the intended group; read back authorization; perform safe real
+LINE acceptance; compare integrity deltas; then PASS or rollback. The Test
+group must not be promoted implicitly, and no later feature chapter is ready.
+
+## 2026-09-14 — Chapter 3 read-only checkpoint after Wrangler login
+
+Wrangler OAuth was completed by the human operator. This clears remote auth
+only; it does not authorize a migration, deployment, group authorization,
+LINE send, or Production business write. Authenticated read-only checks show
+that the remote D1 tracker is applied through 0040, while 0041 is not applied.
+The current 100% Worker deployment is `f4bd4c6c-8cd0-46a2-9278-f8fc00810bde`;
+health/readiness are normal and canonical write hold is OFF.
+
+```text
+WRANGLER_REMOTE_AUTH = VERIFIED
+REMOTE_D1_LATEST_MIGRATION = 0040_line_group_operator_scope_binding.sql
+MIGRATION_0041_REMOTE_STATE = NOT_APPLIED
+REGISTERED_LINE_GROUP_COUNT = 2
+REMOTE_LINE_GROUP_STATUS = 2_UNBOUND_NO_FARM_BINDING
+REMOTE_OPERATIONAL_AUTHORIZATION_COLUMN = ABSENT_BEFORE_0041
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+AUTHENTICATED_GROUP_AUTHORIZATION_PROCEDURE = NOT_VERIFIED
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+LINE_SEND = 0
+PRODUCTION_SYNTHETIC_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+STOCK_UNINTENDED_DELTA = 0
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_COMMIT_AND_REMOTE_READBACK
+```
+
+Both registered LINE group rows are unbound and lack farm context, so they do
+not uniquely identify the intended Production group. The exact provider group
+identity still requires human confirmation. The Test group must not be
+promoted by inference. Chapter 3 remains `BLOCKED` under STOP 1, and no raw
+group id is written to this ledger.
+
+## 2026-09-14 — Chapter 3A group identification and authorization procedure
+
+Machine-only evidence exhausted the available authoritative sources without
+identifying a legitimate Production LINE group. The group with substantial
+historical activity is the human-confirmed Test group
+`++開發++金雞協會Ai助手測試頻道++`, mapped by existing evidence to Test Farm
+`金雞測試場`; it is not a Production target. The other registered row is a
+synthetic Web registration with no real LINE group activity and no farm
+binding. Neither row can be promoted by inference.
+
+The missing authenticated procedure was implemented locally in the Worker as
+a narrow Web admin route:
+`PATCH /api/line-groups/:groupId/operational-authorization`.
+It uses the existing authenticated Web admin session, requires an explicit
+single target and organization match, requires `authorized`, `confirm=true`,
+and a reason, rejects left/unknown/cross-organization groups, writes audit
+before/after state, reads the state back, is idempotent for repeated state,
+and fails closed when the 0041 column is unavailable. It does not authorize
+any group by itself.
+
+```text
+CHAPTER_3A_GROUP_IDENTIFICATION = COMPLETE_READ_ONLY
+MACHINE_INVESTIGATION_EXHAUSTED = YES
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+HUMAN_CHOICE_REQUIRED = YES
+AUTHENTICATED_GROUP_AUTHORIZATION_PROCEDURE = VERIFIED_LOCAL
+AUTHORIZATION_PROCEDURE_SOURCE_COMMIT = f5befec903dc56b8a5900dc934b8e4b9cca17ca7
+FOCUSED_AUTHORIZATION_TESTS = PASS
+FULL_REGRESSION = 920 passed / 11 skipped
+DIFF_CHECK = PASS
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+PRODUCTION_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+LINE_SEND = 0
+AI_CALLS = 0
+CHAPTER_3 = BLOCKED
+STOP_REASON = STOP_1_INTENDED_PRODUCTION_GROUP_NOT_UNIQUELY_IDENTIFIED
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+```
+
+No raw provider group identifier is stored in this ledger. The next
+human-only input is the name/identity of the real Production LINE group; do
+not select the Test group or the synthetic Web registration. The procedure
+remains un-deployed and migration 0041 remains unapplied until the approved
+Chapter 3 transition order is explicitly authorized.
+
+## 2026-09-14 — Chapter 3B machine preparation for real group identification
+
+The documentation-only alignment inconsistency is corrected. Wrangler remote
+authentication remains valid. The current deployed Worker health and
+readiness endpoints both report normal operation, canonical write hold OFF,
+and no unfinished, stalled, retryable, retained-open, or reply-failure work.
+The remote D1 migration tracker still reports 0041 as pending; no migration
+was applied.
+
+The current remote baseline contains two registered rows. The historical
+human-confirmed Test group has 798 reply-completed LINE events and remains
+Test-only. The second registered row has no LINE events and remains a
+synthetic Web registration. No Production group is inferred from this
+baseline.
+
+Source inspection selected the harmless verification phrase `正式群組驗證`.
+It contains none of the deterministic mutation/query/control markers used by
+the deployed command parser or canonical recording markers reviewed in the
+current source, so it is suitable only for identifying the new real LINE
+event; it is not a business record request.
+
+```text
+CHAPTER_3B_MACHINE_PREPARATION = COMPLETE
+WRANGLER_REMOTE_AUTH = VERIFIED
+CURRENT_DEPLOYED_WORKER = f4bd4c6c-8cd0-46a2-9278-f8fc00810bde
+HEALTH = PASS
+READY = PASS
+REMOTE_D1_LATEST_APPLIED = 0040_line_group_operator_scope_binding.sql
+MIGRATION_0041_REMOTE_STATE = NOT_APPLIED
+REGISTERED_LINE_GROUP_COUNT = 2
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+SAFE_VERIFICATION_PHRASE = 正式群組驗證
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+PRODUCTION_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+AI_CALLS = 0
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+CHAPTER_3 = BLOCKED
+NEXT_HUMAN_ACTION = 在真正 Production LINE 群組邀請機器人後，送出一次正式群組驗證
+```
+
+No raw provider group identifier is stored in this ledger. After the single
+human action, the new event must be attributed by timestamp, group metadata,
+organization, and exclusion of the Test/synthetic rows before any group can
+be considered Production.
