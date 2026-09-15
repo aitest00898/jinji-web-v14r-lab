@@ -1357,3 +1357,42 @@ PUBLIC_BUILD_SHA = 80b2b70f45ec093b12296c1e4fe3b32c77d99176
 PAGES_PUBLISHING_PATH = SINGLE_CONTROLLED_PATH
 GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
 ```
+
+## 2026-09-15 — Chapter 4 normal LINE operations authority unification
+
+The Worker source authority inventory and regression evidence close Chapter 4.
+Normal LINE operational reads, writes, lifecycle/context resolution,
+multi-farm selection, correction/reversal, and legacy quick/query paths use the
+authorized LINE group as the trust boundary. Ordinary members do not require a
+provisioned operator identity or per-user farm scope. The reachable legacy
+`bind` command is now a safe no-write response, and reliability redisplay is
+guarded by the existing group authorization seam. Legacy operator-scope data
+remains only for Web compatibility/audit; it is not normal LINE authorization.
+
+Focused authority tests PASS (6/6), canonical LINE local runtime PASS (18/18),
+taxonomy parity PASS, migration rehearsal PASS, and full TypeScript/Vitest
+regression PASS (85 files; 928 passed, 11 skipped). Diff check PASS. The
+pre-existing quick-record harness reported 11/25 unrelated fixture/time checks
+and did not exercise the changed routes. No Production or Finance mutation,
+LINE send, AI call, migration, or deployment occurred in Chapter 4.
+
+```text
+CHAPTER_4 = PASS
+NORMAL_LINE_AUTHORITY_UNIFIED = PASS
+USER_REACHABLE_LEGACY_AUTHORITY_DIVERGENCE = 0
+ORDINARY_MEMBER_EQUAL_TRUST = PASS
+MULTI_FARM_OPERATION = PASS
+DM_DENIED = PASS
+UNAUTHORIZED_GROUP_DENIED = PASS
+ENTITY_RESOLUTION = PASS
+LINEAGE_INTEGRITY = PASS
+STOCK_INTEGRITY = PASS
+ENVIRONMENT_ISOLATION = PASS
+FULL_REGRESSION = PASS_928_PASSED_11_SKIPPED
+PRODUCTION_UNEXPECTED_DELTA = 0
+SOURCE_COMMIT = 24c1e06d81bfa7421765e474e2961816d8678dc9
+READY_FOR_NEXT_FEATURE_CHAPTER = YES
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_DOC_COMMIT_AND_REMOTE_READBACK
+```
+
+No raw provider group identifier is stored here. Chapter 5 was not started.
