@@ -63,6 +63,47 @@ resolution; the absence of an active flock independently blocks Pilot 1B but
 does not change the 1A rule. This is a configuration/provisioning state, not a
 confirmed Product P0/P1.
 
+## Chapter 1 — Permission architecture reconciliation — 2026-09-14
+
+This is a read-only, documentation-only reconciliation against the exact
+deployed Production source. It does not change runtime behavior, schema,
+authorization, finance, recovery, or deployment state.
+
+```text
+CHAPTER_1_ARCHITECTURE_RECONCILIATION = PASS
+RECONCILIATION_SOURCE_SHA = 7df2610070518122b1737c62a310ab5492c0e476
+ARCHITECTURE_DOC = /Users/joe/Documents/Codex/deployment-prerequisites-20260912/docs/JINJI_PERMISSION_ARCHITECTURE_RECONCILIATION.md
+SOURCE_RUNTIME_CHANGE = NO
+D1_WRITE = NO
+PRODUCTION_MUTATION = NO
+FINANCE_MUTATION = NO
+LINE_SEND = NO
+READY_FOR_CHAPTER_2 = YES
+```
+
+The current canonical write boundary is stricter than the approved target:
+LINE writes require a provisioned LINE identity, a bound group, and an active
+operator scope/binding; the current group context is coupled to one farm. The
+target instead trusts members of an authorized group equally and resolves
+farm/house/flock context separately, including one group operating across
+multiple farms. The current LINE admin is a temporary password/session path,
+not the target fixed singleton system administrator. Web currently has one
+Bearer Web-admin session tier rather than `PUBLIC` / `SHARED_EDIT` / `ADMIN`.
+
+Investor links remain personal-query associations, not general authorization.
+Append-only operational lineage, idempotency, stock authority, entity version
+checks, and immutable audit are retained as migration foundations. Existing
+reliability recovery is not yet the target point-in-time/batch/selective,
+dependency-aware recovery system. New Web routes must not inherit the current
+unknown-environment-to-Production compatibility fallback without an explicit
+fail-closed policy decision.
+
+The first future implementation boundary is the common LINE authorization
+seam: decouple authorized-group trust from the current one-farm and per-user
+scope gate while retaining a compatibility bridge and all canonical entity,
+environment, stock, lineage, idempotency, and audit checks. No Chapter 2 work
+was started, and no next work item was generated.
+
 ## Governance
 
 ```text
@@ -1020,3 +1061,476 @@ deployment or migration approval. No Production business, stock, Finance,
 Queue, or AI mutation was performed. No raw provider group or sender
 identifier is stored here.
 ```
+
+## 2026-09-14 — LINE identity and permission read-only audit
+
+This entry records durable source-grounded permission architecture from the
+exact deployed Worker source. No source, D1, Production, LINE, or deployment
+state was changed by the audit.
+
+- Canonical LINE and Web business writes share the canonical persistence
+  boundary and require a provisioned operator identity plus an active scope.
+  LINE additionally requires the bound group/operator/scope association.
+- Scope authority is environment + farm with optional house/flock narrowing;
+  a null house or flock is a broader scope. The Web admin identity is an
+  organization-level `web-admin` identity, while LINE uses the provider user
+  id. These are not one unified user/RBAC role model.
+- Existing operator, scope, and LINE-group binding APIs are authenticated,
+  create/idempotent, and audit-backed, but no corresponding Web provisioning
+  UI or lifecycle revoke/deactivate/delete API was found.
+- Investor-specific LINE replies require an active linked
+  `line_user_investor_links` row. No investor-link provisioning API, Web UI,
+  or LINE self-service binding command was found; general/farm queries do not
+  require that investor link.
+- Manager/admin access is a separate temporary LINE group+user session after
+  Worker-secret password verification; Web Bearer sessions are a separate
+  organization-scoped authentication system. No persistent manager role model
+  was found.
+- Canonical writes enforce operator scope, but legacy LINE queries and some
+  read paths are organization/environment or bound-group based and do not
+  uniformly apply operator scope. Remote D1 counts were not asserted because
+  noninteractive Wrangler credentials were unavailable.
+
+```text
+LINE_IDENTITY_PERMISSION_AUDIT = COMPLETE_READ_ONLY
+EXACT_DEPLOYED_SOURCE = 7df2610070518122b1737c62a310ab5492c0e476
+REMOTE_DATA_READBACK = NOT_AVAILABLE
+SOURCE_CHANGE = NO
+D1_WRITE = 0
+LINE_SEND = 0
+PRODUCTION_MUTATION = 0
+```
+
+## 2026-09-14 — Chapter 2 authorized LINE group operational trust
+
+The Production source feature branch now contains the additive Chapter 2
+trust-boundary implementation. This Web ledger records the source-aligned
+milestone only; the Worker was not deployed and no Production data was
+changed.
+
+```text
+CHAPTER_2_AUTHORIZED_GROUP_TRUST = PASS_LOCAL
+PRODUCTION_SOURCE_BRANCH = feature/chapter-2-authorized-group-trust-20260914
+PRODUCTION_SOURCE_FINAL_SHA = 6e5b2660813046ad6b6d1cc20ebd53c182d67fb8
+PRODUCTION_SOURCE_REMOTE_MATCH = YES
+MIGRATION_0041 = NOT_APPLIED_REMOTE
+PRODUCTION_DEPLOYED = NO
+AUTHORIZED_ORDINARY_MEMBER_WRITE = PASS
+AUTHORIZED_GROUP_MULTI_FARM = PASS
+UNAUTHORIZED_GROUP_DENIED = PASS
+DM_FORMAL_OPERATION_DENIED = PASS
+LEGACY_SCOPE_BYPASS = DENIED
+LOCAL_CANONICAL_RUNTIME = 18/18
+FOCUSED_TESTS = 39/39
+BROAD_TESTS = 916 passed / 11 skipped
+DIFF_CHECK = PASS
+PRODUCTION_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+AI_CALLS = 0
+LINE_SETTINGS_CHANGED = NO
+```
+
+Normal LINE operations now require explicit group authorization with the
+organization/group boundary; ordinary members do not need a separate
+per-user farm scope on this path. Existing operator/scope/binding data is
+retained for legacy/Web consumers and is not silently reinterpreted. The
+next deployment boundary must apply migration 0041 before the compatible
+Worker release, then explicitly provision the intended Production group
+through an authenticated administrative procedure.
+
+## 2026-09-14 — Chapter 3 controlled Production transition blocked
+
+This is the current cross-project state. Chapter 3 stopped before any
+Production mutation. The authoritative Commander plan is maintained in the
+Worker repository at `aitest00898/jinji-farm-manager/plan.md`; it is not
+duplicated in this Web repository.
+
+```text
+CURRENT_GATE = CHAPTER_3_PRODUCTION_TRANSITION
+CHAPTER_1 = PASS
+CHAPTER_2 = PASS_LOCAL
+CHAPTER_2_PRODUCTION_ACCEPTANCE = NOT_YET_ACCEPTED
+CHAPTER_3 = BLOCKED
+PRODUCTION_CHAPTER_2_AUTHORITY = NOT_ACCEPTED
+READY_FOR_NEXT_FEATURE_CHAPTER = NO
+WRANGLER_REMOTE_AUTH = UNAVAILABLE
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+MIGRATION_0041_REMOTE_STATE = NOT_VERIFIED
+AUTHENTICATED_GROUP_AUTHORIZATION_PROCEDURE = NOT_VERIFIED
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+LINE_SEND = 0
+PRODUCTION_SYNTHETIC_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+STOCK_UNINTENDED_DELTA = 0
+HEALTH = PASS
+READY = PASS
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALWAYS_ON
+```
+
+The fixed transition order remains: identify the intended Production group;
+establish authenticated remote access; capture the authoritative baseline;
+apply migration 0041; read back schema/data; deploy the approved Worker;
+authorize only the intended group; read back authorization; perform safe real
+LINE acceptance; compare integrity deltas; then PASS or rollback. The Test
+group must not be promoted implicitly, and no later feature chapter is ready.
+
+## 2026-09-14 — Chapter 3 read-only checkpoint after Wrangler login
+
+Wrangler OAuth was completed by the human operator. This clears remote auth
+only; it does not authorize a migration, deployment, group authorization,
+LINE send, or Production business write. Authenticated read-only checks show
+that the remote D1 tracker is applied through 0040, while 0041 is not applied.
+The current 100% Worker deployment is `f4bd4c6c-8cd0-46a2-9278-f8fc00810bde`;
+health/readiness are normal and canonical write hold is OFF.
+
+```text
+WRANGLER_REMOTE_AUTH = VERIFIED
+REMOTE_D1_LATEST_MIGRATION = 0040_line_group_operator_scope_binding.sql
+MIGRATION_0041_REMOTE_STATE = NOT_APPLIED
+REGISTERED_LINE_GROUP_COUNT = 2
+REMOTE_LINE_GROUP_STATUS = 2_UNBOUND_NO_FARM_BINDING
+REMOTE_OPERATIONAL_AUTHORIZATION_COLUMN = ABSENT_BEFORE_0041
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+AUTHENTICATED_GROUP_AUTHORIZATION_PROCEDURE = NOT_VERIFIED
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+LINE_SEND = 0
+PRODUCTION_SYNTHETIC_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+STOCK_UNINTENDED_DELTA = 0
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_COMMIT_AND_REMOTE_READBACK
+```
+
+Both registered LINE group rows are unbound and lack farm context, so they do
+not uniquely identify the intended Production group. The exact provider group
+identity still requires human confirmation. The Test group must not be
+promoted by inference. Chapter 3 remains `BLOCKED` under STOP 1, and no raw
+group id is written to this ledger.
+
+## 2026-09-14 — Chapter 3A group identification and authorization procedure
+
+Machine-only evidence exhausted the available authoritative sources without
+identifying a legitimate Production LINE group. The group with substantial
+historical activity is the human-confirmed Test group
+`++開發++金雞協會Ai助手測試頻道++`, mapped by existing evidence to Test Farm
+`金雞測試場`; it is not a Production target. The other registered row is a
+synthetic Web registration with no real LINE group activity and no farm
+binding. Neither row can be promoted by inference.
+
+The missing authenticated procedure was implemented locally in the Worker as
+a narrow Web admin route:
+`PATCH /api/line-groups/:groupId/operational-authorization`.
+It uses the existing authenticated Web admin session, requires an explicit
+single target and organization match, requires `authorized`, `confirm=true`,
+and a reason, rejects left/unknown/cross-organization groups, writes audit
+before/after state, reads the state back, is idempotent for repeated state,
+and fails closed when the 0041 column is unavailable. It does not authorize
+any group by itself.
+
+```text
+CHAPTER_3A_GROUP_IDENTIFICATION = COMPLETE_READ_ONLY
+MACHINE_INVESTIGATION_EXHAUSTED = YES
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+HUMAN_CHOICE_REQUIRED = YES
+AUTHENTICATED_GROUP_AUTHORIZATION_PROCEDURE = VERIFIED_LOCAL
+AUTHORIZATION_PROCEDURE_SOURCE_COMMIT = f5befec903dc56b8a5900dc934b8e4b9cca17ca7
+FOCUSED_AUTHORIZATION_TESTS = PASS
+FULL_REGRESSION = 920 passed / 11 skipped
+DIFF_CHECK = PASS
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+PRODUCTION_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+LINE_SEND = 0
+AI_CALLS = 0
+CHAPTER_3 = BLOCKED
+STOP_REASON = STOP_1_INTENDED_PRODUCTION_GROUP_NOT_UNIQUELY_IDENTIFIED
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+```
+
+No raw provider group identifier is stored in this ledger. The next
+human-only input is the name/identity of the real Production LINE group; do
+not select the Test group or the synthetic Web registration. The procedure
+remains un-deployed and migration 0041 remains unapplied until the approved
+Chapter 3 transition order is explicitly authorized.
+
+## 2026-09-14 — Chapter 3B machine preparation for real group identification
+
+The documentation-only alignment inconsistency is corrected. Wrangler remote
+authentication remains valid. The current deployed Worker health and
+readiness endpoints both report normal operation, canonical write hold OFF,
+and no unfinished, stalled, retryable, retained-open, or reply-failure work.
+The remote D1 migration tracker still reports 0041 as pending; no migration
+was applied.
+
+The current remote baseline contains two registered rows. The historical
+human-confirmed Test group has 798 reply-completed LINE events and remains
+Test-only. The second registered row has no LINE events and remains a
+synthetic Web registration. No Production group is inferred from this
+baseline.
+
+Source inspection selected the harmless verification phrase `正式群組驗證`.
+It contains none of the deterministic mutation/query/control markers used by
+the deployed command parser or canonical recording markers reviewed in the
+current source, so it is suitable only for identifying the new real LINE
+event; it is not a business record request.
+
+```text
+CHAPTER_3B_MACHINE_PREPARATION = COMPLETE
+WRANGLER_REMOTE_AUTH = VERIFIED
+CURRENT_DEPLOYED_WORKER = f4bd4c6c-8cd0-46a2-9278-f8fc00810bde
+HEALTH = PASS
+READY = PASS
+REMOTE_D1_LATEST_APPLIED = 0040_line_group_operator_scope_binding.sql
+MIGRATION_0041_REMOTE_STATE = NOT_APPLIED
+REGISTERED_LINE_GROUP_COUNT = 2
+INTENDED_PRODUCTION_LINE_GROUP = NOT_IDENTIFIED
+SAFE_VERIFICATION_PHRASE = 正式群組驗證
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+PRODUCTION_BUSINESS_WRITE = 0
+FINANCE_MUTATION = 0
+AI_CALLS = 0
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+CHAPTER_3 = BLOCKED
+NEXT_HUMAN_ACTION = 在真正 Production LINE 群組邀請機器人後，送出一次正式群組驗證
+```
+
+No raw provider group identifier is stored in this ledger. After the single
+human action, the new event must be attributed by timestamp, group metadata,
+organization, and exclusion of the Test/synthetic rows before any group can
+be considered Production.
+
+## 2026-09-15 — Chapter 3 terminal human/environment block
+
+The minimum Chapter 3 group-name status and Web revocation changes were
+implemented, tested, pushed on the Web source branch, and the Worker was
+deployed. The controlled Pages workflow is blocked before its first step while
+GitHub waits for `github-pages` deployment approval. The current account has
+no approval capability and the authenticated job page exposes no approval
+control, so no environment-policy bypass or unrelated change was made.
+
+```text
+CHAPTER_3 = TRUE_HUMAN_BLOCKED
+CHAPTER_3_BLOCKER = GITHUB_PAGES_ENVIRONMENT_APPROVAL_UNAVAILABLE
+CONTROLLED_PAGES_RUN = 34919937805
+CONTROLLED_PAGES_HEAD = 80b2b70f45ec093b12296c1e4fe3b32c77d99176
+CONTROLLED_PAGES_DEPLOYMENT = WAITING_FOR_APPROVAL
+WEB_PAGES_DEPLOYMENT_VERIFIED = NO
+PUBLIC_BUILD_SHA = LOCAL_UNBUILT
+WORKER_SOURCE = e001106506c5e62a86a1968f9b076e7d8d11319a
+WORKER_DEPLOYED = YES
+WORKER_HEALTH_READY = PASS
+PRODUCTION_GROUP = ++金雞Ai助手正式++
+GROUP_ORGANIZATION_CLAIM = NOT_EXECUTED
+TARGET_GROUP_AUTHORIZED = NOT_EXECUTED
+REVOCATION_UI_PRESENT = YES
+REVOCATION_AUTH_REQUIRED = PASS
+REVOCATION_CONFIRMATION = PASS
+REVOCATION_READBACK = PASS
+REVOCATION_IDEMPOTENT = PASS
+REVOCATION_AUDIT = PASS
+REVOCATION_UNCLAIMS_GROUP = PASS
+UNIDENTIFIED_GROUP_ACTIONABLE = NO
+PRODUCTION_MIGRATION = 0
+PRODUCTION_DEPLOYMENT = 0
+PRODUCTION_GROUP_AUTHORIZATION = 0
+PRODUCTION_BUSINESS_WRITE = 0
+STOCK_UNINTENDED_DELTA = 0
+FINANCE_MUTATION = 0
+TEST_PRODUCTION_CROSSOVER = 0
+READY_FOR_NEXT_FEATURE_CHAPTER = NO
+```
+
+No raw provider group identifier is stored here. The existing Chapter 3
+transition remains paused until the exact Pages approval/environment authority
+is available; Test and synthetic groups remain ineligible for promotion.
+
+## 2026-09-15 — Chapter 3 terminal evidence closure
+
+The existing Chapter 3 transition is now closed from authoritative evidence.
+The authenticated Web readback identifies `++金雞Ai助手正式++` as the sole
+organization-owned and operationally authorized group. Read-only D1 audit
+correlation to that current authorized row found one organization-claim audit
+at `2026-09-15 01:01:27` UTC with organization `NULL -> SET`, and one
+operational-authorization audit at `2026-09-15 01:01:34` UTC with
+`operational_authorized 0 -> 1`. No mutation was repeated to manufacture
+evidence.
+
+The public controlled Pages build read back exact Web SHA
+`80b2b70f45ec093b12296c1e4fe3b32c77d99176`; the deployed Worker source is
+`e001106506c5e62a86a1968f9b076e7d8d11319a`, and health/readiness pass.
+
+The authorized Production group passed a bounded harmless real-LINE read:
+`今日狀況` produced a visible Bot reply, while its authoritative event receipt
+was `reply_completed`, `reply_status=sent`, HTTP 200, and
+`business_status=completed`. Existing deployed-source tests cover ordinary
+group-member trust, direct-message formal-operation denial, and fail-closed
+missing/left/cross-organization or unauthorized groups.
+
+The bounded operation produced zero stock, canonical business, Finance, AI,
+Test/Production crossover, and unintended authorization deltas. Production
+write acceptance remains `DEFERRED_UNTIL_REAL_BUSINESS_EVENT`. No raw provider
+group identifier is stored in this ledger.
+
+```text
+CLAIM_AUDIT = PASS
+CLAIM_READBACK = PASS
+AUTHORIZATION_AUDIT = PASS
+AUTHORIZATION_READBACK = PASS
+AUTHORIZED_READ = PASS
+ORDINARY_MEMBER_GROUP_TRUST = PASS
+DM_DENIED = PASS
+UNAUTHORIZED_BOUNDARY = PASS
+WRITE_ACCEPTANCE = DEFERRED_UNTIL_REAL_BUSINESS_EVENT
+STOCK_DELTA = 0
+CANONICAL_BUSINESS_DELTA = 0
+FINANCE_DELTA = 0
+TEST_PRODUCTION_CROSSOVER = 0
+TEST_GROUP_AUTHORIZATION = 0
+SYNTHETIC_GROUP_AUTHORIZATION = 0
+UNINTENDED_GROUP_AUTHORIZATION = 0
+CHAPTER_3 = PASS
+PRODUCTION_CHAPTER_2_AUTHORITY = ACCEPTED
+READY_FOR_NEXT_FEATURE_CHAPTER = YES
+CONTROLLED_PAGES_DEPLOYMENT = PASS
+PUBLIC_BUILD_SHA = 80b2b70f45ec093b12296c1e4fe3b32c77d99176
+PAGES_PUBLISHING_PATH = SINGLE_CONTROLLED_PATH
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+```
+
+## 2026-09-15 — Chapter 4 normal LINE operations authority unification
+
+The Worker source authority inventory and regression evidence close Chapter 4.
+Normal LINE operational reads, writes, lifecycle/context resolution,
+multi-farm selection, correction/reversal, and legacy quick/query paths use the
+authorized LINE group as the trust boundary. Ordinary members do not require a
+provisioned operator identity or per-user farm scope. The reachable legacy
+`bind` command is now a safe no-write response, and reliability redisplay is
+guarded by the existing group authorization seam. Legacy operator-scope data
+remains only for Web compatibility/audit; it is not normal LINE authorization.
+
+Focused authority tests PASS (6/6), canonical LINE local runtime PASS (18/18),
+taxonomy parity PASS, migration rehearsal PASS, and full TypeScript/Vitest
+regression PASS (85 files; 928 passed, 11 skipped). Diff check PASS. The
+pre-existing quick-record harness reported 11/25 unrelated fixture/time checks
+and did not exercise the changed routes. No Production or Finance mutation,
+LINE send, AI call, migration, or deployment occurred in Chapter 4.
+
+```text
+CHAPTER_4 = PASS
+NORMAL_LINE_AUTHORITY_UNIFIED = PASS
+USER_REACHABLE_LEGACY_AUTHORITY_DIVERGENCE = 0
+ORDINARY_MEMBER_EQUAL_TRUST = PASS
+MULTI_FARM_OPERATION = PASS
+DM_DENIED = PASS
+UNAUTHORIZED_GROUP_DENIED = PASS
+ENTITY_RESOLUTION = PASS
+LINEAGE_INTEGRITY = PASS
+STOCK_INTEGRITY = PASS
+ENVIRONMENT_ISOLATION = PASS
+FULL_REGRESSION = PASS_928_PASSED_11_SKIPPED
+PRODUCTION_UNEXPECTED_DELTA = 0
+SOURCE_COMMIT = 24c1e06d81bfa7421765e474e2961816d8678dc9
+READY_FOR_NEXT_FEATURE_CHAPTER = YES
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
+```
+
+No raw provider group identifier is stored here. Chapter 5 was not started.
+
+## 2026-09-15 — Chapter 5 Worker implementation state
+
+The Chapter 5 Worker change is locally verified but not deployed. It replaces
+LINE password/session authority with a single protected runtime identity,
+preserves ordinary authorized-group behavior, and adds only the narrow
+explicit-confirmation current-group bootstrap. The Web authentication path is
+unchanged. No Pages change, Production deploy, LINE mutation, canonical
+business write, stock mutation, Finance mutation, or group authorization was
+performed for this chapter.
+
+The current Worker secret-name inventory does not contain
+`LINE_SYSTEM_ADMIN_USER_ID`; no secret value was read. Until an authorized
+human provisions that protected identity, the runtime must fail closed and
+Chapter 5 remains blocked. No raw LINE user identity is stored in this ledger.
+
+```text
+CHAPTER_5 = TRUE_HUMAN_BLOCKED
+WORKER_SOURCE_IMPLEMENTATION = COMPLETE_LOCAL_ONLY
+FIXED_LINE_ADMIN_IDENTITY = NOT_PROVISIONED
+LEGACY_LINE_ADMIN_PASSWORD_AS_AUTHORITY = NO
+LEGACY_LINE_ADMIN_SESSION_AS_AUTHORITY = NO
+AUTHORIZED_GROUP_NORMAL_MEMBER_BEHAVIOR_UNCHANGED = PASS_LOCAL
+UNAUTHORIZED_GROUP_ADMIN_BOOTSTRAP = PASS_LOCAL
+BOOTSTRAP_SCOPE_ESCALATION = 0
+ORDINARY_MEMBER_ADMIN_ESCALATION = 0
+AUDIT_ADMIN_ATTRIBUTION = PASS_LOCAL
+TEST_PRODUCTION_ISOLATION = PASS
+FOCUSED_TESTS = PASS_36_OF_36
+FULL_REGRESSION = PASS_930_PASSED_11_SKIPPED
+LOCAL_MENU_RUNTIME = PASS_71_OF_71
+LOCAL_PREVIEW_RUNTIME = PASS_11_OF_11
+PRODUCTION_UNEXPECTED_DELTA = 0
+PRODUCTION_DEPLOYMENT = 0
+READY_FOR_NEXT_FEATURE_CHAPTER = NO
+BLOCKER = PROTECTED_LINE_SYSTEM_ADMIN_USER_ID_NOT_PROVISIONED
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_DOC_COMMIT_AND_REMOTE_READBACK
+```
+
+Chapter 6 is not started. The existing Chapter 4 and earlier terminal evidence
+is preserved unchanged.
+
+## 2026-09-15 — Chapter 5 terminal acceptance
+
+The sole administrator sender identity was uniquely established from the
+post-cutoff real Production LINE verification event in the verified Production
+group and stored only in the protected `LINE_SYSTEM_ADMIN_USER_ID` runtime
+secret. Its value was not read back or persisted in source, documentation,
+client code, logs, or chat. The exact tested Worker source
+`b90a556bba40ade1ab570cd8ab091ea1c0c92980` is deployed as the approved
+runtime (`b4a472f0-8462-4825-9fa0-3121aa394f5c`). Health/readiness passed with
+the canonical write hold OFF.
+
+One harmless Production `系統狀態` read produced a visible outgoing message
+and Bot response, proving the fixed identity's admin-only read boundary. Local
+Chapter 5 tests provide the non-admin, unauthorized-group bootstrap, legacy
+LINE password/session, ordinary-member, and opaque audit-attribution evidence.
+No Production business, stock, Finance, or investor-link rows changed.
+
+```text
+CHAPTER_5 = PASS
+SINGLETON_SYSTEM_ADMIN = PASS
+FIXED_LINE_ADMIN_IDENTITY = PASS
+ADMIN_IDENTITY_PROTECTED = PASS_BY_RUNTIME_SECRET
+PRODUCTION_HEALTH_READY = PASS
+PRODUCTION_GROUP_AUTHORIZATION_READBACK = PASS
+CORRECT_LINE_ADMIN_STATUS_READ = PASS
+NON_ADMIN_LINE_ADMIN_DENIED = PASS_LOCAL
+UNAUTHORIZED_GROUP_ADMIN_BOOTSTRAP = PASS_LOCAL
+BOOTSTRAP_SCOPE_ESCALATION = 0
+ORDINARY_MEMBER_ADMIN_ESCALATION = 0
+LEGACY_LINE_ADMIN_PASSWORD_AS_AUTHORITY = NO
+LEGACY_LINE_ADMIN_SESSION_AS_AUTHORITY = NO
+AUDIT_ADMIN_ATTRIBUTION = PASS_LOCAL
+TEST_PRODUCTION_ISOLATION = PASS
+FOCUSED_TESTS = PASS_36_OF_36
+FULL_REGRESSION = PASS_930_PASSED_11_SKIPPED
+LOCAL_MENU_RUNTIME = PASS_71_OF_71
+LOCAL_PREVIEW_RUNTIME = PASS_11_OF_11
+PRODUCTION_UNEXPECTED_BUSINESS_DELTA = 0
+PRODUCTION_UNEXPECTED_STOCK_DELTA = 0
+PRODUCTION_UNEXPECTED_FINANCE_DELTA = 0
+RAW_LINE_USER_ID_IN_DURABLE_DOCS = 0
+SOURCE_COMMIT = b90a556bba40ade1ab570cd8ab091ea1c0c92980
+DEPLOYED_WORKER_VERSION = b4a472f0-8462-4825-9fa0-3121aa394f5c
+PRODUCTION_UNEXPECTED_DELTA = 0
+READY_FOR_NEXT_FEATURE_CHAPTER = YES
+BLOCKER = NONE
+```
+
+Chapter 6 is not started. No raw provider group or sender identifier is stored
+here.
