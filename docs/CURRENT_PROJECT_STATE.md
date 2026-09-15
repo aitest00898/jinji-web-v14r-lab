@@ -1396,3 +1396,44 @@ GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = ALIGNED
 ```
 
 No raw provider group identifier is stored here. Chapter 5 was not started.
+
+## 2026-09-15 — Chapter 5 Worker implementation state
+
+The Chapter 5 Worker change is locally verified but not deployed. It replaces
+LINE password/session authority with a single protected runtime identity,
+preserves ordinary authorized-group behavior, and adds only the narrow
+explicit-confirmation current-group bootstrap. The Web authentication path is
+unchanged. No Pages change, Production deploy, LINE mutation, canonical
+business write, stock mutation, Finance mutation, or group authorization was
+performed for this chapter.
+
+The current Worker secret-name inventory does not contain
+`LINE_SYSTEM_ADMIN_USER_ID`; no secret value was read. Until an authorized
+human provisions that protected identity, the runtime must fail closed and
+Chapter 5 remains blocked. No raw LINE user identity is stored in this ledger.
+
+```text
+CHAPTER_5 = TRUE_HUMAN_BLOCKED
+WORKER_SOURCE_IMPLEMENTATION = COMPLETE_LOCAL_ONLY
+FIXED_LINE_ADMIN_IDENTITY = NOT_PROVISIONED
+LEGACY_LINE_ADMIN_PASSWORD_AS_AUTHORITY = NO
+LEGACY_LINE_ADMIN_SESSION_AS_AUTHORITY = NO
+AUTHORIZED_GROUP_NORMAL_MEMBER_BEHAVIOR_UNCHANGED = PASS_LOCAL
+UNAUTHORIZED_GROUP_ADMIN_BOOTSTRAP = PASS_LOCAL
+BOOTSTRAP_SCOPE_ESCALATION = 0
+ORDINARY_MEMBER_ADMIN_ESCALATION = 0
+AUDIT_ADMIN_ATTRIBUTION = PASS_LOCAL
+TEST_PRODUCTION_ISOLATION = PASS
+FOCUSED_TESTS = PASS_36_OF_36
+FULL_REGRESSION = PASS_930_PASSED_11_SKIPPED
+LOCAL_MENU_RUNTIME = PASS_71_OF_71
+LOCAL_PREVIEW_RUNTIME = PASS_11_OF_11
+PRODUCTION_UNEXPECTED_DELTA = 0
+PRODUCTION_DEPLOYMENT = 0
+READY_FOR_NEXT_FEATURE_CHAPTER = NO
+BLOCKER = PROTECTED_LINE_SYSTEM_ADMIN_USER_ID_NOT_PROVISIONED
+GITHUB_DEVELOPMENT_PROGRESS_ALIGNMENT = PENDING_DOC_COMMIT_AND_REMOTE_READBACK
+```
+
+Chapter 6 is not started. The existing Chapter 4 and earlier terminal evidence
+is preserved unchanged.
