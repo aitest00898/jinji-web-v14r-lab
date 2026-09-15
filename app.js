@@ -241,6 +241,19 @@
     masterDataNotice: "",
     masterDataError: "",
     masterDataConfirmation: null,
+    lineGroupState: {
+      environment: null,
+      groups: [],
+      claimCandidates: [],
+      loading: false,
+      loaded: false,
+      error: "",
+      notice: "",
+      claimConfirmId: null,
+      authorizationConfirmId: null,
+      claimedGroupId: null,
+      mutationInFlight: false,
+    },
     canonicalApiNotice: "",
     canonicalApiError: "",
     webAuthError: "",
@@ -455,6 +468,56 @@
     }
   }
 
+  function resetCanonicalLineGroupState() {
+    state.lineGroupState = {
+      environment: CANONICAL_API?.environment || null,
+      groups: [],
+      claimCandidates: [],
+      loading: false,
+      loaded: false,
+      error: "",
+      notice: "",
+      claimConfirmId: null,
+      authorizationConfirmId: null,
+      claimedGroupId: null,
+      mutationInFlight: false,
+    };
+  }
+
+  async function refreshCanonicalLineGroups({ force = false } = {}) {
+    if (!canonicalRecordingEnabled()) {
+      resetCanonicalLineGroupState();
+      return;
+    }
+    const environment = CANONICAL_API.environment;
+    const lineGroups = state.lineGroupState;
+    if (lineGroups.loading || (!force && lineGroups.loaded && lineGroups.environment === environment)) return;
+    lineGroups.environment = environment;
+    lineGroups.loading = true;
+    lineGroups.error = "";
+    render();
+    try {
+      const payload = await CANONICAL_API.listLineGroups();
+      if (!canonicalRecordingEnabled() || CANONICAL_API.environment !== environment) return;
+      lineGroups.environment = environment;
+      lineGroups.groups = payload.groups;
+      lineGroups.claimCandidates = payload.claimCandidates;
+      lineGroups.loaded = true;
+    } catch (error) {
+      if (canonicalRecordingEnabled() && CANONICAL_API.environment === environment) {
+        lineGroups.groups = [];
+        lineGroups.claimCandidates = [];
+        lineGroups.loaded = false;
+        lineGroups.error = canonicalApiErrorMessage(error);
+      }
+    } finally {
+      if (CANONICAL_API.environment === environment) {
+        lineGroups.loading = false;
+        render();
+      }
+    }
+  }
+
   function webApiEnvironmentLabel() {
     if (!CANONICAL_API) return "本機 Lab";
     return CANONICAL_API.environment === "test" ? "Test scope" : "Production scope";
@@ -515,6 +578,7 @@
     state.canonicalApiNotice = "";
     resetCanonicalScopeCatalog();
     resetCanonicalRecordCatalog();
+    resetCanonicalLineGroupState();
     state.context = { farmId: "all", houseId: null, flockId: null };
     state.sheet = null;
     state.guidedRecord = null;
@@ -2489,6 +2553,18 @@
       origin_not_allowed: "此執行來源未獲授權，沒有送出資料。",
       unauthorized: "登入 session 已失效，請重新登入；沒有建立本機替代紀錄。",
       CANONICAL_API_NETWORK_ERROR: "canonical API 無法連線；沒有建立本機替代紀錄。",
+      CANONICAL_LINE_GROUP_READ_INVALID: "正式 LINE 群組讀取契約無效，沒有變更資料。",
+      CANONICAL_LINE_GROUP_ID_INVALID: "LINE 群組目標無效，沒有送出資料。",
+      CANONICAL_LINE_GROUP_REASON_REQUIRED: "LINE 群組變更需要明確原因，沒有送出資料。",
+      line_group_claim_candidates_unavailable: "目前無法確認可認領的 LINE 群組，沒有變更資料。",
+      line_group_claim_unavailable: "群組 organization 歸屬未完成，沒有變更資料。",
+      line_group_claim_readback_failed: "群組 organization 歸屬 readback 失敗，請先維持安全狀態。",
+      line_group_authorization_unavailable: "群組營運授權未完成，沒有變更資料。",
+      line_group_authorization_readback_failed: "群組營運授權 readback 失敗，請先維持安全狀態。",
+      group_not_claimable: "這個 LINE 群組不是可安全認領的未綁定狀態。",
+      group_claim_conflict: "群組狀態已改變，沒有寫入 organization 歸屬。",
+      group_left: "這個 LINE 群組已離開，不能調整歸屬或授權。",
+      confirmation_required: "這個群組變更需要明確確認，沒有變更資料。",
       CANONICAL_COMMAND_REQUIRED: "這個操作沒有可驗證的 RecordCommand，沒有送出資料。",
       CANONICAL_CLIENT_OPERATION_ID_REQUIRED: "缺少 clientOperationId，沒有送出資料。",
       CANONICAL_SCOPE_INVALID: "資料範圍無效，沒有送出資料。",
@@ -3441,15 +3517,103 @@
         </section>
       </div><div class="threshold-safety"><strong>這些是資料趨勢門檻，不是獸醫警戒值。</strong><span>只比較同一工作範圍的近期紀錄；資料不足就不判定。修改後會影響「紀錄 → 趨勢圖」的提醒結果。</span></div>${state.settingsError ? `<div class="lab-write-notice error" data-testid="trend-settings-error" role="alert">${escapeHtml(state.settingsError)}</div>` : ""}${state.settingsNotice ? `<div class="dev-save-note">${escapeHtml(state.settingsNotice)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-trend-thresholds">儲存本機設定</button><button type="button" class="sheet-secondary" data-action="reset-trend-thresholds">恢復預設值</button></div>`, "settings-detail");
     }
+    if (key === "line") return lineGroupManagementSheet();
     const details = {
       master: ["雞場與雞舍管理", "正式版的新增、停用與指派需先通過管理者驗證；本測試版可在 PREPROD LAB 管理者確認後寫入本機 runtime overlay，不修改 fixture。"],
-      line: ["LINE 群組", "正式版可管理群組與通知；此測試版沒有連線 LINE，因此只保留資訊架構入口。"],
       display: ["顯示與操作", "桌面版採左側導覽、大字體與寬螢幕工作台；移動版維持底部導覽與觸控優先操作。"],
     };
     const [title, copy] = details[key] || details.display;
     return sheetShell(title, "測試版設定說明", `<div class="detail-block"><h3>目前狀態</h3><p>${copy}</p></div><div class="readonly-note">沒有可安全模擬的正式資料時，不建立假的設定結果。</div>`, "settings-detail");
   }
 
+
+  function lineGroupStatusLabel(group) {
+    if (group?.operationalAuthorized) return "已授權營運操作";
+    if (group?.status === "left") return "已離開";
+    return "尚未授權營運操作";
+  }
+
+  function lineGroupDisplayName(group) {
+    const name = typeof group?.groupName === "string" ? group.groupName.trim() : "";
+    return name ? escapeHtml(name) : "名稱尚未取得";
+  }
+
+  function lineGroupManagementSheet() {
+    if (!CANONICAL_API_ENABLED || !canonicalRecordingEnabled()) {
+      return sheetShell("LINE 群組", "需要已登入的 canonical Production session", `<div class="readonly-note">尚未登入 canonical API；沒有載入或變更 LINE 群組。</div>`, "settings-detail");
+    }
+    if (CANONICAL_API.environment !== "production") {
+      return sheetShell("LINE 群組", "只允許 Production organization claim", `<div class="readonly-note">目前是 Test scope。請切回 Production scope 後，才會讀取或顯示可認領的 Production 群組。</div>`, "settings-detail");
+    }
+    const manager = state.lineGroupState;
+    if (manager.loading) return sheetShell("LINE 群組", "正在讀取 canonical 群組狀態", `<div class="empty-tab"><strong>讀取中…</strong><p>只讀取具 webhook 證據的未綁定候選與目前 organization 群組。</p></div>`, "settings-detail");
+    if (manager.error) return sheetShell("LINE 群組", "讀取失敗時維持安全狀態", `<div class="lab-write-notice error" role="alert" data-testid="line-group-error">${escapeHtml(manager.error)}</div><div class="readonly-note">沒有候選時不會猜測、不會認領、不會授權。</div>`, "settings-detail");
+
+    const candidate = manager.claimCandidates.length === 1 ? manager.claimCandidates[0] : null;
+    const candidateNameAvailable = Boolean(candidate?.groupName);
+    const claimConfirmation = manager.claimConfirmId && candidate?.groupId === manager.claimConfirmId
+      ? `<div class="detail-block" data-testid="line-group-claim-confirmation"><h3>請確認唯一 Production 群組</h3><p>這個候選具有實際 LINE webhook 證據，目前未綁定 organization。確認後只會歸屬至目前登入的 organization；不綁定 farm，也不綁定 operator scope。</p><p><strong>群組名稱：</strong>${lineGroupDisplayName(candidate)}</p><p><strong>群組識別（遮罩）：</strong>${escapeHtml(candidate.groupIdShort || "已遮罩")}</p><div class="developer-actions"><button type="button" class="sheet-primary" data-action="line-group-confirm-claim" ${manager.mutationInFlight || !candidateNameAvailable ? "disabled" : ""}>${manager.mutationInFlight ? "認領中…" : "確認認領至目前 organization"}</button><button type="button" class="sheet-secondary" data-action="line-group-cancel-claim" ${manager.mutationInFlight ? "disabled" : ""}>取消</button></div></div>`
+      : "";
+    const target = manager.claimedGroupId ? manager.groups.find((group) => group.groupId === manager.claimedGroupId) : null;
+    const targetNameAvailable = Boolean(target?.groupName);
+    const authorizationConfirmation = manager.authorizationConfirmId && target?.groupId === manager.authorizationConfirmId
+      ? `<div class="detail-block" data-testid="line-group-authorization-confirmation"><h3>請確認營運授權</h3><p>這會只對剛完成 organization claim 的唯一 Production 群組開啟營運操作信任；不會授權 Test 群組、synthetic 群組或其他 organization 群組。</p><p><strong>群組名稱：</strong>${lineGroupDisplayName(target)}</p><p><strong>群組識別（遮罩）：</strong>${escapeHtml(target.groupIdShort || "已遮罩")}</p><div class="developer-actions">${targetNameAvailable ? `<button type="button" class="sheet-primary" data-action="line-group-confirm-authorization" ${manager.mutationInFlight ? "disabled" : ""}>${manager.mutationInFlight ? "授權中…" : "確認開啟營運授權"}</button>` : `<div class="readonly-note">LINE 群組名稱暫時無法再次確認，為避免誤授權已暫停。</div>`}<button type="button" class="sheet-secondary" data-action="line-group-cancel-authorization" ${manager.mutationInFlight ? "disabled" : ""}>取消</button></div></div>`
+      : "";
+    const candidateBlock = candidate
+      ? `<div class="detail-block" data-testid="line-group-claim-candidate"><h3>唯一可認領候選</h3><p>已找到 1 個有 LINE webhook 證據、目前未綁定 organization 的群組。</p><p><strong>群組名稱：</strong>${lineGroupDisplayName(candidate)}</p><p><strong>群組識別（遮罩）：</strong>${escapeHtml(candidate.groupIdShort || "已遮罩")} · 觀察到 ${number(candidate.observedEventCount || 0)} 筆事件</p>${candidateNameAvailable ? `<button type="button" class="sheet-primary" data-action="line-group-start-claim" ${manager.claimConfirmId || manager.mutationInFlight ? "disabled" : ""}>認領至目前 organization</button>` : `<div class="readonly-note" role="alert">LINE 尚未回傳群組名稱，無法安全判別目標；目前禁止認領。</div>`}</div>`
+      : `<div class="readonly-note" data-testid="line-group-claim-candidate-state">目前有 ${number(manager.claimCandidates.length)} 個符合 webhook 證據的未綁定候選；只有唯一候選時才提供認領，不會猜測。</div>`;
+    const ownedMarkup = manager.groups.length
+      ? `<div class="detail-block"><h3>目前 organization 群組</h3><div class="sheet-item-list">${manager.groups.map((group) => `<div class="sheet-item static"><span><strong>LINE 群組 · ${lineGroupDisplayName(group)}</strong><span>${escapeHtml(group.groupIdShort || "已遮罩")} · ${escapeHtml(group.status)} · ${escapeHtml(lineGroupStatusLabel(group))}</span></span></div>`).join("")}</div></div>`
+      : `<div class="readonly-note">目前 organization 尚無已認領的 LINE 群組。</div>`;
+    const targetMarkup = target
+      ? `<div class="detail-block" data-testid="line-group-claimed-target"><h3>organization claim readback</h3><p>唯一 Production 群組已歸屬目前 organization；farm/operator scope 維持未綁定。</p><p><strong>群組名稱：</strong>${lineGroupDisplayName(target)}</p>${target.operationalAuthorized ? `<div class="dev-save-note">營運授權 readback：已開啟。</div>` : targetNameAvailable ? `<button type="button" class="sheet-primary" data-action="line-group-start-authorization" ${manager.authorizationConfirmId || manager.mutationInFlight ? "disabled" : ""}>授權營運操作</button>` : `<div class="readonly-note" role="alert">LINE 群組名稱暫時無法確認，為避免誤授權已暫停。</div>`}</div>`
+      : "";
+    const notice = manager.notice ? `<div class="dev-save-note" data-testid="line-group-notice">${escapeHtml(manager.notice)}</div>` : "";
+    return sheetShell("LINE 群組", "Production · 單一 verified group claim / authorization", `${notice}${claimConfirmation}${authorizationConfirmation}${!claimConfirmation && !authorizationConfirmation ? candidateBlock + targetMarkup + ownedMarkup : ""}<div class="readonly-note">此頁只使用 authenticated canonical API；不提供任意群組 ID、bulk claim 或 wildcard 授權。所有變更都有 server-side audit 與 readback。</div>`, "settings-detail");
+  }
+
+  async function claimCanonicalLineGroup() {
+    const manager = state.lineGroupState;
+    const candidate = manager.claimCandidates.length === 1 ? manager.claimCandidates[0] : null;
+    if (!candidate || !candidate.groupName || manager.mutationInFlight) return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    render();
+    try {
+      await CANONICAL_API.claimLineGroupOrganization(candidate.groupId, "已由 Production LINE webhook 唯一驗證，管理者確認 organization claim");
+      manager.claimedGroupId = candidate.groupId;
+      manager.claimConfirmId = null;
+      manager.notice = "organization claim 已完成，server readback PASS；尚未綁定 farm 或 operator scope。";
+      await refreshCanonicalLineGroups({ force: true });
+    } catch (error) {
+      manager.error = canonicalApiErrorMessage(error);
+      manager.claimConfirmId = null;
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  async function authorizeCanonicalLineGroup() {
+    const manager = state.lineGroupState;
+    const target = manager.claimedGroupId && manager.groups.find((group) => group.groupId === manager.claimedGroupId);
+    if (!target || !target.groupName || manager.mutationInFlight) return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    render();
+    try {
+      await CANONICAL_API.setLineGroupOperationalAuthorization(target.groupId, true, "已完成 Production organization claim，管理者確認開啟營運操作");
+      manager.authorizationConfirmId = null;
+      manager.notice = "營運授權已完成，server readback PASS。";
+      await refreshCanonicalLineGroups({ force: true });
+    } catch (error) {
+      manager.error = canonicalApiErrorMessage(error);
+      manager.authorizationConfirmId = null;
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
 
   function financeFarmSheet(farmId) {
     const runtimeIdentity = runtimeFinanceIdentityById(farmId);
@@ -4488,7 +4652,43 @@
     if (action === "open-analysis-detail") return openSheet({ kind: "analysis-detail", key: actionElement.dataset.analysisKey });
     if (action === "open-insight-detail") return openSheet({ kind: "insight-detail", key: actionElement.dataset.insightKey });
     if (action === "open-system-detail") return openSheet({ kind: "system-detail", key: actionElement.dataset.systemKey });
-    if (action === "open-settings-detail") return openSheet({ kind: "settings-detail", key: actionElement.dataset.settingsKey });
+    if (action === "open-settings-detail") {
+      const key = actionElement.dataset.settingsKey;
+      openSheet({ kind: "settings-detail", key });
+      if (key === "line" && canonicalRecordingEnabled() && CANONICAL_API.environment === "production") void refreshCanonicalLineGroups();
+      return;
+    }
+    if (action === "line-group-start-claim") {
+      const manager = state.lineGroupState;
+      if (manager.claimCandidates.length !== 1 || !manager.claimCandidates[0]?.groupName || manager.mutationInFlight) {
+        manager.error = "只有唯一且已取得 LINE 群組名稱的 webhook 候選才可認領；沒有變更資料。";
+      } else {
+        manager.claimConfirmId = manager.claimCandidates[0].groupId;
+        manager.notice = "";
+      }
+      return render();
+    }
+    if (action === "line-group-cancel-claim") {
+      state.lineGroupState.claimConfirmId = null;
+      return render();
+    }
+    if (action === "line-group-confirm-claim") return void claimCanonicalLineGroup();
+    if (action === "line-group-start-authorization") {
+      const manager = state.lineGroupState;
+      const target = manager.claimedGroupId && manager.groups.find((group) => group.groupId === manager.claimedGroupId);
+      if (!target || !target.groupName || manager.mutationInFlight) {
+        manager.error = "沒有已取得 LINE 群組名稱的 organization claim 目標；沒有變更資料。";
+      } else {
+        manager.authorizationConfirmId = manager.claimedGroupId;
+        manager.notice = "";
+      }
+      return render();
+    }
+    if (action === "line-group-cancel-authorization") {
+      state.lineGroupState.authorizationConfirmId = null;
+      return render();
+    }
+    if (action === "line-group-confirm-authorization") return void authorizeCanonicalLineGroup();
     if (action === "set-farm-scope") {
       state.context = { farmId: actionElement.dataset.farmId, houseId: null, flockId: null };
       state.page = "farms";
@@ -4670,6 +4870,7 @@
     if (event.target?.id === "web-environment-select") {
       try {
         CANONICAL_API.setEnvironment(event.target.value, { explicitChoice: true });
+        resetCanonicalLineGroupState();
         state.canonicalApiError = "";
         void refreshCanonicalScopeCatalog({ clearSelection: true });
         void refreshCanonicalRecords();
