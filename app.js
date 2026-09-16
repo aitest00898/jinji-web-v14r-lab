@@ -263,17 +263,21 @@
       selectedAuditId: null,
       plan: null,
       applyConfirmation: false,
+      batchSelectedAuditIds: [],
       batchPlan: null,
+      batchResult: null,
       batchApplyConfirmation: false,
       pitTargetTime: "",
       pitDiscovery: null,
       pitPlan: null,
+      pitResult: null,
       pitDecisions: Object.create(null),
       pitApplyConfirmation: false,
       financeCandidates: [],
       financeLoading: false,
       financeSelectedAuditId: null,
       financePlan: null,
+      financeResult: null,
       financeApplyConfirmation: false,
       auditEntries: [],
       auditLoading: false,
@@ -555,17 +559,21 @@
       selectedAuditId: null,
       plan: null,
       applyConfirmation: false,
+      batchSelectedAuditIds: [],
       batchPlan: null,
+      batchResult: null,
       batchApplyConfirmation: false,
       pitTargetTime: "",
       pitDiscovery: null,
       pitPlan: null,
+      pitResult: null,
       pitDecisions: Object.create(null),
       pitApplyConfirmation: false,
       financeCandidates: [],
       financeLoading: false,
       financeSelectedAuditId: null,
       financePlan: null,
+      financeResult: null,
       financeApplyConfirmation: false,
       auditEntries: [],
       auditLoading: false,
@@ -642,23 +650,123 @@
     return parts.length ? parts.join(" · ") : "已保存的 canonical 狀態";
   }
 
-  function recoveryCandidateMarkup(candidate, selectedAuditId, disabled) {
+  function recoveryCandidateMarkup(candidate, selectedAuditId, disabled, showBatch = false, batchSelectedAuditIds = []) {
     const selected = candidate.auditId === selectedAuditId;
+    const batchSelected = batchSelectedAuditIds.includes(candidate.auditId);
     const action = candidate.action === "create" ? "建立" : candidate.action === "update" ? "更新" : candidate.action || "變更";
-    return "<button type=\"button\" class=\"sheet-item " + (selected ? "selected" : "") + "\" data-action=\"recovery-select\" data-recovery-audit-id=\"" + escapeHtml(candidate.auditId) + "\" " + (disabled ? "disabled" : "") + "><span><strong>" + escapeHtml(recoveryTypeLabel(candidate.entityType)) + " · " + escapeHtml(action) + "</strong><span>" + escapeHtml(String(candidate.createdAt || "").replace("T", " ").slice(0, 19)) + " · 只使用 server 提供的候選</span></span><span class=\"sheet-item-end\">" + (selected ? "已選" : "選取 ›") + "</span></button>";
+    const batchLimitReached = showBatch && !batchSelected && batchSelectedAuditIds.length >= 20;
+    const checkbox = showBatch
+      ? `<label class="recovery-batch-toggle"><input type="checkbox" aria-label="選取此候選加入批次 Dry Run" data-action="recovery-batch-toggle" data-recovery-audit-id="${escapeHtml(candidate.auditId)}" ${batchSelected ? "checked" : ""} ${(disabled || batchLimitReached) ? "disabled" : ""}><span>批次</span></label>`
+      : "";
+    return `<div class="sheet-item recovery-candidate-row ${selected ? "selected" : ""}">${checkbox}<button type="button" class="sheet-item recovery-candidate-button ${selected ? "selected" : ""}" data-action="recovery-select" data-recovery-audit-id="${escapeHtml(candidate.auditId)}" ${disabled ? "disabled" : ""}><span><strong>${escapeHtml(recoveryTypeLabel(candidate.entityType))} · ${escapeHtml(action)}</strong><span>${escapeHtml(String(candidate.createdAt || "").replace("T", " ").slice(0, 19))} · 只使用 server 提供的候選</span></span><span class="sheet-item-end">${selected ? "單筆已選" : "選取 ›"}</span></button></div>`;
+  }
+
+  function recoveryClientOperationId(prefix, ...parts) {
+    return `${prefix}-${parts.map((part) => String(part || "").replace(/[^A-Za-z0-9_-]/gu, "-")).join("-")}`.slice(0, 200);
+  }
+
+  function recoveryStatusLabel(status) {
+    return ({ APPLIED: "已套用", PRESERVED: "已保留", STALE_STATE: "狀態已變更，必須重新 Dry Run", BLOCKED: "server 已阻擋", FAILED: "套用失敗" })[status] || status || "未知結果";
+  }
+
+  function recoveryConflictMarkup(conflicts) {
+    if (!Array.isArray(conflicts) || !conflicts.length) return "";
+    return `<div class="lab-write-notice error" role="alert">${escapeHtml(conflicts.join("、"))}</div>`;
+  }
+
+  function recoveryReadbackMarkup(readbacks, finance = false) {
+    if (!Array.isArray(readbacks) || !readbacks.length) return "";
+    return `<div class="recovery-readback" data-testid="recovery-authoritative-readback"><strong>authoritative readback</strong>${readbacks.slice(0, 20).map((readback) => {
+      const stateValue = readback?.state || {};
+      const label = finance ? financeStateSummary(stateValue) : recoveryStateLabel(stateValue, readback?.entityType);
+      return `<span>${escapeHtml(readback?.entityType || "canonical")} · ${escapeHtml(readback?.id || "—")} · ${escapeHtml(label)}</span>`;
+    }).join("")}</div>`;
+  }
+
+  function recoveryResultMarkup(result, label, finance = false) {
+    if (!result) return "";
+    const groups = Array.isArray(result.groups) ? result.groups : [];
+    const status = groups.length ? groups.map((group) => recoveryStatusLabel(group.status)).join("、") : recoveryStatusLabel(result.status);
+    const readbacks = finance
+      ? result.authoritativeReadback ? [result.authoritativeReadback] : []
+      : groups.flatMap((group) => Array.isArray(group.authoritativeReadback) ? group.authoritativeReadback : []);
+    return `<div class="detail-block" data-testid="${finance ? "recovery-finance-result" : "recovery-batch-result"}"><h3>${escapeHtml(label)}結果</h3><p>${escapeHtml(status)} · server 已回覆；結果不是 client-side 推算。</p>${groups.map((group) => `<div class="recovery-result-row"><strong>${escapeHtml(group.groupId || group.targetType || "target")}</strong><span>${escapeHtml(recoveryStatusLabel(group.status))} · ${number(group.targetIds?.length || group.candidateIds?.length || 1)} 個目標${group.idempotent ? " · idempotent replay" : ""}</span>${recoveryConflictMarkup(group.conflicts)}</div>`).join("")}${recoveryConflictMarkup(result.conflicts)}${recoveryReadbackMarkup(readbacks, finance)}</div>`;
   }
 
   function recoveryPlanSummary(plan) {
     if (!plan) return "";
+    const manager = state.recoveryState;
     const target = plan.target || {};
     const scope = target.scope || {};
     const conflicts = Array.isArray(plan.conflicts) ? plan.conflicts : [];
     const dependencyCopy = plan.dependencyImpact ? "有相依影響，套用前必須確認預覽" : "獨立狀態，仍需明確確認";
-    const applyDisabled = plan.applyEligibility !== "ELIGIBLE" || state.recoveryState.mutationInFlight;
-    const confirmation = state.recoveryState.applyConfirmation
-      ? "<div class=\"detail-block\" data-testid=\"recovery-apply-confirmation\"><h3>最後確認</h3><p>這會依照上方 Dry Run 將現有 canonical 狀態恢復。原始 audit 與本次 recovery audit 都會保留；不會改動 stock 或 Finance。</p><div class=\"developer-actions\"><button type=\"button\" class=\"sheet-primary\" data-action=\"recovery-apply\" " + (applyDisabled ? "disabled" : "") + ">" + (state.recoveryState.mutationInFlight ? "套用中…" : "確認套用並讀回") + "</button><button type=\"button\" class=\"sheet-secondary\" data-action=\"recovery-cancel-apply\" " + (state.recoveryState.mutationInFlight ? "disabled" : "") + ">取消</button></div></div>"
-      : "<button type=\"button\" class=\"sheet-primary\" data-action=\"recovery-prepare-apply\" " + (applyDisabled ? "disabled" : "") + ">準備套用（再次確認）</button>";
-    return "<div class=\"detail-block\" data-testid=\"recovery-plan\"><h3>Dry Run 預覽</h3><p><strong>" + escapeHtml(recoveryTypeLabel(target.entityType)) + "</strong> · " + escapeHtml(target.environment || plan.environment || "—") + "</p><p>範圍：" + escapeHtml(scope.farmId || "整體") + " / " + escapeHtml(scope.houseId || "—") + " / " + escapeHtml(scope.flockId || "—") + "</p><p>目前：" + escapeHtml(recoveryStateLabel(plan.current, target.entityType)) + "</p><p>恢復後：" + escapeHtml(recoveryStateLabel(plan.proposedAfter, target.entityType)) + "</p><p>影響：" + escapeHtml(dependencyCopy) + " · stock Δ " + number(plan.stockImpact?.delta || 0) + " · Finance Δ " + number(plan.financeImpact?.delta || 0) + "</p><p>依賴項目：" + number(Array.isArray(plan.dependencies) ? plan.dependencies.length : 0) + "；server apply eligibility：" + escapeHtml(plan.applyEligibility || "UNKNOWN") + "</p>" + (conflicts.length ? "<div class=\"lab-write-notice error\" role=\"alert\">此候選目前不可套用：" + escapeHtml(conflicts.join("、")) + "</div>" : confirmation) + "</div>";
+    const applyDisabled = plan.applyEligibility !== "ELIGIBLE" || manager.mutationInFlight;
+    const confirmation = manager.applyConfirmation
+      ? `<div class="detail-block" data-testid="recovery-apply-confirmation"><h3>最後確認</h3><p>這會依照上方 Dry Run 將現有 canonical 狀態恢復。原始 audit 與本次 recovery audit 都會保留；不會改動 stock 或 Finance。</p><div class="developer-actions"><button type="button" class="sheet-primary" data-action="recovery-apply" ${applyDisabled ? "disabled" : ""}>${manager.mutationInFlight ? "套用中…" : "確認套用並讀回"}</button><button type="button" class="sheet-secondary" data-action="recovery-cancel-apply" ${manager.mutationInFlight ? "disabled" : ""}>取消</button></div></div>`
+      : `<button type="button" class="sheet-primary" data-action="recovery-prepare-apply" ${applyDisabled ? "disabled" : ""}>準備套用（再次確認）</button>`;
+    return `<div class="detail-block" data-testid="recovery-plan"><h3>Dry Run 預覽</h3><p><strong>${escapeHtml(recoveryTypeLabel(target.entityType))}</strong> · ${escapeHtml(target.environment || plan.environment || "—")}</p><p>範圍：${escapeHtml(scope.farmId || "整體")} / ${escapeHtml(scope.houseId || "—")} / ${escapeHtml(scope.flockId || "—")}</p><p>目前：${escapeHtml(recoveryStateLabel(plan.current, target.entityType))}</p><p>恢復後：${escapeHtml(recoveryStateLabel(plan.proposedAfter, target.entityType))}</p><p>影響：${escapeHtml(dependencyCopy)} · stock Δ ${number(plan.stockImpact?.delta || 0)} · Finance Δ ${number(plan.financeImpact?.delta || 0)}</p><p>依賴項目：${number(Array.isArray(plan.dependencies) ? plan.dependencies.length : 0)}；server apply eligibility：${escapeHtml(plan.applyEligibility || "UNKNOWN")}</p>${recoveryConflictMarkup(conflicts)}${conflicts.length ? "" : confirmation}</div>`;
+  }
+
+  function recoveryBatchPlanSummary(plan) {
+    if (!plan) return "";
+    const manager = state.recoveryState;
+    const groups = Array.isArray(plan.groups) ? plan.groups : [];
+    const eligible = groups.length > 0 && groups.every((group) => group.applyEligibility === "ELIGIBLE");
+    const confirmation = manager.batchApplyConfirmation
+      ? `<div class="detail-block" data-testid="recovery-batch-apply-confirmation"><h3>批次最後確認</h3><p>這會只套用下方 server Dry Run 的 ${number(plan.targetCount || groups.reduce((sum, group) => sum + (group.targets?.length || 0), 0))} 個目標。每個 dependency group 由 server 原子處理；原始 audit、recovery audit 與 authoritative readback 都會保留。</p><div class="developer-actions"><button type="button" class="sheet-primary" data-action="recovery-batch-apply" ${(manager.mutationInFlight || !eligible) ? "disabled" : ""}>${manager.mutationInFlight ? "批次套用中…" : "確認批次套用並讀回"}</button><button type="button" class="sheet-secondary" data-action="recovery-batch-cancel-apply" ${manager.mutationInFlight ? "disabled" : ""}>取消</button></div></div>`
+      : `<button type="button" class="sheet-primary" data-action="recovery-batch-prepare-apply" ${(manager.mutationInFlight || !eligible) ? "disabled" : ""}>準備批次套用（再次確認）</button>`;
+    return `<div class="detail-block" data-testid="recovery-batch-plan"><h3>Batch Dry Run 預覽</h3><p>${number(plan.targetCount || 0)} 個目標 · ${number(plan.groupCount || groups.length)} 個 dependency group · 只可由 ADMIN 使用。</p>${groups.map((group) => `<div class="recovery-group-plan"><strong>${escapeHtml(group.groupId || "dependency group")}</strong><span>${number(group.targets?.length || 0)} 個目標 · 影響 ${group.dependencyImpact ? "有相依項目" : "獨立"} · server eligibility ${escapeHtml(group.applyEligibility || "UNKNOWN")}</span>${(group.targets || []).map((target) => `<span>↳ ${escapeHtml(recoveryTypeLabel(target.target?.entityType || target.audit?.entityType))} · ${escapeHtml(target.target?.id || target.audit?.entityId || "—")}</span>`).join("")}${recoveryConflictMarkup(group.conflicts)}</div>`).join("")}${!eligible && groups.length ? `<div class="readonly-note">有 group 尚未符合 server eligibility，批次套用已停用。</div>` : ""}${groups.every((group) => !group.conflicts?.length) ? confirmation : ""}</div>`;
+  }
+
+  function financeTargetLabel(targetType) {
+    return targetType === "farm_investor_equity" ? "雞場投資股權" : targetType === "profit_distribution" ? "盈餘分配" : "Finance target";
+  }
+
+  function financeStateSummary(value) {
+    if (!value || typeof value !== "object") return "無狀態資料";
+    if (value.equityFraction !== undefined) return `股權 ${number(Number(value.equityFraction) * 100)}% · 生效日 ${value.effectiveDate || "未提供"}`;
+    if (value.grossProfitLoss !== undefined) return `毛利 ${number(value.grossProfitLoss)} · 已配置 ${number(value.allocatedProfitLoss)} · 費用 ${number(value.expense)} · 淨收入 ${number(value.netIncome)}`;
+    return "Finance state readback";
+  }
+
+  function financeDerivedSummary(value) {
+    const portfolio = value?.portfolio;
+    if (!portfolio) return "沒有 derived Finance readback";
+    return `portfolio · 毛利 ${number(portfolio.gross)} · 已配置 ${number(portfolio.allocated)} · 費用 ${number(portfolio.expense)} · 淨收入 ${number(portfolio.net)}`;
+  }
+
+  function financePlanSummary(plan) {
+    if (!plan) return "";
+    const manager = state.recoveryState;
+    const conflicts = Array.isArray(plan.conflicts) ? plan.conflicts : [];
+    const eligible = plan.applyEligibility === "ELIGIBLE" && !conflicts.length;
+    const confirmation = manager.financeApplyConfirmation
+      ? `<div class="detail-block" data-testid="recovery-finance-apply-confirmation"><h3>Finance 最後確認</h3><p>這會在 ${escapeHtml(plan.environment || "目前 scope")} 依照 server Dry Run 恢復 ${escapeHtml(financeTargetLabel(plan.targetType))}。Finance 原始資料不會被靜默覆寫，server 會保留 before/after audit 並回傳 derived readback。</p><div class="developer-actions"><button type="button" class="sheet-primary" data-action="recovery-finance-apply" ${(manager.mutationInFlight || !eligible) ? "disabled" : ""}>${manager.mutationInFlight ? "Finance 套用中…" : "確認 Finance 套用並讀回"}</button><button type="button" class="sheet-secondary" data-action="recovery-finance-cancel-apply" ${manager.mutationInFlight ? "disabled" : ""}>取消</button></div></div>`
+      : `<button type="button" class="sheet-primary" data-action="recovery-finance-prepare-apply" ${(manager.mutationInFlight || !eligible) ? "disabled" : ""}>準備 Finance 套用（再次確認）</button>`;
+    return `<div class="detail-block" data-testid="recovery-finance-plan"><h3>Finance Dry Run 預覽</h3><p><strong>${escapeHtml(financeTargetLabel(plan.targetType))}</strong> · ${escapeHtml(plan.environment || "—")} · target ${escapeHtml(plan.targetId || "—")}</p><p>目前：${escapeHtml(financeStateSummary(plan.current))}</p><p>恢復後：${escapeHtml(financeStateSummary(plan.proposedAfter))}</p><p>derived 目前：${escapeHtml(financeDerivedSummary(plan.derivedBefore))}</p><p>derived 恢復後：${escapeHtml(financeDerivedSummary(plan.derivedAfter))}</p><p>依賴：${escapeHtml(plan.dependencyImpact?.kind || "UNKNOWN")} · ${number(Array.isArray(plan.dependencies) ? plan.dependencies.length : 0)} 個 · server eligibility ${escapeHtml(plan.applyEligibility || "UNKNOWN")}</p>${recoveryConflictMarkup(conflicts)}${!conflicts.length ? confirmation : ""}</div>`;
+  }
+
+  function recoveryPitDiscoveryMarkup(manager) {
+    const discovery = manager.pitDiscovery;
+    if (!discovery) return "";
+    const candidates = Array.isArray(discovery.candidates) ? discovery.candidates : [];
+    if (!candidates.length) return `<div class="readonly-note" data-testid="recovery-pit-empty">target time 之後沒有可供 PIT 檢視的 canonical domain candidates。</div>`;
+    return `<div class="detail-block" data-testid="recovery-pit-discovery"><h3>Selective PIT candidates</h3><p>target time：${escapeHtml(discovery.targetTime || manager.pitTargetTime)} · ${number(discovery.candidateCount || candidates.length)} 筆。每筆決策都會送回同一個 server Dry Run。</p><div class="sheet-item-list">${candidates.map((candidate) => {
+      const decision = manager.pitDecisions[candidate.auditId] || (candidate.disposition === "NOT_RECOVERABLE" ? "PRESERVE" : "REVERT");
+      const cannotRevert = candidate.disposition === "NOT_RECOVERABLE";
+      return `<label class="recovery-pit-row"><span><strong>${escapeHtml(recoveryTypeLabel(candidate.entityType))} · ${escapeHtml(candidate.action || "變更")}</strong><span>${escapeHtml(String(candidate.createdAt || "").replace("T", " ").slice(0, 19))} · ${escapeHtml(candidate.disposition || "UNKNOWN")} · ${candidate.dependencyImpact ? "有相依影響" : "獨立"}</span></span><select data-action="recovery-pit-decision" data-recovery-pit-audit-id="${escapeHtml(candidate.auditId)}" aria-label="PIT 決策" ${manager.mutationInFlight ? "disabled" : ""}><option value="REVERT" ${decision === "REVERT" ? "selected" : ""} ${cannotRevert ? "disabled" : ""}>REVERT</option><option value="PRESERVE" ${decision === "PRESERVE" ? "selected" : ""}>PRESERVE</option></select></label>`;
+    }).join("")}</div><button type="button" class="sheet-primary" data-action="recovery-pit-dry-run" ${manager.mutationInFlight ? "disabled" : ""}>執行 selective PIT Dry Run</button>${recoveryPitPlanSummary(manager.pitPlan)}</div>`;
+  }
+
+  function recoveryPitPlanSummary(plan) {
+    if (!plan) return "";
+    const manager = state.recoveryState;
+    const groups = Array.isArray(plan.groups) ? plan.groups : [];
+    const eligible = groups.length > 0 && groups.every((group) => group.applyEligibility === "ELIGIBLE");
+    const confirmation = manager.pitApplyConfirmation
+      ? `<div class="detail-block" data-testid="recovery-pit-apply-confirmation"><h3>PIT 最後確認</h3><p>只套用這次 server Dry Run 的 REVERT/PRESERVE 選擇；依賴 group 狀態、stale state 與 authoritative readback 都由 server 再次檢查。</p><div class="developer-actions"><button type="button" class="sheet-primary" data-action="recovery-pit-apply" ${(manager.mutationInFlight || !eligible) ? "disabled" : ""}>${manager.mutationInFlight ? "PIT 套用中…" : "確認 PIT 套用並讀回"}</button><button type="button" class="sheet-secondary" data-action="recovery-pit-cancel-apply" ${manager.mutationInFlight ? "disabled" : ""}>取消</button></div></div>`
+      : `<button type="button" class="sheet-primary" data-action="recovery-pit-prepare-apply" ${(manager.mutationInFlight || !eligible) ? "disabled" : ""}>準備 PIT 套用（再次確認）</button>`;
+    return `<div class="detail-block" data-testid="recovery-pit-plan"><h3>Selective PIT Dry Run 預覽</h3><p>target time：${escapeHtml(plan.targetTime || "—")} · ${number(plan.candidateCount || 0)} 筆 · ${number(plan.groupCount || groups.length)} 個 dependency group</p>${groups.map((group) => `<div class="recovery-group-plan"><strong>${escapeHtml(group.groupId || "dependency group")}</strong><span>REVERT ${number(group.selectedRevert?.length || 0)} · PRESERVE ${number(group.selectedPreserve?.length || 0)} · ${escapeHtml(group.applyEligibility || "UNKNOWN")}</span>${recoveryConflictMarkup(group.conflicts)}</div>`).join("")}${!eligible && groups.length ? `<div class="readonly-note">有 group 不可套用，PIT 套用已停用。</div>` : ""}${groups.every((group) => !group.conflicts?.length) ? confirmation : ""}</div>`;
   }
 
   function recoveryAuditMarkup(entries, loading) {
@@ -701,16 +809,54 @@
     }
   }
 
+  async function refreshCanonicalFinanceCandidates({ force = false } = {}) {
+    const manager = state.recoveryState;
+    if (!canonicalRecordingEnabled() || !CANONICAL_API?.isAuthenticated?.() || canonicalAccessClass() !== "ADMIN") {
+      manager.financeCandidates = [];
+      manager.financeLoading = false;
+      return;
+    }
+    if (manager.financeLoading && !force) return;
+    manager.financeLoading = true;
+    manager.error = "";
+    render();
+    try {
+      const result = await CANONICAL_API.discoverFinanceRecovery({});
+      if (!canonicalRecordingEnabled() || !CANONICAL_API.isAuthenticated() || canonicalAccessClass() !== "ADMIN") return;
+      manager.financeCandidates = Array.isArray(result?.candidates) ? result.candidates : [];
+    } catch (error) {
+      manager.financeCandidates = [];
+      manager.error = canonicalApiErrorMessage(error);
+    } finally {
+      manager.financeLoading = false;
+      render();
+    }
+  }
+
+  function recoveryAdminControlsMarkup(manager, environment) {
+    const batchSelected = manager.batchSelectedAuditIds || [];
+    const financeCandidate = manager.financeCandidates.find((candidate) => candidate.auditId === manager.financeSelectedAuditId);
+    const financeCandidatesMarkup = manager.financeLoading
+      ? "<div class=\"readonly-note\" data-testid=\"recovery-finance-loading\">正在讀取 Finance recovery candidates…</div>"
+      : manager.financeCandidates.length
+        ? `<div class="sheet-item-list" data-testid="recovery-finance-candidate-list">${manager.financeCandidates.map((candidate) => `<button type="button" class="sheet-item ${candidate.auditId === manager.financeSelectedAuditId ? "selected" : ""}" data-action="recovery-finance-select" data-recovery-finance-audit-id="${escapeHtml(candidate.auditId)}" ${manager.mutationInFlight ? "disabled" : ""}><span><strong>${escapeHtml(financeTargetLabel(candidate.targetType))} · ${escapeHtml(candidate.action || "變更")}</strong><span>${escapeHtml(String(candidate.createdAt || "").replace("T", " ").slice(0, 19))} · ${escapeHtml(candidate.targetId || "—")} · server candidate</span></span><span class="sheet-item-end">${candidate.auditId === manager.financeSelectedAuditId ? "已選" : "選取 ›"}</span></button>`).join("")}</div>`
+        : "<div class=\"readonly-note\" data-testid=\"recovery-finance-candidate-empty\">目前沒有 Finance recovery candidate。</div>";
+    const financeSelectedMarkup = financeCandidate
+      ? `<div class="detail-block" data-testid="recovery-finance-selected"><h3>目前選取 Finance candidate</h3><p>${escapeHtml(financeTargetLabel(financeCandidate.targetType))} · ${escapeHtml(financeCandidate.targetId || "—")}</p><button type="button" class="sheet-primary" data-action="recovery-finance-dry-run" ${manager.mutationInFlight ? "disabled" : ""}>${manager.mutationInFlight ? "讀取中…" : "執行 Finance Dry Run"}</button>${financePlanSummary(manager.financePlan)}</div>`
+      : "<div class=\"readonly-note\">先選 Finance server candidate，再執行 Dry Run；不接受任意 target ID。</div>";
+    return `<div class="detail-block" data-testid="recovery-admin-controls"><h3>ADMIN recovery controls</h3><p>Batch、selective PIT 與 Finance 只對 ADMIN 顯示。所有 Apply 都必須先取得 server Dry Run token/state fingerprint，再經明確最後確認；沒有 client-side canonical mutation。</p><div class="detail-block" data-testid="recovery-batch-controls"><h3>Batch Dry Run / Apply</h3><p>已選 ${number(batchSelected.length)} / 20 個 server candidates。選取上方候選後，server 會依 dependency group 預覽；任一衝突或 stale 狀態都會阻止該批次。</p><button type="button" class="sheet-primary" data-action="recovery-batch-dry-run" ${(manager.mutationInFlight || !batchSelected.length) ? "disabled" : ""}>執行 Batch Dry Run</button>${recoveryBatchPlanSummary(manager.batchPlan)}${recoveryResultMarkup(manager.batchResult, "Batch")}</div><div class="detail-block" data-testid="recovery-pit-controls"><h3>Selective PIT</h3><label class="recovery-input-field"><span>target time</span><input id="recovery-pit-target-time" type="datetime-local" value="${escapeHtml(manager.pitTargetTime || "")}" data-action="recovery-pit-time" aria-label="PIT target time"></label><button type="button" class="sheet-secondary" data-action="recovery-pit-discover" ${(manager.mutationInFlight || !manager.pitTargetTime) ? "disabled" : ""}>Discover PIT candidates</button>${recoveryPitDiscoveryMarkup(manager)}${recoveryResultMarkup(manager.pitResult, "PIT")}</div><div class="detail-block" data-testid="recovery-finance-controls"><h3>Finance recovery</h3><p>目前 scope：${escapeHtml(environment)}。Finance Apply 只使用 server 提供的 candidate、Dry Run 與 token；不會因開啟此頁自動寫入。</p><button type="button" class="sheet-secondary" data-action="recovery-finance-discover" ${manager.mutationInFlight || manager.financeLoading ? "disabled" : ""}>重新讀取 Finance candidates</button>${financeCandidatesMarkup}${financeSelectedMarkup}${recoveryResultMarkup(manager.financeResult, "Finance", true)}</div></div>`;
+  }
+
   function recoveryManagementSheet() {
     const manager = state.recoveryState;
     const authenticated = canonicalRecordingEnabled() && CANONICAL_API?.isAuthenticated?.();
     const accessClass = canonicalAccessClass();
     const environment = CANONICAL_API?.environment || "production";
-    const accessCopy = accessClass === "ADMIN" ? "管理者：可讀取完整候選、單筆流程與 audit" : accessClass === "SHARED_EDIT" ? "共享編輯：只可使用單筆 recovery；Batch、PIT、Finance 維持管理者邊界" : "未登入：Recovery 不提供資料";
+    const accessCopy = accessClass === "ADMIN" ? "管理者：可讀取完整候選、單筆／Batch／PIT／Finance 流程與 audit" : accessClass === "SHARED_EDIT" ? "共享編輯：只可使用單筆 recovery；Batch、PIT、Finance 維持管理者邊界" : "未登入：Recovery 不提供資料";
     const candidateList = manager.loading
       ? "<div class=\"readonly-note\">正在讀取 server recovery candidates…</div>"
       : manager.candidates.length
-        ? `<div class="sheet-item-list" data-testid="recovery-candidate-list">${manager.candidates.map((candidate) => recoveryCandidateMarkup(candidate, manager.selectedAuditId, manager.mutationInFlight)).join("")}</div>`
+        ? `<div class="sheet-item-list" data-testid="recovery-candidate-list">${manager.candidates.map((candidate) => recoveryCandidateMarkup(candidate, manager.selectedAuditId, manager.mutationInFlight, accessClass === "ADMIN", manager.batchSelectedAuditIds)).join("")}</div>`
         : "<div class=\"readonly-note\" data-testid=\"recovery-candidate-empty\">目前沒有 server 提供的可恢復候選。</div>";
     const selected = manager.candidates.find((candidate) => candidate.auditId === manager.selectedAuditId);
     const selectedCopy = selected
@@ -719,8 +865,9 @@
     const auditSection = accessClass === "ADMIN"
       ? `<div class="detail-block" data-testid="recovery-audit"><h3>Recovery audit readback</h3><p>只顯示 server 回傳的 recovery/restore audit；原始紀錄與 recovery audit 都保留。</p><button type="button" class="sheet-secondary" data-action="recovery-audit-refresh" ${manager.auditLoading ? "disabled" : ""}>重新讀取 server audit</button>${recoveryAuditMarkup(manager.auditEntries, manager.auditLoading)}</div>`
       : "";
+    const adminControls = accessClass === "ADMIN" ? recoveryAdminControlsMarkup(manager, environment) : "";
     const notices = [manager.notice ? `<div class="dev-save-note" role="status">${escapeHtml(manager.notice)}</div>` : "", manager.error ? `<div class="lab-write-notice error" role="alert">${escapeHtml(manager.error)}</div>` : ""].filter(Boolean).join("");
-    return sheetShell("Recovery 中心", `${environment} · ${accessCopy}`, `${!authenticated ? "<div class=\"lab-write-notice error\" role=\"alert\">Recovery 需要先登入既有 canonical Web session；沒有送出資料。</div>" : ""}<div class="detail-block" data-testid="recovery-safety-boundary"><h3>安全邊界</h3><p>所有候選、Dry Run、state fingerprint、dependency impact 與 authoritative readback 都由同一個 canonical recovery authority 提供。</p><p>單筆 Apply 會再次確認；Batch、selective PIT、Finance recovery 僅顯示能力與權限邊界，不在此頁建立未受控的多筆寫入入口。</p></div><div class="detail-block" data-testid="recovery-candidates"><h3>可恢復候選</h3>${candidateList}</div>${selectedCopy}${auditSection}${notices}`, "settings-detail");
+    return sheetShell("Recovery 中心", `${environment} · ${accessCopy}`, `${!authenticated ? "<div class=\"lab-write-notice error\" role=\"alert\">Recovery 需要先登入既有 canonical Web session；沒有送出資料。</div>" : ""}<div class="detail-block" data-testid="recovery-safety-boundary"><h3>安全邊界</h3><p>所有候選、Dry Run、state fingerprint、dependency impact 與 authoritative readback 都由同一個 canonical recovery authority 提供。</p><p>單筆 Apply 會再次確認；ADMIN 才能使用 Batch、selective PIT、Finance recovery。所有 Apply 都需要 server Dry Run token、明確最後確認與 server readback；不提供任意 ID、直接 client mutation 或未受控多筆寫入。</p></div><div class="detail-block" data-testid="recovery-candidates"><h3>可恢復候選</h3>${candidateList}</div>${selectedCopy}${adminControls}${auditSection}${notices}`, "settings-detail");
   }
 
   async function dryRunCanonicalRecovery() {
@@ -775,9 +922,239 @@
       manager.plan = null;
       manager.applyConfirmation = false;
       await refreshCanonicalRecoveryCandidates({ force: true });
+      await refreshCanonicalRecoveryAudit({ force: true });
     } catch (error) {
       manager.error = canonicalApiErrorMessage(error);
       manager.applyConfirmation = false;
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  async function dryRunDomainRecoveryBatch() {
+    const manager = state.recoveryState;
+    const selectedIds = Array.isArray(manager.batchSelectedAuditIds) ? manager.batchSelectedAuditIds : [];
+    const targets = manager.candidates.filter((candidate) => selectedIds.includes(candidate.auditId));
+    if (!targets.length || targets.length > 20 || manager.mutationInFlight) return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    manager.notice = "";
+    manager.batchPlan = null;
+    manager.batchResult = null;
+    manager.batchApplyConfirmation = false;
+    render();
+    try {
+      manager.batchPlan = await CANONICAL_API.dryRunDomainRecoveryBatch(targets.map((candidate) => ({
+        auditId: candidate.auditId,
+        entityType: candidate.entityType,
+        targetId: candidate.targetId,
+        clientOperationId: recoveryClientOperationId("web-domain-batch", candidate.auditId),
+        reason: "管理者確認 canonical domain batch recovery",
+      })));
+      manager.notice = "Batch Dry Run 完成；尚未變更資料。請檢查每個 dependency group 後再明確確認。";
+    } catch (error) {
+      manager.batchPlan = null;
+      manager.error = canonicalApiErrorMessage(error);
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  function domainBatchApplyGroups(plan) {
+    return (plan?.groups || []).map((group) => ({
+      groupId: group.groupId,
+      stateFingerprint: group.stateFingerprint,
+      dryRunToken: group.dryRunToken,
+      targets: (group.targets || []).map((targetPlan) => {
+        const audit = targetPlan.audit || {};
+        const target = targetPlan.target || {};
+        return {
+          auditId: audit.id,
+          entityType: target.entityType || audit.entityType,
+          targetId: target.id || audit.entityId,
+          clientOperationId: recoveryClientOperationId("web-domain-batch", audit.id || target.id),
+          reason: "管理者確認 canonical domain batch recovery",
+          stateFingerprint: targetPlan.stateFingerprint,
+          dryRunToken: targetPlan.dryRunToken,
+          confirm: true,
+          previewAcknowledged: true,
+        };
+      }),
+    }));
+  }
+
+  async function applyDomainRecoveryBatchFromPlan() {
+    const manager = state.recoveryState;
+    const plan = manager.batchPlan;
+    if (!plan || !manager.batchApplyConfirmation || manager.mutationInFlight || !(plan.groups || []).length) return;
+    if ((plan.groups || []).some((group) => group.applyEligibility !== "ELIGIBLE" || group.conflicts?.length)) return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    render();
+    try {
+      const result = await CANONICAL_API.applyDomainRecoveryBatch(domainBatchApplyGroups(plan));
+      manager.batchResult = result;
+      manager.notice = result?.groups?.every((group) => group.status === "APPLIED") ? "Batch recovery 已完成，server authoritative readback PASS。" : "Batch recovery 已回覆；請依結果處理 stale/conflict group。";
+      manager.batchPlan = null;
+      manager.batchApplyConfirmation = false;
+      await refreshCanonicalRecoveryCandidates({ force: true });
+      await refreshCanonicalRecoveryAudit({ force: true });
+    } catch (error) {
+      manager.error = canonicalApiErrorMessage(error);
+      manager.batchApplyConfirmation = false;
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  async function discoverDomainRecoveryPit() {
+    const manager = state.recoveryState;
+    const targetTime = String(manager.pitTargetTime || document.getElementById("recovery-pit-target-time")?.value || "").trim();
+    if (!targetTime || manager.mutationInFlight) return;
+    manager.pitTargetTime = targetTime;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    manager.notice = "";
+    manager.pitDiscovery = null;
+    manager.pitPlan = null;
+    manager.pitResult = null;
+    manager.pitApplyConfirmation = false;
+    render();
+    try {
+      manager.pitDiscovery = await CANONICAL_API.discoverDomainPointInTimeRecovery(targetTime);
+      manager.pitDecisions = Object.create(null);
+      (manager.pitDiscovery?.candidates || []).forEach((candidate) => {
+        manager.pitDecisions[candidate.auditId] = candidate.disposition === "NOT_RECOVERABLE" ? "PRESERVE" : "REVERT";
+      });
+      manager.notice = "PIT candidates 已取得；尚未變更資料。請逐筆選擇 REVERT 或 PRESERVE 後 Dry Run。";
+    } catch (error) {
+      manager.pitDiscovery = null;
+      manager.error = canonicalApiErrorMessage(error);
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  async function dryRunDomainRecoveryPit() {
+    const manager = state.recoveryState;
+    const discovery = manager.pitDiscovery;
+    if (!discovery || manager.mutationInFlight) return;
+    const selections = (discovery.candidates || []).map((candidate) => ({ auditId: candidate.auditId, decision: manager.pitDecisions[candidate.auditId] || "PRESERVE" }));
+    if (!selections.length) return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    manager.notice = "";
+    manager.pitPlan = null;
+    manager.pitResult = null;
+    manager.pitApplyConfirmation = false;
+    render();
+    try {
+      manager.pitPlan = await CANONICAL_API.dryRunDomainPointInTimeRecovery(discovery.targetTime, selections);
+      manager.notice = "Selective PIT Dry Run 完成；尚未變更資料。請檢查 REVERT/PRESERVE 與 dependency group。";
+    } catch (error) {
+      manager.pitPlan = null;
+      manager.error = canonicalApiErrorMessage(error);
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  function domainPitApplyGroups(plan, manager) {
+    return (plan?.groups || []).map((group) => ({
+      groupId: group.groupId,
+      targetTime: plan.targetTime || manager.pitTargetTime,
+      stateFingerprint: group.stateFingerprint,
+      dryRunToken: group.dryRunToken,
+      clientOperationId: recoveryClientOperationId("web-domain-pit", group.groupId, plan.targetTime),
+      selections: (group.candidateIds || []).map((auditId) => ({ auditId, decision: manager.pitDecisions[auditId] || "PRESERVE" })),
+    }));
+  }
+
+  async function applyDomainRecoveryPit() {
+    const manager = state.recoveryState;
+    const plan = manager.pitPlan;
+    if (!plan || !manager.pitApplyConfirmation || manager.mutationInFlight || !(plan.groups || []).length) return;
+    if ((plan.groups || []).some((group) => group.applyEligibility !== "ELIGIBLE" || group.conflicts?.length)) return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    render();
+    try {
+      const result = await CANONICAL_API.applyDomainPointInTimeRecovery(domainPitApplyGroups(plan, manager));
+      manager.pitResult = result;
+      manager.notice = "Selective PIT recovery 已回覆；請查看每個 group 狀態與 authoritative readback。";
+      manager.pitPlan = null;
+      manager.pitApplyConfirmation = false;
+      await refreshCanonicalRecoveryCandidates({ force: true });
+      await refreshCanonicalRecoveryAudit({ force: true });
+    } catch (error) {
+      manager.error = canonicalApiErrorMessage(error);
+      manager.pitApplyConfirmation = false;
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  async function dryRunFinanceRecovery() {
+    const manager = state.recoveryState;
+    const candidate = manager.financeCandidates.find((item) => item.auditId === manager.financeSelectedAuditId);
+    if (!candidate || manager.mutationInFlight) return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    manager.notice = "";
+    manager.financePlan = null;
+    manager.financeResult = null;
+    manager.financeApplyConfirmation = false;
+    render();
+    try {
+      manager.financePlan = await CANONICAL_API.dryRunFinanceRecovery({
+        auditId: candidate.auditId,
+        targetType: candidate.targetType,
+        targetId: candidate.targetId,
+        clientOperationId: recoveryClientOperationId("web-finance-recovery", candidate.auditId),
+        reason: "管理者確認 Finance recovery",
+      });
+      manager.notice = "Finance Dry Run 完成；尚未變更資料。請檢查 before/after 與 derived readback。";
+    } catch (error) {
+      manager.financePlan = null;
+      manager.error = canonicalApiErrorMessage(error);
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  async function applyFinanceRecoveryFromPlan() {
+    const manager = state.recoveryState;
+    const plan = manager.financePlan;
+    const candidate = manager.financeCandidates.find((item) => item.auditId === manager.financeSelectedAuditId);
+    if (!plan || !candidate || !manager.financeApplyConfirmation || manager.mutationInFlight || plan.applyEligibility !== "ELIGIBLE" || plan.conflicts?.length) return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    render();
+    try {
+      manager.financeResult = await CANONICAL_API.applyFinanceRecovery({
+        auditId: candidate.auditId,
+        targetType: candidate.targetType,
+        targetId: candidate.targetId,
+        clientOperationId: recoveryClientOperationId("web-finance-recovery", candidate.auditId),
+        reason: "管理者確認 Finance recovery",
+        stateFingerprint: plan.stateFingerprint,
+        dryRunToken: plan.dryRunToken,
+      });
+      manager.notice = manager.financeResult?.authoritativeReadback ? "Finance recovery 已回覆，authoritative derived readback PASS。" : "Finance recovery 已回覆；請查看 server 結果。";
+      manager.financePlan = null;
+      manager.financeApplyConfirmation = false;
+      await refreshCanonicalFinanceCandidates({ force: true });
+      await refreshCanonicalRecoveryAudit({ force: true });
+    } catch (error) {
+      manager.error = canonicalApiErrorMessage(error);
+      manager.financeApplyConfirmation = false;
     } finally {
       manager.mutationInFlight = false;
       render();
@@ -4972,7 +5349,13 @@
       const key = actionElement.dataset.settingsKey;
       openSheet({ kind: "settings-detail", key });
       if (key === "line" && canonicalRecordingEnabled() && CANONICAL_API.environment === "production") void refreshCanonicalLineGroups();
-      if (key === "recovery" && canonicalRecordingEnabled() && CANONICAL_API.isAuthenticated()) void refreshCanonicalRecoveryCandidates();
+      if (key === "recovery" && canonicalRecordingEnabled() && CANONICAL_API.isAuthenticated()) {
+        void refreshCanonicalRecoveryCandidates();
+        if (canonicalAccessClass() === "ADMIN") {
+          void refreshCanonicalFinanceCandidates();
+          void refreshCanonicalRecoveryAudit();
+        }
+      }
       return;
     }
     if (action === "recovery-select") {
@@ -4982,6 +5365,19 @@
       manager.selectedAuditId = candidate.auditId;
       manager.plan = null;
       manager.applyConfirmation = false;
+      manager.notice = "";
+      manager.error = "";
+      return render();
+    }
+    if (action === "recovery-finance-select") {
+      const manager = state.recoveryState;
+      if (canonicalAccessClass() !== "ADMIN" || manager.mutationInFlight) return;
+      const candidate = manager.financeCandidates.find((item) => item.auditId === actionElement.dataset.recoveryFinanceAuditId);
+      if (!candidate) return;
+      manager.financeSelectedAuditId = candidate.auditId;
+      manager.financePlan = null;
+      manager.financeResult = null;
+      manager.financeApplyConfirmation = false;
       manager.notice = "";
       manager.error = "";
       return render();
@@ -4999,6 +5395,50 @@
       return render();
     }
     if (action === "recovery-apply") return void applyCanonicalRecovery();
+    if (action === "recovery-batch-dry-run") return void dryRunDomainRecoveryBatch();
+    if (action === "recovery-batch-prepare-apply") {
+      const manager = state.recoveryState;
+      if (canonicalAccessClass() === "ADMIN" && manager.batchPlan?.groups?.length && manager.batchPlan.groups.every((group) => group.applyEligibility === "ELIGIBLE" && !group.conflicts?.length) && !manager.mutationInFlight) {
+        manager.batchApplyConfirmation = true;
+        manager.error = "";
+      }
+      return render();
+    }
+    if (action === "recovery-batch-cancel-apply") {
+      state.recoveryState.batchApplyConfirmation = false;
+      return render();
+    }
+    if (action === "recovery-batch-apply") return void applyDomainRecoveryBatchFromPlan();
+    if (action === "recovery-pit-discover") return void discoverDomainRecoveryPit();
+    if (action === "recovery-pit-dry-run") return void dryRunDomainRecoveryPit();
+    if (action === "recovery-pit-prepare-apply") {
+      const manager = state.recoveryState;
+      if (canonicalAccessClass() === "ADMIN" && manager.pitPlan?.groups?.length && manager.pitPlan.groups.every((group) => group.applyEligibility === "ELIGIBLE" && !group.conflicts?.length) && !manager.mutationInFlight) {
+        manager.pitApplyConfirmation = true;
+        manager.error = "";
+      }
+      return render();
+    }
+    if (action === "recovery-pit-cancel-apply") {
+      state.recoveryState.pitApplyConfirmation = false;
+      return render();
+    }
+    if (action === "recovery-pit-apply") return void applyDomainRecoveryPit();
+    if (action === "recovery-finance-discover") return void refreshCanonicalFinanceCandidates({ force: true });
+    if (action === "recovery-finance-dry-run") return void dryRunFinanceRecovery();
+    if (action === "recovery-finance-prepare-apply") {
+      const manager = state.recoveryState;
+      if (canonicalAccessClass() === "ADMIN" && manager.financePlan?.applyEligibility === "ELIGIBLE" && !manager.financePlan.conflicts?.length && !manager.mutationInFlight) {
+        manager.financeApplyConfirmation = true;
+        manager.error = "";
+      }
+      return render();
+    }
+    if (action === "recovery-finance-cancel-apply") {
+      state.recoveryState.financeApplyConfirmation = false;
+      return render();
+    }
+    if (action === "recovery-finance-apply") return void applyFinanceRecoveryFromPlan();
     if (action === "recovery-audit-refresh") return void refreshCanonicalRecoveryAudit({ force: true });
     if (action === "line-group-start-claim") {
       const manager = state.lineGroupState;
@@ -5281,12 +5721,49 @@
       state.masterDataError = "";
       return openSheet({ kind: "master-data" });
     }
+    if (target.dataset.action === "recovery-batch-toggle") {
+      if (canonicalAccessClass() !== "ADMIN" || state.recoveryState.mutationInFlight) return;
+      const manager = state.recoveryState;
+      const auditId = target.dataset.recoveryAuditId;
+      const selected = new Set(manager.batchSelectedAuditIds || []);
+      if (target.checked) {
+        if (selected.size >= 20) {
+          target.checked = false;
+          manager.error = "Batch 一次最多 20 筆，未加入更多候選。";
+          return render();
+        }
+        selected.add(auditId);
+      } else selected.delete(auditId);
+      manager.batchSelectedAuditIds = [...selected];
+      manager.batchPlan = null;
+      manager.batchResult = null;
+      manager.batchApplyConfirmation = false;
+      manager.error = "";
+      return render();
+    }
+    if (target.dataset.action === "recovery-pit-decision") {
+      if (canonicalAccessClass() !== "ADMIN" || state.recoveryState.mutationInFlight) return;
+      const manager = state.recoveryState;
+      const candidate = manager.pitDiscovery?.candidates?.find((item) => item.auditId === target.dataset.recoveryPitAuditId);
+      if (!candidate) return;
+      manager.pitDecisions[candidate.auditId] = target.value === "REVERT" && candidate.disposition !== "NOT_RECOVERABLE" ? "REVERT" : "PRESERVE";
+      manager.pitPlan = null;
+      manager.pitResult = null;
+      manager.pitApplyConfirmation = false;
+      manager.error = "";
+      return render();
+    }
   }
 
   function handleInput(event) {
     const target = event.target;
     if (target?.dataset?.guidedField && guidedState()) {
       guidedState().values[target.dataset.guidedField] = target.value;
+      return;
+    }
+    if (target?.dataset?.action === "recovery-pit-time") {
+      state.recoveryState.pitTargetTime = target.value;
+      state.recoveryState.error = "";
       return;
     }
     if (!target || target.id !== "quick-record-input") return;
