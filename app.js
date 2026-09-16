@@ -255,6 +255,32 @@
       claimedGroupId: null,
       mutationInFlight: false,
     },
+    recoveryState: {
+      environment: null,
+      candidates: [],
+      loading: false,
+      loaded: false,
+      selectedAuditId: null,
+      plan: null,
+      applyConfirmation: false,
+      batchPlan: null,
+      batchApplyConfirmation: false,
+      pitTargetTime: "",
+      pitDiscovery: null,
+      pitPlan: null,
+      pitDecisions: Object.create(null),
+      pitApplyConfirmation: false,
+      financeCandidates: [],
+      financeLoading: false,
+      financeSelectedAuditId: null,
+      financePlan: null,
+      financeApplyConfirmation: false,
+      auditEntries: [],
+      auditLoading: false,
+      mutationInFlight: false,
+      notice: "",
+      error: "",
+    },
     canonicalApiNotice: "",
     canonicalApiError: "",
     webAuthError: "",
@@ -517,6 +543,244 @@
         lineGroups.loading = false;
         render();
       }
+    }
+  }
+
+  function resetCanonicalRecoveryState() {
+    state.recoveryState = {
+      environment: CANONICAL_API?.environment || null,
+      candidates: [],
+      loading: false,
+      loaded: false,
+      selectedAuditId: null,
+      plan: null,
+      applyConfirmation: false,
+      batchPlan: null,
+      batchApplyConfirmation: false,
+      pitTargetTime: "",
+      pitDiscovery: null,
+      pitPlan: null,
+      pitDecisions: Object.create(null),
+      pitApplyConfirmation: false,
+      financeCandidates: [],
+      financeLoading: false,
+      financeSelectedAuditId: null,
+      financePlan: null,
+      financeApplyConfirmation: false,
+      auditEntries: [],
+      auditLoading: false,
+      mutationInFlight: false,
+      notice: "",
+      error: "",
+    };
+  }
+
+  async function refreshCanonicalRecoveryCandidates({ force = false } = {}) {
+    if (!canonicalRecordingEnabled() || !CANONICAL_API?.isAuthenticated?.()) {
+      resetCanonicalRecoveryState();
+      return;
+    }
+    const manager = state.recoveryState;
+    const environment = CANONICAL_API.environment;
+    if (manager.loading || (!force && manager.loaded && manager.environment === environment)) return;
+    manager.environment = environment;
+    manager.loading = true;
+    manager.error = "";
+    render();
+    try {
+      const result = await CANONICAL_API.discoverDomainRecovery({ limit: 50 });
+      if (!canonicalRecordingEnabled() || !CANONICAL_API.isAuthenticated() || CANONICAL_API.environment !== environment) return;
+      manager.environment = environment;
+      manager.candidates = Array.isArray(result?.candidates) ? result.candidates : [];
+      manager.loaded = true;
+    } catch (error) {
+      if (canonicalRecordingEnabled() && CANONICAL_API.environment === environment) {
+        manager.candidates = [];
+        manager.loaded = false;
+        manager.error = canonicalApiErrorMessage(error);
+      }
+    } finally {
+      if (CANONICAL_API.environment === environment) {
+        manager.loading = false;
+        render();
+      }
+    }
+  }
+
+  const DOMAIN_RECOVERY_LABELS = Object.freeze({
+    farm: "雞場主檔",
+    house: "雞舍主檔",
+    flock: "批次主檔",
+    caretaker: "照顧者主檔",
+    farm_caretaker_assignment: "雞場責任指派",
+    line_group: "LINE 群組狀態",
+    line_group_organization_claim: "LINE 群組組織歸屬",
+    line_group_operational_authorization: "LINE 群組營運授權",
+    line_group_ai_conversation: "LINE 對話設定",
+    operator_identity: "Operator identity",
+    operator_scope_binding: "Operator scope",
+    line_group_operator_binding: "LINE operator 綁定",
+  });
+
+  function recoveryTypeLabel(value) {
+    return DOMAIN_RECOVERY_LABELS[value] || "Canonical 設定";
+  }
+
+  function recoveryStateLabel(value, entityType) {
+    if (!value || typeof value !== "object") return "無狀態資料";
+    const stateValue = value;
+    const parts = [];
+    if (entityType === "line_group_operational_authorization") parts.push(stateValue.operationalAuthorized ? "營運授權：開啟" : "營運授權：關閉");
+    else if (entityType === "line_group_organization_claim") parts.push("組織歸屬：" + (stateValue.organizationId ? "已綁定" : "未綁定"));
+    else if (entityType === "line_group_ai_conversation") parts.push(stateValue.conversationV2Enabled ? "對話設定：開啟" : "對話設定：關閉");
+    if (stateValue.name) parts.push("名稱：" + stateValue.name);
+    if (stateValue.displayName) parts.push("顯示名稱：" + stateValue.displayName);
+    if (stateValue.status) parts.push("狀態：" + stateValue.status);
+    if (stateValue.active !== undefined) parts.push(stateValue.active ? "目前啟用" : "目前停用");
+    if (stateValue.breed) parts.push("品種：" + stateValue.breed);
+    if (stateValue.expectedShipmentDate) parts.push("預計出雞：" + stateValue.expectedShipmentDate);
+    return parts.length ? parts.join(" · ") : "已保存的 canonical 狀態";
+  }
+
+  function recoveryCandidateMarkup(candidate, selectedAuditId, disabled) {
+    const selected = candidate.auditId === selectedAuditId;
+    const action = candidate.action === "create" ? "建立" : candidate.action === "update" ? "更新" : candidate.action || "變更";
+    return "<button type=\"button\" class=\"sheet-item " + (selected ? "selected" : "") + "\" data-action=\"recovery-select\" data-recovery-audit-id=\"" + escapeHtml(candidate.auditId) + "\" " + (disabled ? "disabled" : "") + "><span><strong>" + escapeHtml(recoveryTypeLabel(candidate.entityType)) + " · " + escapeHtml(action) + "</strong><span>" + escapeHtml(String(candidate.createdAt || "").replace("T", " ").slice(0, 19)) + " · 只使用 server 提供的候選</span></span><span class=\"sheet-item-end\">" + (selected ? "已選" : "選取 ›") + "</span></button>";
+  }
+
+  function recoveryPlanSummary(plan) {
+    if (!plan) return "";
+    const target = plan.target || {};
+    const scope = target.scope || {};
+    const conflicts = Array.isArray(plan.conflicts) ? plan.conflicts : [];
+    const dependencyCopy = plan.dependencyImpact ? "有相依影響，套用前必須確認預覽" : "獨立狀態，仍需明確確認";
+    const applyDisabled = plan.applyEligibility !== "ELIGIBLE" || state.recoveryState.mutationInFlight;
+    const confirmation = state.recoveryState.applyConfirmation
+      ? "<div class=\"detail-block\" data-testid=\"recovery-apply-confirmation\"><h3>最後確認</h3><p>這會依照上方 Dry Run 將現有 canonical 狀態恢復。原始 audit 與本次 recovery audit 都會保留；不會改動 stock 或 Finance。</p><div class=\"developer-actions\"><button type=\"button\" class=\"sheet-primary\" data-action=\"recovery-apply\" " + (applyDisabled ? "disabled" : "") + ">" + (state.recoveryState.mutationInFlight ? "套用中…" : "確認套用並讀回") + "</button><button type=\"button\" class=\"sheet-secondary\" data-action=\"recovery-cancel-apply\" " + (state.recoveryState.mutationInFlight ? "disabled" : "") + ">取消</button></div></div>"
+      : "<button type=\"button\" class=\"sheet-primary\" data-action=\"recovery-prepare-apply\" " + (applyDisabled ? "disabled" : "") + ">準備套用（再次確認）</button>";
+    return "<div class=\"detail-block\" data-testid=\"recovery-plan\"><h3>Dry Run 預覽</h3><p><strong>" + escapeHtml(recoveryTypeLabel(target.entityType)) + "</strong> · " + escapeHtml(target.environment || plan.environment || "—") + "</p><p>範圍：" + escapeHtml(scope.farmId || "整體") + " / " + escapeHtml(scope.houseId || "—") + " / " + escapeHtml(scope.flockId || "—") + "</p><p>目前：" + escapeHtml(recoveryStateLabel(plan.current, target.entityType)) + "</p><p>恢復後：" + escapeHtml(recoveryStateLabel(plan.proposedAfter, target.entityType)) + "</p><p>影響：" + escapeHtml(dependencyCopy) + " · stock Δ " + number(plan.stockImpact?.delta || 0) + " · Finance Δ " + number(plan.financeImpact?.delta || 0) + "</p><p>依賴項目：" + number(Array.isArray(plan.dependencies) ? plan.dependencies.length : 0) + "；server apply eligibility：" + escapeHtml(plan.applyEligibility || "UNKNOWN") + "</p>" + (conflicts.length ? "<div class=\"lab-write-notice error\" role=\"alert\">此候選目前不可套用：" + escapeHtml(conflicts.join("、")) + "</div>" : confirmation) + "</div>";
+  }
+
+  function recoveryAuditMarkup(entries, loading) {
+    if (loading) return "<div class=\"readonly-note\" data-testid=\"recovery-audit-loading\">正在讀取 server audit…</div>";
+    if (!entries.length) return "<div class=\"readonly-note\" data-testid=\"recovery-audit-empty\">目前沒有可顯示的 Recovery audit。</div>";
+    return "<div class=\"sheet-item-list\" data-testid=\"recovery-audit-list\">" + entries.slice(0, 50).map((entry) => {
+      const action = entry.action || "recovery";
+      const entityType = entry.entityType || "canonical";
+      const changed = Array.isArray(entry.changedFields) && entry.changedFields.length ? ` · ${entry.changedFields.length} 個欄位` : "";
+      const timestamp = String(entry.createdAt || entry.timestamp || "").replace("T", " ").slice(0, 19);
+      return `<div class="sheet-item static"><span><strong>${escapeHtml(action)} · ${escapeHtml(entityType)}</strong><span>${escapeHtml(timestamp || "時間未提供")}${escapeHtml(changed)} · server audit readback</span></span><span class="dev-time">保留</span></div>`;
+    }).join("") + "</div>";
+  }
+
+  async function refreshCanonicalRecoveryAudit({ force = false } = {}) {
+    const manager = state.recoveryState;
+    if (!canonicalRecordingEnabled() || !CANONICAL_API?.isAuthenticated?.() || canonicalAccessClass() !== "ADMIN") {
+      manager.auditEntries = [];
+      manager.auditLoading = false;
+      return;
+    }
+    if (manager.auditLoading && !force) return;
+    manager.auditLoading = true;
+    manager.error = "";
+    render();
+    try {
+      const payload = await CANONICAL_API.listAudit({ limit: 100 });
+      const entries = Array.isArray(payload?.auditLogs) ? payload.auditLogs : [];
+      manager.auditEntries = entries.filter((entry) => {
+        const action = String(entry?.action || "").toLowerCase();
+        const entityType = String(entry?.entityType || "").toLowerCase();
+        return action.includes("recover") || action.includes("restore") || entityType.includes("recovery");
+      });
+    } catch (error) {
+      manager.auditEntries = [];
+      manager.error = canonicalApiErrorMessage(error);
+    } finally {
+      manager.auditLoading = false;
+      render();
+    }
+  }
+
+  function recoveryManagementSheet() {
+    const manager = state.recoveryState;
+    const authenticated = canonicalRecordingEnabled() && CANONICAL_API?.isAuthenticated?.();
+    const accessClass = canonicalAccessClass();
+    const environment = CANONICAL_API?.environment || "production";
+    const accessCopy = accessClass === "ADMIN" ? "管理者：可讀取完整候選、單筆流程與 audit" : accessClass === "SHARED_EDIT" ? "共享編輯：只可使用單筆 recovery；Batch、PIT、Finance 維持管理者邊界" : "未登入：Recovery 不提供資料";
+    const candidateList = manager.loading
+      ? "<div class=\"readonly-note\">正在讀取 server recovery candidates…</div>"
+      : manager.candidates.length
+        ? `<div class="sheet-item-list" data-testid="recovery-candidate-list">${manager.candidates.map((candidate) => recoveryCandidateMarkup(candidate, manager.selectedAuditId, manager.mutationInFlight)).join("")}</div>`
+        : "<div class=\"readonly-note\" data-testid=\"recovery-candidate-empty\">目前沒有 server 提供的可恢復候選。</div>";
+    const selected = manager.candidates.find((candidate) => candidate.auditId === manager.selectedAuditId);
+    const selectedCopy = selected
+      ? `<div class="detail-block" data-testid="recovery-selected"><h3>目前選取</h3><p>${escapeHtml(recoveryTypeLabel(selected.entityType))} · ${escapeHtml(selected.action || "變更")} · server audit candidate</p><button type="button" class="sheet-primary" data-action="recovery-dry-run" ${manager.mutationInFlight ? "disabled" : ""}>${manager.mutationInFlight ? "讀取中…" : "執行 Dry Run"}</button>${recoveryPlanSummary(manager.plan)}</div>`
+      : "<div class=\"readonly-note\">先選取一筆 server candidate，再執行 Dry Run；未選取時不會送出 recovery request。</div>";
+    const auditSection = accessClass === "ADMIN"
+      ? `<div class="detail-block" data-testid="recovery-audit"><h3>Recovery audit readback</h3><p>只顯示 server 回傳的 recovery/restore audit；原始紀錄與 recovery audit 都保留。</p><button type="button" class="sheet-secondary" data-action="recovery-audit-refresh" ${manager.auditLoading ? "disabled" : ""}>重新讀取 server audit</button>${recoveryAuditMarkup(manager.auditEntries, manager.auditLoading)}</div>`
+      : "";
+    const notices = [manager.notice ? `<div class="dev-save-note" role="status">${escapeHtml(manager.notice)}</div>` : "", manager.error ? `<div class="lab-write-notice error" role="alert">${escapeHtml(manager.error)}</div>` : ""].filter(Boolean).join("");
+    return sheetShell("Recovery 中心", `${environment} · ${accessCopy}`, `${!authenticated ? "<div class=\"lab-write-notice error\" role=\"alert\">Recovery 需要先登入既有 canonical Web session；沒有送出資料。</div>" : ""}<div class="detail-block" data-testid="recovery-safety-boundary"><h3>安全邊界</h3><p>所有候選、Dry Run、state fingerprint、dependency impact 與 authoritative readback 都由同一個 canonical recovery authority 提供。</p><p>單筆 Apply 會再次確認；Batch、selective PIT、Finance recovery 僅顯示能力與權限邊界，不在此頁建立未受控的多筆寫入入口。</p></div><div class="detail-block" data-testid="recovery-candidates"><h3>可恢復候選</h3>${candidateList}</div>${selectedCopy}${auditSection}${notices}`, "settings-detail");
+  }
+
+  async function dryRunCanonicalRecovery() {
+    const manager = state.recoveryState;
+    const candidate = manager.candidates.find((item) => item.auditId === manager.selectedAuditId);
+    if (!candidate || manager.mutationInFlight) return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    manager.notice = "";
+    manager.applyConfirmation = false;
+    render();
+    try {
+      manager.plan = await CANONICAL_API.dryRunDomainRecovery({
+        auditId: candidate.auditId,
+        entityType: candidate.entityType,
+        targetId: candidate.targetId,
+        clientOperationId: "web-domain-recovery-" + candidate.auditId,
+        reason: "管理者確認 canonical domain recovery",
+      });
+      manager.notice = "Dry Run 完成；尚未變更資料。請檢查預覽後再確認套用。";
+    } catch (error) {
+      manager.plan = null;
+      manager.error = canonicalApiErrorMessage(error);
+    } finally {
+      manager.mutationInFlight = false;
+      render();
+    }
+  }
+
+  async function applyCanonicalRecovery() {
+    const manager = state.recoveryState;
+    const plan = manager.plan;
+    if (!plan || !manager.applyConfirmation || manager.mutationInFlight) return;
+    const candidate = manager.candidates.find((item) => item.auditId === manager.selectedAuditId);
+    if (!candidate || plan.applyEligibility !== "ELIGIBLE") return;
+    manager.mutationInFlight = true;
+    manager.error = "";
+    render();
+    try {
+      const result = await CANONICAL_API.applyDomainRecovery({
+        auditId: candidate.auditId,
+        entityType: candidate.entityType,
+        targetId: candidate.targetId,
+        clientOperationId: "web-domain-recovery-" + candidate.auditId,
+        reason: "管理者確認 canonical domain recovery",
+        stateFingerprint: plan.stateFingerprint,
+        dryRunToken: plan.dryRunToken,
+        confirm: true,
+        previewAcknowledged: true,
+      });
+      manager.notice = result?.authoritativeReadback ? "Recovery 已套用，canonical server readback PASS。" : "Recovery 已回覆；請重新讀取確認 server state。";
+      manager.plan = null;
+      manager.applyConfirmation = false;
+      await refreshCanonicalRecoveryCandidates({ force: true });
+    } catch (error) {
+      manager.error = canonicalApiErrorMessage(error);
+      manager.applyConfirmation = false;
+    } finally {
+      manager.mutationInFlight = false;
+      render();
     }
   }
 
@@ -3486,7 +3750,7 @@
 
   function settingsSheet() {
     const t = trendThresholds();
-    return sheetShell("設定", "操作、提醒與管理設定", `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="trend"><span><strong>趨勢提醒</strong><span>死亡、淘汰、飼料、飲水的自我歷史比較門檻</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="master"><span><strong>雞場與雞舍管理</strong><span>正式版需管理者驗證</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="line"><span><strong>LINE 群組</strong><span>群組與通知設定</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="display"><span><strong>顯示與操作</strong><span>介面偏好與操作說明</span></span><span class="sheet-item-end">›</span></button></div><div class="readonly-note">目前趨勢提醒基線：前 ${t.baselineDays} 日；設定只存在此瀏覽器測試環境。</div>`, "settings");
+    return sheetShell("設定", "操作、提醒與管理設定", `<div class="sheet-item-list"><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="trend"><span><strong>趨勢提醒</strong><span>死亡、淘汰、飼料、飲水的自我歷史比較門檻</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="master"><span><strong>雞場與雞舍管理</strong><span>正式版需管理者驗證</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="line"><span><strong>LINE 群組</strong><span>群組與通知設定</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="recovery"><span><strong>Recovery 中心</strong><span>單筆恢復、Batch、PIT、Finance 與 audit readback</span></span><span class="sheet-item-end">›</span></button><button type="button" class="sheet-item" data-action="open-settings-detail" data-settings-key="display"><span><strong>顯示與操作</strong><span>介面偏好與操作說明</span></span><span class="sheet-item-end">›</span></button></div><div class="readonly-note">目前趨勢提醒基線：前 ${t.baselineDays} 日；設定只存在此瀏覽器測試環境。</div>`, "settings");
   }
 
 
@@ -3520,6 +3784,7 @@
       </div><div class="threshold-safety"><strong>這些是資料趨勢門檻，不是獸醫警戒值。</strong><span>只比較同一工作範圍的近期紀錄；資料不足就不判定。修改後會影響「紀錄 → 趨勢圖」的提醒結果。</span></div>${state.settingsError ? `<div class="lab-write-notice error" data-testid="trend-settings-error" role="alert">${escapeHtml(state.settingsError)}</div>` : ""}${state.settingsNotice ? `<div class="dev-save-note">${escapeHtml(state.settingsNotice)}</div>` : ""}<div class="developer-actions"><button type="button" class="sheet-primary" data-action="save-trend-thresholds">儲存本機設定</button><button type="button" class="sheet-secondary" data-action="reset-trend-thresholds">恢復預設值</button></div>`, "settings-detail");
     }
     if (key === "line") return lineGroupManagementSheet();
+    if (key === "recovery") return recoveryManagementSheet();
     const details = {
       master: ["雞場與雞舍管理", "正式版的新增、停用與指派需先通過管理者驗證；本測試版可在 PREPROD LAB 管理者確認後寫入本機 runtime overlay，不修改 fixture。"],
       display: ["顯示與操作", "桌面版採左側導覽、大字體與寬螢幕工作台；移動版維持底部導覽與觸控優先操作。"],
@@ -4707,8 +4972,34 @@
       const key = actionElement.dataset.settingsKey;
       openSheet({ kind: "settings-detail", key });
       if (key === "line" && canonicalRecordingEnabled() && CANONICAL_API.environment === "production") void refreshCanonicalLineGroups();
+      if (key === "recovery" && canonicalRecordingEnabled() && CANONICAL_API.isAuthenticated()) void refreshCanonicalRecoveryCandidates();
       return;
     }
+    if (action === "recovery-select") {
+      const manager = state.recoveryState;
+      const candidate = manager.candidates.find((item) => item.auditId === actionElement.dataset.recoveryAuditId);
+      if (!candidate || manager.mutationInFlight) return;
+      manager.selectedAuditId = candidate.auditId;
+      manager.plan = null;
+      manager.applyConfirmation = false;
+      manager.notice = "";
+      manager.error = "";
+      return render();
+    }
+    if (action === "recovery-dry-run") return void dryRunCanonicalRecovery();
+    if (action === "recovery-prepare-apply") {
+      if (state.recoveryState.plan?.applyEligibility === "ELIGIBLE" && !state.recoveryState.mutationInFlight) {
+        state.recoveryState.applyConfirmation = true;
+        state.recoveryState.error = "";
+      }
+      return render();
+    }
+    if (action === "recovery-cancel-apply") {
+      state.recoveryState.applyConfirmation = false;
+      return render();
+    }
+    if (action === "recovery-apply") return void applyCanonicalRecovery();
+    if (action === "recovery-audit-refresh") return void refreshCanonicalRecoveryAudit({ force: true });
     if (action === "line-group-start-claim") {
       const manager = state.lineGroupState;
       if (manager.claimCandidates.length !== 1 || !manager.claimCandidates[0]?.groupName || manager.mutationInFlight) {

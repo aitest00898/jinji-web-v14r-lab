@@ -648,6 +648,154 @@
       return normalized.context.flocks[0].currentStock;
     }
 
+    function recoveryText(value, field, max = 240) {
+      const normalized = typeof value === "string" ? value.normalize("NFKC").trim() : "";
+      if (!normalized || normalized.length > max || /[\u0000-\u001F\u007F]/u.test(normalized)) {
+        throw new CanonicalApiError(`CANONICAL_RECOVERY_${String(field).toUpperCase()}_INVALID`, "Recovery request is invalid; no request was sent.");
+      }
+      return normalized;
+    }
+
+    function recoveryBase(input) {
+      if (!input || typeof input !== "object" || Array.isArray(input)) {
+        throw new CanonicalApiError("CANONICAL_RECOVERY_INPUT_INVALID", "Recovery request is invalid; no request was sent.");
+      }
+      return {
+        auditId: recoveryText(input.auditId, "audit_id"),
+        entityType: recoveryText(input.entityType, "entity_type"),
+        targetId: recoveryText(input.targetId, "target_id"),
+        clientOperationId: recoveryText(input.clientOperationId, "client_operation_id"),
+        reason: recoveryText(input.reason, "reason", 500),
+      };
+    }
+
+    function recoveryApplyBody(input) {
+      const base = recoveryBase(input);
+      const stateFingerprint = recoveryText(input.stateFingerprint, "state_fingerprint", 128);
+      const dryRunToken = recoveryText(input.dryRunToken, "dry_run_token", 128);
+      if (input.confirm !== true) throw new CanonicalApiError("CANONICAL_RECOVERY_CONFIRMATION_REQUIRED", "Recovery Apply requires explicit confirmation.");
+      return { ...base, stateFingerprint, dryRunToken, confirm: true, previewAcknowledged: input.previewAcknowledged === true };
+    }
+
+    async function discoverDomainRecovery(options = {}) {
+      const body = {};
+      if (options.entityType !== undefined) body.entityType = recoveryText(options.entityType, "entity_type");
+      if (options.limit !== undefined) {
+        const limit = Number(options.limit);
+        if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new CanonicalApiError("CANONICAL_RECOVERY_LIMIT_INVALID", "Recovery candidate limit is invalid.");
+        body.limit = limit;
+      }
+      const payload = await request("/api/recovery/domain-discover", { method: "POST", body });
+      return payload?.recovery || payload;
+    }
+
+    async function dryRunDomainRecovery(input) {
+      const payload = await request("/api/recovery/domain-dry-run", { method: "POST", body: recoveryBase(input) });
+      return payload?.recovery || payload;
+    }
+
+    async function applyDomainRecovery(input) {
+      const payload = await request("/api/recovery/domain-apply", { method: "POST", body: recoveryApplyBody(input) });
+      return payload?.recovery || payload;
+    }
+
+    async function dryRunDomainRecoveryBatch(targets) {
+      if (!Array.isArray(targets) || !targets.length) throw new CanonicalApiError("CANONICAL_RECOVERY_BATCH_INPUT_INVALID", "Recovery batch requires targets.");
+      const payload = await request("/api/recovery/domain-batch-dry-run", { method: "POST", body: { targets: targets.map(recoveryBase) } });
+      return payload?.recovery || payload;
+    }
+
+    async function applyDomainRecoveryBatch(groups) {
+      if (!Array.isArray(groups) || !groups.length) throw new CanonicalApiError("CANONICAL_RECOVERY_BATCH_INPUT_INVALID", "Recovery batch requires groups.");
+      const body = {
+        groups: groups.map((group) => {
+          if (!group || typeof group !== "object" || !Array.isArray(group.targets)) throw new CanonicalApiError("CANONICAL_RECOVERY_BATCH_INPUT_INVALID", "Recovery batch group is invalid.");
+          return {
+            groupId: recoveryText(group.groupId, "group_id"),
+            stateFingerprint: recoveryText(group.stateFingerprint, "state_fingerprint", 128),
+            dryRunToken: recoveryText(group.dryRunToken, "dry_run_token", 128),
+            targets: group.targets.map(recoveryApplyBody),
+          };
+        }),
+      };
+      const payload = await request("/api/recovery/domain-batch-apply", { method: "POST", body });
+      return payload?.recovery || payload;
+    }
+
+    async function discoverDomainPointInTimeRecovery(targetTime) {
+      const payload = await request("/api/recovery/domain-pit-discover", { method: "POST", body: { targetTime: recoveryText(targetTime, "target_time", 80) } });
+      return payload?.recovery || payload;
+    }
+
+    async function dryRunDomainPointInTimeRecovery(targetTime, selections) {
+      if (!Array.isArray(selections) || !selections.length) throw new CanonicalApiError("CANONICAL_RECOVERY_PIT_INPUT_INVALID", "PIT Recovery requires selections.");
+      const payload = await request("/api/recovery/domain-pit-dry-run", { method: "POST", body: { targetTime: recoveryText(targetTime, "target_time", 80), selections: selections.map((selection) => ({ auditId: recoveryText(selection?.auditId, "audit_id"), decision: selection?.decision })) } });
+      return payload?.recovery || payload;
+    }
+
+    async function applyDomainPointInTimeRecovery(groups) {
+      if (!Array.isArray(groups) || !groups.length) throw new CanonicalApiError("CANONICAL_RECOVERY_PIT_INPUT_INVALID", "PIT Recovery requires groups.");
+      const body = {
+        groups: groups.map((group) => {
+          if (!group || typeof group !== "object" || !Array.isArray(group.selections)) throw new CanonicalApiError("CANONICAL_RECOVERY_PIT_INPUT_INVALID", "PIT Recovery group is invalid.");
+          return {
+            groupId: recoveryText(group.groupId, "group_id"),
+            targetTime: recoveryText(group.targetTime, "target_time", 80),
+            stateFingerprint: recoveryText(group.stateFingerprint, "state_fingerprint", 128),
+            dryRunToken: recoveryText(group.dryRunToken, "dry_run_token", 128),
+            clientOperationId: recoveryText(group.clientOperationId, "client_operation_id"),
+            selections: group.selections.map((selection) => ({ auditId: recoveryText(selection?.auditId, "audit_id"), decision: selection?.decision })),
+          };
+        }),
+      };
+      const payload = await request("/api/recovery/domain-pit-apply", { method: "POST", body });
+      return payload?.recovery || payload;
+    }
+
+    function financeRecoveryBase(input) {
+      if (!input || typeof input !== "object" || Array.isArray(input)) {
+        throw new CanonicalApiError("CANONICAL_RECOVERY_INPUT_INVALID", "Recovery request is invalid; no request was sent.");
+      }
+      return {
+        auditId: recoveryText(input.auditId, "audit_id"),
+        targetType: recoveryText(input.targetType, "target_type"),
+        targetId: recoveryText(input.targetId, "target_id"),
+        clientOperationId: recoveryText(input.clientOperationId, "client_operation_id"),
+        reason: recoveryText(input.reason, "reason", 500),
+      };
+    }
+
+    function financeRecoveryApplyBody(input) {
+      const base = financeRecoveryBase(input);
+      return {
+        ...base,
+        stateFingerprint: recoveryText(input.stateFingerprint, "state_fingerprint", 128),
+        dryRunToken: recoveryText(input.dryRunToken, "dry_run_token", 128),
+      };
+    }
+
+    async function discoverFinanceRecovery(options = {}) {
+      const body = {};
+      if (options.targetType !== undefined) body.targetType = recoveryText(options.targetType, "target_type");
+      if (options.targetId !== undefined) body.targetId = recoveryText(options.targetId, "target_id");
+      const payload = await request("/api/recovery/finance-discover", { method: "POST", body });
+      return payload?.recovery || payload;
+    }
+
+    async function dryRunFinanceRecovery(input) {
+      const payload = await request("/api/recovery/finance-dry-run", { method: "POST", body: financeRecoveryBase(input) });
+      return payload?.recovery || payload;
+    }
+
+    async function applyFinanceRecovery(input) {
+      const payload = await request("/api/recovery/finance-apply", { method: "POST", body: financeRecoveryApplyBody(input) });
+      return payload?.recovery || payload;
+    }
+
+    async function listAudit(query = {}) {
+      return request("/api/audit", { method: "GET", query });
+    }
+
     return Object.freeze({
       enabled,
       base,
@@ -670,6 +818,18 @@
       claimLineGroupOrganization,
       setLineGroupOperationalAuthorization,
       getFlockCurrentStock,
+      discoverDomainRecovery,
+      dryRunDomainRecovery,
+      applyDomainRecovery,
+      dryRunDomainRecoveryBatch,
+      applyDomainRecoveryBatch,
+      discoverDomainPointInTimeRecovery,
+      dryRunDomainPointInTimeRecovery,
+      applyDomainPointInTimeRecovery,
+      discoverFinanceRecovery,
+      dryRunFinanceRecovery,
+      applyFinanceRecovery,
+      listAudit,
       createRecord: (command) => request("/api/records", { method: "POST", body: commandBody(command) }),
       correctRecord: (id, command) => request(`/api/records/${encodeURIComponent(String(id))}/correct`, { method: "POST", body: commandBody(command) }),
       reverseRecord: (id, command) => request(`/api/records/${encodeURIComponent(String(id))}/reverse`, { method: "POST", body: commandBody(command) }),

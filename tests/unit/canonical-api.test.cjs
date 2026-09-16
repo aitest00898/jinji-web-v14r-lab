@@ -672,3 +672,71 @@ test("canonical master-data reads fail closed on duplicate, wrong-parent, and wr
   await assert.rejects(() => client.listHouses(""), (error) => error.code === "CANONICAL_MASTER_DATA_FARM_REQUIRED");
   await assert.rejects(() => client.listFlocks(null), (error) => error.code === "CANONICAL_MASTER_DATA_FARM_REQUIRED");
 });
+
+test("canonical recovery client keeps all recovery operations on the existing scoped API boundary", async () => {
+  const calls = [];
+  const client = createClient({
+    base: "https://worker.example.test",
+    environment: "test",
+    testAdmin: true,
+    fetchImpl: async (url, init) => {
+      calls.push({ url: new URL(url), init });
+      return response({ recovery: { accepted: true }, auditLogs: [] });
+    },
+  });
+  const base = {
+    auditId: "audit-1",
+    entityType: "farm",
+    targetId: "farm-1",
+    clientOperationId: "recovery-1",
+    reason: "verified recovery",
+  };
+  await client.discoverDomainRecovery({ entityType: "farm", limit: 10 });
+  await client.dryRunDomainRecovery(base);
+  await client.applyDomainRecovery({ ...base, stateFingerprint: "a".repeat(64), dryRunToken: "b".repeat(64), confirm: true, previewAcknowledged: true });
+  await client.dryRunDomainRecoveryBatch([base]);
+  await client.applyDomainRecoveryBatch([{
+    groupId: "farm:test:farm-1",
+    stateFingerprint: "c".repeat(64),
+    dryRunToken: "d".repeat(64),
+    targets: [{ ...base, stateFingerprint: "e".repeat(64), dryRunToken: "f".repeat(64), confirm: true }],
+  }]);
+  await client.discoverDomainPointInTimeRecovery("2026-09-01T00:00:00.000Z");
+  await client.dryRunDomainPointInTimeRecovery("2026-09-01T00:00:00.000Z", [{ auditId: "audit-1", decision: "REVERT" }]);
+  await client.applyDomainPointInTimeRecovery([{
+    groupId: "farm:test:farm-1",
+    targetTime: "2026-09-01T00:00:00.000Z",
+    stateFingerprint: "g".repeat(64),
+    dryRunToken: "h".repeat(64),
+    clientOperationId: "pit-1",
+    selections: [{ auditId: "audit-1", decision: "PRESERVE" }],
+  }]);
+  await client.discoverFinanceRecovery({ targetType: "transaction", targetId: "finance-1" });
+  await client.dryRunFinanceRecovery({ targetType: "transaction", targetId: "finance-1", ...base });
+  await client.applyFinanceRecovery({ targetType: "transaction", targetId: "finance-1", ...base, stateFingerprint: "i".repeat(64), dryRunToken: "j".repeat(64) });
+  await client.listAudit({ limit: 25 });
+
+  assert.deepEqual(calls.map(({ url }) => `${url.pathname}?${url.searchParams.toString()}`), [
+    "/api/recovery/domain-discover?environment=test",
+    "/api/recovery/domain-dry-run?environment=test",
+    "/api/recovery/domain-apply?environment=test",
+    "/api/recovery/domain-batch-dry-run?environment=test",
+    "/api/recovery/domain-batch-apply?environment=test",
+    "/api/recovery/domain-pit-discover?environment=test",
+    "/api/recovery/domain-pit-dry-run?environment=test",
+    "/api/recovery/domain-pit-apply?environment=test",
+    "/api/recovery/finance-discover?environment=test",
+    "/api/recovery/finance-dry-run?environment=test",
+    "/api/recovery/finance-apply?environment=test",
+    "/api/audit?environment=test&limit=25",
+  ]);
+  for (const { init } of calls) {
+    assert.equal(init.credentials, "omit");
+    assert.equal(init.headers.accept, "application/json");
+  }
+  assert.deepEqual(JSON.parse(calls[2].init.body), { ...base, stateFingerprint: "a".repeat(64), dryRunToken: "b".repeat(64), confirm: true, previewAcknowledged: true });
+  assert.deepEqual(JSON.parse(calls[0].init.body), { entityType: "farm", limit: 10 });
+  assert.equal(JSON.parse(calls[4].init.body).groups[0].targets[0].confirm, true);
+  assert.equal(JSON.parse(calls[6].init.body).selections[0].decision, "REVERT");
+  assert.deepEqual(JSON.parse(calls[8].init.body), { targetType: "transaction", targetId: "finance-1" });
+});
