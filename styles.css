@@ -975,6 +975,13 @@ button, .context-identity, .summary-tile, .action-card, .farm-item, .more-item, 
 }
 .clean-list-panel .list-row:hover { border-color: #b5c9bf; background: #fff; }
 .clean-list-panel .list-row:active { transform: scale(.995); }
+.canonical-record-row.is-reversed > span:first-child strong,
+.canonical-record-row.is-reversed > span:first-child > span {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+.canonical-record-row.is-reversed .status-chip,
+.canonical-record-row.is-reversed .row-arrow { text-decoration: none; }
 
 .plus-data-proof {
   display: grid;

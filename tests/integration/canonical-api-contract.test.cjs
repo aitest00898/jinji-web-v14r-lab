@@ -143,6 +143,11 @@ test("Web canonical Records page consumes the read model and keeps replay local-
   assert.match(appSource, /data-action="open-canonical-record"/u);
   assert.match(appSource, /data-action="commit-canonical-correction"/u);
   assert.match(appSource, /data-action="reverse-canonical-record"/u);
+  assert.match(appSource, /canonical-record-row/u);
+  assert.match(appSource, /is-reversed/u);
+  const stylesSource = fs.readFileSync(path.join(__dirname, "../../styles.css"), "utf8");
+  assert.match(stylesSource, /canonical-record-row\.is-reversed/u);
+  assert.match(stylesSource, /text-decoration:\s*line-through/u);
   assert.match(appSource, /canonicalAcceptanceReplayEnabled\(\)/u);
   assert.match(appSource, /acceptance-mode.*=== "1"/u);
   assert.match(appSource, /CANONICAL_API\?\.environment === "test"/u);
