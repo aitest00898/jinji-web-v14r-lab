@@ -499,6 +499,7 @@
         method: requestOptions.method || "GET",
         credentials: "omit",
         headers,
+        ...(requestOptions.keepalive === true ? { keepalive: true } : {}),
       };
       if (requestOptions.body !== undefined) {
         headers["content-type"] = "application/json";
@@ -551,6 +552,19 @@
         clearAuth();
       }
       return { authenticated: false };
+    }
+
+    async function clientClose() {
+      if (!token) return { authenticated: false, closed: false };
+      try {
+        return await request("/api/web/auth/client-close", {
+          method: "POST",
+          body: { keepalive: true },
+          keepalive: true,
+        });
+      } finally {
+        clearAuth();
+      }
     }
 
     async function session() {
@@ -809,6 +823,7 @@
       state: () => ({ enabled, environment, base, baseSource, runtimeMode, authenticated: Boolean(token), accessClass, expiresAt, configurationError: configurationError?.code || null }),
       login,
       logout,
+      clientClose,
       session,
       setEnvironment,
       listFarms,

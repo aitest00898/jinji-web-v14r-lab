@@ -241,6 +241,26 @@ test("malformed and non-JSON errors remain bounded, while protected 401 clears a
   assert.equal(client.isAuthenticated(), false);
 });
 
+test("client close uses a keepalive request and clears the in-memory session", async () => {
+  const calls = [];
+  const client = createClient({
+    base: "https://worker.example.test",
+    fetchImpl: async (url, init) => {
+      calls.push({ url: new URL(url), init });
+      if (calls.length === 1) return response({ authenticated: true, token: "C".repeat(43), accessClass: "SHARED_EDIT" });
+      return response({ authenticated: false, closed: true, changed: true });
+    },
+  });
+
+  await client.login("browser-only-password", "SHARED_EDIT");
+  const result = await client.clientClose();
+  assert.deepEqual(result, { authenticated: false, closed: true, changed: true });
+  assert.equal(calls[1].url.pathname, "/api/web/auth/client-close");
+  assert.equal(calls[1].init.keepalive, true);
+  assert.equal(calls[1].init.body, JSON.stringify({ keepalive: true }));
+  assert.equal(client.isAuthenticated(), false);
+});
+
 test("Pages runtime is allowlisted and unknown hosted origins fail closed", () => {
   const pages = createClient({
     location: { origin: "https://aitest00898.github.io", pathname: "/jinji-web-v14r-lab/", href: "https://aitest00898.github.io/jinji-web-v14r-lab/" },

@@ -2428,7 +2428,10 @@
       const stock = Number.isSafeInteger(summary.effectiveStock) && summary.effectiveStock >= 0 ? `${number(summary.effectiveStock)} 隻` : "資料不足";
       const cleaning = cleaningLabels[summary.cleaningStatus] || "清消狀態未知";
       const labStatus = canonicalLabSubmissionStatusLabel(summary);
-      return `<div class="list-row" data-testid="canonical-lifecycle-row"><span><strong>${escapeHtml(houseName)}</strong><span>${escapeHtml(farmName)} · 批次 ${escapeHtml(batchCode)} · 目前存欄 ${escapeHtml(stock)} · ${escapeHtml(cleaning)} · ${escapeHtml(labStatus)}</span></span><span class="row-end"><span class="status-chip ${statusTone[safeStatus]}">${escapeHtml(statusLabels[safeStatus])}</span></span></div>`;
+      const recalculation = summary.recalculationState === "RECALCULATING"
+        ? " · 重新計算中（目前結果非最終值）"
+        : "";
+      return `<div class="list-row" data-testid="canonical-lifecycle-row"><span><strong>${escapeHtml(houseName)}</strong><span>${escapeHtml(farmName)} · 批次 ${escapeHtml(batchCode)} · 目前存欄 ${escapeHtml(stock)} · ${escapeHtml(cleaning)} · ${escapeHtml(labStatus)}${escapeHtml(recalculation)}</span></span><span class="row-end"><span class="status-chip ${statusTone[safeStatus]}">${escapeHtml(statusLabels[safeStatus])}</span></span></div>`;
     }).join("");
     return `<section class="content-panel clean-list-panel" data-testid="canonical-lifecycle-readback"><div class="panel-title"><div><h3>一水狀態</h3><p>由 canonical effective facts 推導；不建立第二套狀態。</p></div><span class="scope-chip">${rows.length} 舍</span></div><div class="list-stack">${rowsMarkup}</div></section>`;
   }
@@ -5861,6 +5864,12 @@
   document.addEventListener("pointerup", (event) => {
     if (handleStartY !== null && handleStartY - event.clientY < -70 && state.sheet) closeSheet();
     handleStartY = null;
+  });
+
+  window.addEventListener("pagehide", () => {
+    if (CANONICAL_API_ENABLED && CANONICAL_API?.isAuthenticated?.()) {
+      void CANONICAL_API.clientClose();
+    }
   });
 
   let lastWideMode = desktopWideMode();
