@@ -6,9 +6,8 @@
   "use strict";
 
   const VALID_ENVIRONMENTS = new Set(["production", "test"]);
-  const DEFAULT_PRODUCTION_API_BASE = "https://chicken-line-production.jinji-assistant.workers.dev";
-  const PRODUCTION_PAGES_ORIGIN = "https://aitest00898.github.io";
-  const PRODUCTION_PAGES_PATH = "/jinji-web-v14r-lab";
+  const LAB_PAGES_ORIGIN = "https://aitest00898.github.io";
+  const LAB_PAGES_PATH = "/jinji-web-v14r-lab";
   const LOCAL_HOSTNAMES = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
   class CanonicalApiError extends Error {
@@ -29,11 +28,11 @@
     return options.location || root?.location || null;
   }
 
-  function isProductionPagesLocation(location) {
+  function isLabPagesLocation(location) {
     if (!location) return false;
     const origin = String(location.origin || "").replace(/\/+$/u, "");
     const pathname = String(location.pathname || "").replace(/\/+$/u, "") || "/";
-    return origin === PRODUCTION_PAGES_ORIGIN && (pathname === PRODUCTION_PAGES_PATH || pathname === `${PRODUCTION_PAGES_PATH}/index.html`);
+    return origin === LAB_PAGES_ORIGIN && (pathname === LAB_PAGES_PATH || pathname === `${LAB_PAGES_PATH}/index.html`);
   }
 
   function isLocalLocation(location) {
@@ -66,18 +65,12 @@
   function configuredBase(options, params, location) {
     const explicitOption = options.base !== undefined;
     const raw = options.base
-      ?? params.get("api-base")
-      ?? root?.__JINJI_API_BASE__
-      ?? root?.document?.querySelector?.('meta[name="jinji-api-base"]')?.content
+      ?? (isLocalLocation(location) ? params.get("api-base") : null)
+      ?? (isLocalLocation(location) ? root?.__JINJI_API_BASE__ : null)
+      ?? (isLocalLocation(location) ? root?.document?.querySelector?.('meta[name="jinji-api-base"]')?.content : null)
       ?? "";
-    if (!String(raw).trim()) {
-      if (isProductionPagesLocation(location)) return { value: DEFAULT_PRODUCTION_API_BASE, source: "pages-origin-allowlist" };
-      return { value: null, source: "none" };
-    }
+    if (!String(raw).trim()) return { value: null, source: "none" };
     const value = normalizeBase(raw, location);
-    if (isProductionPagesLocation(location) && !explicitOption && value !== DEFAULT_PRODUCTION_API_BASE) {
-      throw new CanonicalApiError("CANONICAL_API_PAGES_BASE_OVERRIDE_FORBIDDEN", "The production Pages host may use only its allowlisted Worker origin.");
-    }
     return {
       value,
       source: explicitOption ? "options" : params.get("api-base") ? "query" : root?.__JINJI_API_BASE__ ? "global" : "meta",
@@ -85,9 +78,8 @@
   }
 
   function runtimeModeFor(location, base) {
-    if (isProductionPagesLocation(location)) return "production_api";
     if (base) return "canonical_api";
-    if (isLocalLocation(location)) return "fixture_local";
+    if (isLocalLocation(location) || isLabPagesLocation(location)) return "fixture_local";
     return "unsupported_host";
   }
 
@@ -857,5 +849,5 @@
     });
   }
 
-  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, canonicalLineGroupsPayload, DEFAULT_PRODUCTION_API_BASE, PRODUCTION_PAGES_ORIGIN, PRODUCTION_PAGES_PATH, masterDataRows, canonicalRecordsPayload });
+  return Object.freeze({ CanonicalApiError, createClient, normalizeCanonicalApiError, canonicalCurrentStock, canonicalLiveStatusPayload, canonicalLineGroupsPayload, LAB_PAGES_ORIGIN, LAB_PAGES_PATH, masterDataRows, canonicalRecordsPayload });
 });

@@ -28,6 +28,7 @@ assert.match(canonicalApi, /payload\.error/);
 assert.match(canonicalApi, /headers\.authorization/);
 assert.match(canonicalApi, /credentials:\s*"omit"/);
 assert.doesNotMatch(canonicalApi, /localStorage|indexedDB/i);
+assert.doesNotMatch(canonicalApi, /chicken-line-production\.jinji-assistant\.workers\.dev/u);
 assert.match(canonicalApi, /LOCAL_HOSTNAMES/);
 assert.doesNotMatch(canonicalApi, /(?:LINE_CHANNEL_SECRET|CHANNEL_ACCESS_TOKEN|wrangler\s+secret)/i);
 const canonicalErrorMapper = app.slice(app.indexOf("function canonicalApiErrorMessage"), app.indexOf("function submitCanonicalBoundary"));

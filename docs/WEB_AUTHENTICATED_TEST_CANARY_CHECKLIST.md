@@ -1,6 +1,8 @@
-# Web authenticated Test-scope canary checklist
+# Historical Web authenticated Test-scope canary checklist
 
-Scope: Web release candidate only. This is a human-operated checklist; keep
+Scope: Formal Web release candidate only. This checklist is not executable
+against Lab Pages; Lab Pages is fixture-only and has no Production API
+binding. Keep
 PASS/FAIL and Notes blank until the human enters the password in the Web login
 UI. Do not paste the password, Bearer token, cookie, or screenshots containing
 secrets into Codex.
@@ -9,7 +11,7 @@ secrets into Codex.
 
 | Item | Required confirmation | PASS/FAIL | Notes |
 |---|---|---|---|
-| Login | Open the approved Pages URL and enter the management password only in the Web login form. Confirm the UI shows `已登入 · Production scope`; no credential is put in URL, localStorage, IndexedDB, or a chat message. |  |  |
+| Login | Open the approved Formal Web URL and enter the management password only in the Web login form. Confirm the UI shows `已登入 · Production scope`; no credential is put in URL, localStorage, IndexedDB, or a chat message. Do not use the Lab URL. |  |  |
 | Test mode | After login, explicitly select `Test（明確選取）` in the scope control. Confirm the UI label changes to `Test scope`; do not activate Test by editing the URL. |  |  |
 | Test scope | Visually confirm the authorized test farm / house / flock shown by the approved run sheet: `金雞測試場 / 測試1舍 / TEST-BATCH-001`. |  |  |
 | Pre-stock | Read the pre-canary stock and Finance tuple from the approved read-only run sheet before the first write. Do not proceed if the scope is not the intended Test scope. |  |  |
@@ -35,7 +37,7 @@ run sheet. Each confirmation must show the canonical review before submit.
 
 | Item | Required confirmation | PASS/FAIL | Notes |
 |---|---|---|---|
-| Production default | Reload the approved Pages URL in a fresh tab. | Login screen appears; default scope is Production; no Test request is sent before explicit authenticated selection. |  |  |
+| Formal Web default | Reload the approved Formal Web URL in a fresh tab. | Login screen appears; default scope is Production; no Test request is sent before explicit authenticated selection. Lab Pages is not a substitute for this step. |  |  |
 | Production isolation | Confirm all canary URLs carry `environment=test`, and no Production business fact is created. | Test scope is explicit and isolated; no Production write, schema write, Queue write, LINE send or AI call is part of this canary. |  |  |
 | Logout | Click `登出`. | Session is revoked; UI returns to login; a later API request cannot reuse the old token. |  |  |
 | Credential boundary | Inspect only the UI behavior, not secret values. | Password/token/cookie is never reported to Codex, stored in the repository, or embedded in a URL/build artifact. |  |  |
