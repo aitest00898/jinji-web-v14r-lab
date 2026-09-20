@@ -2,6 +2,10 @@
 
 金雞管理中心 V7 的 Pre-Production Lab。這是與 Production 完全隔離的 Vanilla HTML/CSS/JavaScript 測試 repository；不連線 Production Worker、D1、Queue、Cron、LINE、Workers AI、Production Pages 或任何 secret。
 
+Lab Pages 與本機預覽都只使用 synthetic fixture。Lab 不會自動綁定或連線
+Production API；canonical API client 只在 localhost 的明確測試 harness 中
+啟用，不能透過 Lab Pages URL 的 query、meta 或 global 設定切換成 Production。
+
 ## Lab 邊界
 
 - V7 reference 是 UI source of truth：`data-app-id="jinji-web-v14r-lab"`、`data-build-marker="jinji-v14r-plus-r4-desktop-v7-mobile-nav"`。
@@ -37,7 +41,7 @@ npm run test:all
 
 - Repository：`aitest00898/jinji-web-v14r-lab`
 - Feature branch：`feat/management-center-preprod-v7`
-- Public Lab Pages：<https://aitest00898.github.io/jinji-web-v14r-lab/>
+- Public Lab Pages：<https://aitest00898.github.io/jinji-web-v14r-lab/>（PREPROD LAB；fixture-only）
 - Pages build 會產生 `build-info.json`，並將 Build SHA、marker、time、branch 顯示在 Developer Diagnostics。
 
 本 Lab 完成自動驗收後仍需真人以 iPhone／iPad／Desktop 驗收；它不代表 Production 已接受或已部署。

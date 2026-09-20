@@ -261,22 +261,23 @@ test("client close uses a keepalive request and clears the in-memory session", a
   assert.equal(client.isAuthenticated(), false);
 });
 
-test("Pages runtime is allowlisted and unknown hosted origins fail closed", () => {
+test("Lab Pages runtime stays fixture-backed and external API wiring remains local-only", () => {
   const pages = createClient({
     location: { origin: "https://aitest00898.github.io", pathname: "/jinji-web-v14r-lab/", href: "https://aitest00898.github.io/jinji-web-v14r-lab/" },
     fetchImpl: async () => response({}),
   });
-  assert.equal(pages.state().runtimeMode, "production_api");
-  assert.equal(pages.base, "https://chicken-line-production.jinji-assistant.workers.dev");
-  assert.equal(pages.state().baseSource, "pages-origin-allowlist");
+  assert.equal(pages.state().runtimeMode, "fixture_local");
+  assert.equal(pages.base, null);
+  assert.equal(pages.state().baseSource, "none");
 
-  const overridden = createClient({
+  const pagesQuery = createClient({
     location: { origin: "https://aitest00898.github.io", pathname: "/jinji-web-v14r-lab/", href: "https://aitest00898.github.io/jinji-web-v14r-lab/" },
     searchParams: new URLSearchParams("api-base=https%3A%2F%2Fevil.example.test"),
     fetchImpl: async () => response({}),
   });
-  assert.equal(overridden.isConfigured(), false);
-  assert.equal(overridden.state().configurationError, "CANONICAL_API_PAGES_BASE_OVERRIDE_FORBIDDEN");
+  assert.equal(pagesQuery.isConfigured(), false);
+  assert.equal(pagesQuery.base, null);
+  assert.equal(pagesQuery.state().configurationError, null);
 
   const unknown = createClient({
     location: { origin: "https://fork.example.test", pathname: "/", href: "https://fork.example.test/" },

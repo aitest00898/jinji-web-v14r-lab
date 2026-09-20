@@ -154,6 +154,9 @@ async function main() {
     await page.waitForTimeout(350);
     await page.locator('[data-action="open-correction"]').click();
     await page.locator('[data-sheet-kind="correction"]').waitFor({ state: "visible" });
+    // openSheet restores focus to the sheet close button on the next frame;
+    // wait for that accessibility focus handoff before editing the field.
+    await page.waitForFunction(() => document.activeElement?.classList.contains("sheet-close"));
     await page.locator("#correction-qty").fill("");
     await page.locator('[data-action="commit-correction"]').click();
     assert.match(await page.locator('[data-sheet-kind="correction"] [role="alert"]').innerText(), /請填寫修正後數量/);
